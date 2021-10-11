@@ -47,7 +47,6 @@ namespace Networking.Transport
             }
             catch (SocketException e)
             {
-                Debug.Log(e.Message.Length);
                 Debug.LogWarning($"Socket exception {e.ErrorCode}, {e.SocketErrorCode}: {e.Message}");
                 ReceiveFromAnySource();
             }
