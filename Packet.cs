@@ -1,4 +1,3 @@
-using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -8,11 +7,13 @@ namespace Networking.Transport
     /// <summary>
     /// Represents a single message of arbitrary data that can be sent over the network.
     /// </summary>
-    public partial class Packet : IDisposable
+    public partial class Packet
     {
+        private const int DefaultBufferSize = 32;
+        private const int BufferExpansionFactor = 2;
         private static readonly Encoding Encoding = Encoding.UTF8;
 
-        private readonly byte[] _buffer;
+        private byte[] _buffer;
         private int _readPosition;
         private int _writePosition;
 
@@ -29,9 +30,7 @@ namespace Networking.Transport
         public int Size => _writePosition;
 
         /// <summary>
-        /// In order to minimize allocations, all of the packets should be "created"
-        /// using the static factory method which enforces object pooling to reuse packets.
-        /// That is why there is no public constructors available.
+        /// Use static methods for creating packets.
         /// </summary>
         private Packet(byte[] buffer) => _buffer = buffer;
 
@@ -41,8 +40,7 @@ namespace Networking.Transport
         /// </summary>
         public static Packet OfType(short type)
         {
-            //var packet = PacketPool.Borrow();
-            var packet = new Packet(new byte[1024]);
+            var packet = new Packet(new byte[DefaultBufferSize]);
             packet.Write(type);
             packet.Type = packet.ReadShort();
             return packet;
@@ -54,8 +52,7 @@ namespace Networking.Transport
         /// </summary>
         public static Packet OfBytes(byte[] bytes, int length)
         {
-            //var packet = PacketPool.Borrow();
-            var packet = new Packet(new byte[1024]);
+            var packet = new Packet(new byte[length]);
             packet.Write(bytes, length);
             packet.Type = packet.ReadShort();
             return packet;
@@ -75,13 +72,5 @@ namespace Networking.Transport
             callback: null,
             state: null
         );
-
-        public void Dispose()
-        {
-            _readPosition = 0;
-            _writePosition = 0;
-
-            //PacketPool.Return(this);
-        }
     }
 }
