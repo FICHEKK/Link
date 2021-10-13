@@ -36,5 +36,10 @@ namespace Networking.Transport
         /// Sent by the server to the client when a prefab should be instantiated.
         /// </summary>
         SpawnPrefab,
+
+        /// <summary>
+        /// Sent by the client to the server or server to the client in order to invoke a method remotely.
+        /// </summary>
+        RemoteProcedureCall,
     }
 }

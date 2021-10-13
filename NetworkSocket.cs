@@ -11,12 +11,12 @@ namespace Networking.Transport
 
         private readonly byte[] _receiveBuffer = new byte[1024];
         private Socket _socket;
-        private Action<Packet, EndPoint> _handleReceivedPacket;
+        private IPacketHandler _packetHandler;
 
-        public void Initialize(Socket socket, Action<Packet, EndPoint> handleReceivedPacket)
+        public void Listen(Socket socket, IPacketHandler packetHandler)
         {
             _socket = socket ?? throw new NullReferenceException(nameof(socket));
-            _handleReceivedPacket = handleReceivedPacket ?? throw new NullReferenceException(nameof(handleReceivedPacket));
+            _packetHandler = packetHandler ?? throw new NullReferenceException(nameof(packetHandler));
             ReceiveFromAnySource();
         }
 
@@ -50,15 +50,20 @@ namespace Networking.Transport
                 Debug.LogWarning($"Socket exception {e.ErrorCode}, {e.SocketErrorCode}: {e.Message}");
                 ReceiveFromAnySource();
             }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"Unexpected exception: {e}");
+                ReceiveFromAnySource();
+            }
         }
 
         protected virtual void HandlePacket(Packet packet, EndPoint senderEndPoint) =>
-            _handleReceivedPacket(packet, senderEndPoint);
+            _packetHandler.Handle(packet, senderEndPoint);
 
         public void Send(Packet packet, EndPoint receiverEndPoint) =>
             packet.Send(_socket, receiverEndPoint);
 
-        private void OnDestroy() =>
+        private void OnDisable() =>
             _socket.Dispose();
     }
 }

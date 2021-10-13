@@ -2,7 +2,6 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using Core;
 
 namespace Networking.Transport
 {
@@ -11,7 +10,6 @@ namespace Networking.Transport
     /// </summary>
     public partial class Packet : IDisposable
     {
-        private static readonly Pool<Packet> PacketPool = new Pool<Packet>(size: 32, itemFactory: () => new Packet(buffer: new byte[1024]));
         private static readonly Encoding Encoding = Encoding.UTF8;
 
         private readonly byte[] _buffer;
@@ -43,7 +41,8 @@ namespace Networking.Transport
         /// </summary>
         public static Packet OfType(short type)
         {
-            var packet = PacketPool.Borrow();
+            //var packet = PacketPool.Borrow();
+            var packet = new Packet(new byte[1024]);
             packet.Write(type);
             packet.Type = packet.ReadShort();
             return packet;
@@ -55,7 +54,8 @@ namespace Networking.Transport
         /// </summary>
         public static Packet OfBytes(byte[] bytes, int length)
         {
-            var packet = PacketPool.Borrow();
+            //var packet = PacketPool.Borrow();
+            var packet = new Packet(new byte[1024]);
             packet.Write(bytes, length);
             packet.Type = packet.ReadShort();
             return packet;
@@ -81,7 +81,7 @@ namespace Networking.Transport
             _readPosition = 0;
             _writePosition = 0;
 
-            PacketPool.Return(this);
+            //PacketPool.Return(this);
         }
     }
 }
