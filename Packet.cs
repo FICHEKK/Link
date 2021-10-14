@@ -22,7 +22,7 @@ namespace Networking.Transport
         /// interpret packet contents, each packet type (not each packet instance) must
         /// have a unique identifier.
         /// </summary>
-        public short Type { get; private set; }
+        public PacketType Type { get; private set; }
 
         /// <summary>
         /// Returns the number of bytes of data that this packet is currently holding.
@@ -38,11 +38,11 @@ namespace Networking.Transport
         /// Returns a packet with provided type identifier written at the start of the packet.
         /// This method is called when sending the packet.
         /// </summary>
-        public static Packet OfType(short type)
+        public static Packet OfType(PacketType type)
         {
             var packet = new Packet(new byte[DefaultBufferSize]);
-            packet.Write(type);
-            packet.Type = packet.ReadShort();
+            packet.Write((short) type);
+            packet.Type = (PacketType) packet.ReadShort();
             return packet;
         }
 
@@ -54,7 +54,7 @@ namespace Networking.Transport
         {
             var packet = new Packet(new byte[length]);
             packet.Write(bytes, length);
-            packet.Type = packet.ReadShort();
+            packet.Type = (PacketType) packet.ReadShort();
             return packet;
         }
 
