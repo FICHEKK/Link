@@ -38,6 +38,11 @@ namespace Networking.Transport
         SpawnPrefab,
 
         /// <summary>
+        /// Sent by the server to the client when the client joins and needs to recreate an already existing networked scene.
+        /// </summary>
+        SpawnScene,
+
+        /// <summary>
         /// Sent by the client to the server or server to the client in order to invoke a method remotely.
         /// </summary>
         RemoteProcedureCall,
