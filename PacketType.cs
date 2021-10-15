@@ -33,14 +33,19 @@ namespace Networking.Transport
         Pong,
 
         /// <summary>
+        /// Sent by the server to the client when the client joins and needs to recreate an already existing networked scene.
+        /// </summary>
+        SpawnScene,
+
+        /// <summary>
         /// Sent by the server to the client when a prefab should be instantiated.
         /// </summary>
         SpawnPrefab,
 
         /// <summary>
-        /// Sent by the server to the client when the client joins and needs to recreate an already existing networked scene.
+        /// Sent by the server to the client when a networked object should be destroyed.
         /// </summary>
-        SpawnScene,
+        DestroyObject,
 
         /// <summary>
         /// Sent by the client to the server or server to the client in order to invoke a method remotely.
