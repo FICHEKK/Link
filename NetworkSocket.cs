@@ -14,12 +14,12 @@ namespace Networking.Transport
         private readonly byte[] _receiveBuffer = new byte[1024];
         private readonly Socket _socket;
         private readonly Random _random = new Random();
-        private readonly IPacketHandler _packetHandler;
+        private readonly Action<byte[], EndPoint> _datagramHandler;
 
         public float PacketLossProbability { get; set; }
         public int Latency { get; set; }
 
-        public NetworkSocket(Socket socket, IPacketHandler packetHandler, float packetLossProbability = 0, int latency = 0)
+        public NetworkSocket(Socket socket, Action<byte[], EndPoint> datagramHandler, float packetLossProbability = 0, int latency = 0)
         {
             if (packetLossProbability < 0 || packetLossProbability > 1)
                 throw new ArgumentException($"Packet loss probability must be a value in range from 0 to 1. Provided value: {packetLossProbability}");
@@ -31,7 +31,7 @@ namespace Networking.Transport
             Latency = latency;
 
             _socket = socket ?? throw new NullReferenceException(nameof(socket));
-            _packetHandler = packetHandler ?? throw new NullReferenceException(nameof(packetHandler));
+            _datagramHandler = datagramHandler ?? throw new NullReferenceException(nameof(datagramHandler));
 
             ReceiveFromAnySource();
         }
@@ -51,8 +51,9 @@ namespace Networking.Transport
 
                 if (bytesReceived > 0)
                 {
-                    var packet = Packet.OfBytes(_receiveBuffer, bytesReceived);
-                    HandlePacket(packet, senderEndPoint);
+                    var datagram = new byte[bytesReceived];
+                    Array.Copy(_receiveBuffer, datagram, datagram.Length);
+                    HandleDatagram(datagram, senderEndPoint);
                 }
 
                 ReceiveFromAnySource();
@@ -73,17 +74,12 @@ namespace Networking.Transport
             }
         }
 
-        private async void HandlePacket(Packet packet, EndPoint senderEndPoint)
+        private async void HandleDatagram(byte[] datagram, EndPoint senderEndPoint)
         {
-            if (PacketLossProbability > 0 && _random.NextDouble() < PacketLossProbability)
-            {
-                Debug.Log($"Packet of type {packet.Type} was lost.");
-                return;
-            }
-
+            if (PacketLossProbability > 0 && _random.NextDouble() < PacketLossProbability) return;
             if (Latency > 0) await Task.Delay(Latency);
 
-            _packetHandler.Handle(packet, senderEndPoint);
+            _datagramHandler(datagram, senderEndPoint);
         }
 
         public void Send(Packet packet, EndPoint receiverEndPoint) =>

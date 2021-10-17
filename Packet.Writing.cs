@@ -55,10 +55,7 @@ namespace Networking.Transport
         {
             if (_buffer.Length >= requiredBufferSize) return;
 
-            var expandedBufferSize = _buffer.Length * BufferExpansionFactor;
-            if (expandedBufferSize < requiredBufferSize) expandedBufferSize = requiredBufferSize;
-
-            var expandedBuffer = new byte[expandedBufferSize];
+            var expandedBuffer = new byte[Math.Max(_buffer.Length * BufferExpansionFactor, requiredBufferSize)];
             Array.Copy(_buffer, expandedBuffer, _writePosition);
             _buffer = expandedBuffer;
         }

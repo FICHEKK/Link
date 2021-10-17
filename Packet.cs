@@ -1,28 +1,50 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Core;
+using UnityEngine;
 
 namespace Networking.Transport
 {
     /// <summary>
     /// Represents a single message of arbitrary data that can be sent over the network.
     /// </summary>
-    public partial class Packet
+    public abstract partial class Packet
     {
         private const int DefaultBufferSize = 32;
         private const int BufferExpansionFactor = 2;
         private static readonly Encoding Encoding = Encoding.UTF8;
 
-        private byte[] _buffer;
+        private static readonly Dictionary<Type, short> PacketTypeToPacketHash = new Dictionary<Type, short>();
+        private static readonly Dictionary<short, Func<Packet>> PacketHashToPacketFactory = new Dictionary<short, Func<Packet>>();
+
+        static Packet()
+        {
+            var packetHashToPacketType = new Dictionary<short, Type>();
+
+            foreach (var packetType in typeof(Packet).Assembly.GetTypes().Where(type => type.IsSubclassOf(typeof(Packet)) && !type.IsAbstract))
+            {
+                var packetHash = (short) packetType.FullName.GetStableHashCode();
+                Debug.Log($"Packet '{packetType.FullName}' hashed to {packetHash}.");
+
+                if (packetHashToPacketType.TryGetValue(packetHash, out var usedByPacketType))
+                {
+                    Debug.LogError($"Packet hashing collision: '{packetType.FullName}' and '{usedByPacketType.FullName}'. Please rename one of the classes.");
+                    continue;
+                }
+
+                packetHashToPacketType.Add(packetHash, packetType);
+                PacketTypeToPacketHash.Add(packetType, packetHash);
+                PacketHashToPacketFactory.Add(packetHash, () => (Packet) Activator.CreateInstance(packetType));
+            }
+        }
+
+        private byte[] _buffer = new byte[DefaultBufferSize];
         private int _readPosition;
         private int _writePosition;
-
-        /// <summary>
-        /// Uniquely identifies packet contents. In order for the packet receiver to be able to
-        /// interpret packet contents, each packet type (not each packet instance) must
-        /// have a unique identifier.
-        /// </summary>
-        public PacketType Type { get; private set; }
 
         /// <summary>
         /// Returns the number of bytes of data that this packet is currently holding.
@@ -30,31 +52,23 @@ namespace Networking.Transport
         public int Size => _writePosition;
 
         /// <summary>
-        /// Use static methods for creating packets.
+        /// Returns the appropriate packet instance based on the provided byte array.
         /// </summary>
-        private Packet(byte[] buffer) => _buffer = buffer;
-
-        /// <summary>
-        /// Returns a packet with provided type identifier written at the start of the packet.
-        /// This method is called when sending the packet.
-        /// </summary>
-        public static Packet OfType(PacketType type)
+        public static Packet CreateFrom(byte[] bytes)
         {
-            var packet = new Packet(new byte[DefaultBufferSize]);
-            packet.Write((short) type);
-            packet.Type = (PacketType) packet.ReadShort();
-            return packet;
-        }
+            var packetHash = BitConverter.ToInt16(bytes, startIndex: 0);
 
-        /// <summary>
-        /// Returns a packet constructed from the provided byte buffer.
-        /// This method is called when receiving the packet.
-        /// </summary>
-        public static Packet OfBytes(byte[] bytes, int length)
-        {
-            var packet = new Packet(new byte[length]);
-            packet.Write(bytes, length);
-            packet.Type = (PacketType) packet.ReadShort();
+            if (!PacketHashToPacketFactory.TryGetValue(packetHash, out var packetFactory))
+            {
+                Debug.LogError($"Could not create packet with hash {packetHash}.");
+                return null;
+            }
+
+            var packet = packetFactory();
+            packet._buffer = bytes;
+            packet._writePosition = bytes.Length; // Skip the bytes of the given array as to not overwrite it.
+            packet._readPosition = sizeof(short); // Skip the first 2 bytes as those contain packet hash.
+            packet.ReadPayload();
             return packet;
         }
 
@@ -63,14 +77,14 @@ namespace Networking.Transport
         /// Only part of the buffer that has been written to will be sent.
         /// This method should be called after the packet has been filled with data.
         /// </summary>
-        public void Send(Socket socket, EndPoint receiverEndPoint) => socket.BeginSendTo(
-            buffer: _buffer,
-            offset: 0,
-            size: _writePosition,
-            socketFlags: SocketFlags.None,
-            remoteEP: receiverEndPoint,
-            callback: null,
-            state: null
-        );
+        public void Send(Socket socket, EndPoint receiverEndPoint)
+        {
+            Write(PacketTypeToPacketHash[GetType()]);
+            WritePayload();
+            socket.BeginSendTo(_buffer, _writePosition, receiverEndPoint);
+        }
+
+        protected abstract void WritePayload();
+        protected abstract void ReadPayload();
     }
 }
