@@ -49,7 +49,7 @@ namespace Networking.Transport
                 var senderEndPoint = AnyEndPoint;
                 var bytesReceived = _socket.EndReceiveFrom(asyncResult, ref senderEndPoint);
 
-                if (bytesReceived > 0)
+                if (bytesReceived > 0 && (PacketLossProbability == 0 || _random.NextDouble() >= PacketLossProbability))
                 {
                     var datagram = new byte[bytesReceived];
                     Array.Copy(_receiveBuffer, datagram, datagram.Length);
@@ -76,9 +76,7 @@ namespace Networking.Transport
 
         private async void HandleDatagram(byte[] datagram, EndPoint senderEndPoint)
         {
-            if (PacketLossProbability > 0 && _random.NextDouble() < PacketLossProbability) return;
             if (Latency > 0) await Task.Delay(Latency);
-
             _datagramHandler(datagram, senderEndPoint);
         }
 
