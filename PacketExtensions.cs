@@ -31,5 +31,22 @@ namespace Networking.Transport
             var z = packet.ReadFloat();
             return new Vector3(x, y, z);
         }
+
+        public static void Write(this Packet packet, Quaternion quaternion)
+        {
+            packet.Write(quaternion.x);
+            packet.Write(quaternion.y);
+            packet.Write(quaternion.z);
+            packet.Write(quaternion.w);
+        }
+
+        public static Quaternion ReadQuaternion(this Packet packet)
+        {
+            var x = packet.ReadFloat();
+            var y = packet.ReadFloat();
+            var z = packet.ReadFloat();
+            var w = packet.ReadFloat();
+            return new Quaternion(x, y, z, w);
+        }
     }
 }

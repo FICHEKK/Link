@@ -28,7 +28,6 @@ namespace Networking.Transport
             foreach (var packetType in typeof(Packet).Assembly.GetTypes().Where(type => type.IsSubclassOf(typeof(Packet)) && !type.IsAbstract))
             {
                 var packetHash = (short) packetType.FullName.GetStableHashCode();
-                Debug.Log($"Packet '{packetType.FullName}' hashed to {packetHash}.");
 
                 if (packetHashToPacketType.TryGetValue(packetHash, out var usedByPacketType))
                 {
