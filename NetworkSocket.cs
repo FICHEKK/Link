@@ -2,6 +2,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using Networking.Packets;
 using UnityEngine;
 using Random = System.Random;
 
