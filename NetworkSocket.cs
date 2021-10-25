@@ -2,7 +2,6 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using Networking.Packets;
 using UnityEngine;
 using Random = System.Random;
 
@@ -12,30 +11,17 @@ namespace Networking.Transport
     {
         private static readonly EndPoint AnyEndPoint = new IPEndPoint(IPAddress.Any, 0);
 
-        private readonly byte[] _receiveBuffer = new byte[1024];
         private readonly Socket _socket;
         private readonly Random _random = new Random();
+        private readonly byte[] _receiveBuffer = new byte[1024];
         private readonly Action<byte[], EndPoint> _datagramHandler;
 
         public float PacketLossProbability { get; set; }
         public int MinLatency { get; set; }
         public int MaxLatency { get; set; }
 
-        public NetworkSocket(Socket socket, Action<byte[], EndPoint> datagramHandler, float packetLossProbability = 0, int minLatency = 0, int maxLatency = 0)
+        public NetworkSocket(Socket socket, Action<byte[], EndPoint> datagramHandler)
         {
-            if (packetLossProbability < 0 || packetLossProbability > 1)
-                throw new ArgumentException($"Packet loss probability must be a value in range from 0 to 1. Provided value: {packetLossProbability}");
-
-            if (minLatency < 0)
-                throw new ArgumentException($"Minimum latency must be a positive value. Provided value: {minLatency}");
-
-            if (minLatency > maxLatency)
-                throw new ArgumentException("Maximum latency must be greater than minimum latency.");
-
-            PacketLossProbability = packetLossProbability;
-            MinLatency = minLatency;
-            MaxLatency = maxLatency;
-
             _socket = socket ?? throw new NullReferenceException(nameof(socket));
             _datagramHandler = datagramHandler ?? throw new NullReferenceException(nameof(datagramHandler));
 
@@ -45,7 +31,7 @@ namespace Networking.Transport
         private void ReceiveFromAnySource()
         {
             var anyEndPoint = AnyEndPoint;
-            _socket.BeginReceiveFrom(_receiveBuffer, ref anyEndPoint, HandleReceive);
+            _socket.BeginReceiveFrom(_receiveBuffer, offset: 0, _receiveBuffer.Length, SocketFlags.None, ref anyEndPoint, HandleReceive, state: null);
         }
 
         private void HandleReceive(IAsyncResult asyncResult)
@@ -86,8 +72,8 @@ namespace Networking.Transport
             _datagramHandler(datagram, senderEndPoint);
         }
 
-        public void Send(Packet packet, EndPoint receiverEndPoint) =>
-            packet.Send(_socket, receiverEndPoint);
+        public void Send(byte[] datagram, int offset, int length, EndPoint receiverEndPoint) =>
+            _socket.BeginSendTo(datagram, offset, length, SocketFlags.None, receiverEndPoint, callback: null, state: null);
 
         public void Dispose() =>
             _socket.Dispose();
