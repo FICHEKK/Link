@@ -13,7 +13,7 @@ namespace Networking.Transport
 
         private readonly Socket _socket;
         private readonly Random _random = new Random();
-        private readonly byte[] _receiveBuffer = new byte[1024];
+        private readonly byte[] _receiveBuffer = new byte[4096];
         private readonly Action<byte[], EndPoint> _datagramHandler;
 
         public float PacketLossProbability { get; set; }
@@ -24,7 +24,6 @@ namespace Networking.Transport
         {
             _socket = socket ?? throw new NullReferenceException(nameof(socket));
             _datagramHandler = datagramHandler ?? throw new NullReferenceException(nameof(datagramHandler));
-
             ReceiveFromAnySource();
         }
 
