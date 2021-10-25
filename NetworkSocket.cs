@@ -18,18 +18,23 @@ namespace Networking.Transport
         private readonly Action<byte[], EndPoint> _datagramHandler;
 
         public float PacketLossProbability { get; set; }
-        public int Latency { get; set; }
+        public int MinLatency { get; set; }
+        public int MaxLatency { get; set; }
 
-        public NetworkSocket(Socket socket, Action<byte[], EndPoint> datagramHandler, float packetLossProbability = 0, int latency = 0)
+        public NetworkSocket(Socket socket, Action<byte[], EndPoint> datagramHandler, float packetLossProbability = 0, int minLatency = 0, int maxLatency = 0)
         {
             if (packetLossProbability < 0 || packetLossProbability > 1)
                 throw new ArgumentException($"Packet loss probability must be a value in range from 0 to 1. Provided value: {packetLossProbability}");
 
-            if (latency < 0)
-                throw new ArgumentException($"Latency must be a positive value. Provided value: {latency}");
+            if (minLatency < 0)
+                throw new ArgumentException($"Minimum latency must be a positive value. Provided value: {minLatency}");
+
+            if (minLatency > maxLatency)
+                throw new ArgumentException("Maximum latency must be greater than minimum latency.");
 
             PacketLossProbability = packetLossProbability;
-            Latency = latency;
+            MinLatency = minLatency;
+            MaxLatency = maxLatency;
 
             _socket = socket ?? throw new NullReferenceException(nameof(socket));
             _datagramHandler = datagramHandler ?? throw new NullReferenceException(nameof(datagramHandler));
@@ -77,7 +82,7 @@ namespace Networking.Transport
 
         private async void HandleDatagram(byte[] datagram, EndPoint senderEndPoint)
         {
-            if (Latency > 0) await Task.Delay(Latency);
+            if (MaxLatency > 0) await Task.Delay(_random.Next(MinLatency, MaxLatency + 1));
             _datagramHandler(datagram, senderEndPoint);
         }
 
