@@ -1,9 +1,7 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading.Tasks;
 using UnityEngine;
-using Random = System.Random;
 
 namespace Networking.Transport
 {
@@ -12,13 +10,8 @@ namespace Networking.Transport
         private static readonly EndPoint AnyEndPoint = new IPEndPoint(IPAddress.Any, 0);
 
         private readonly Socket _socket;
-        private readonly Random _random = new Random();
         private readonly byte[] _receiveBuffer = new byte[4096];
         private readonly Action<byte[], EndPoint> _datagramHandler;
-
-        public float PacketLossProbability { get; set; }
-        public int MinLatency { get; set; }
-        public int MaxLatency { get; set; }
 
         public NetworkSocket(Socket socket, Action<byte[], EndPoint> datagramHandler)
         {
@@ -40,11 +33,11 @@ namespace Networking.Transport
                 var senderEndPoint = AnyEndPoint;
                 var bytesReceived = _socket.EndReceiveFrom(asyncResult, ref senderEndPoint);
 
-                if (bytesReceived > 0 && (PacketLossProbability == 0 || _random.NextDouble() >= PacketLossProbability))
+                if (bytesReceived > 0)
                 {
                     var datagram = new byte[bytesReceived];
                     Array.Copy(_receiveBuffer, datagram, datagram.Length);
-                    HandleDatagram(datagram, senderEndPoint);
+                    _datagramHandler(datagram, senderEndPoint);
                 }
 
                 ReceiveFromAnySource();
@@ -63,12 +56,6 @@ namespace Networking.Transport
                 Debug.LogWarning($"Unexpected exception: {e}");
                 ReceiveFromAnySource();
             }
-        }
-
-        private async void HandleDatagram(byte[] datagram, EndPoint senderEndPoint)
-        {
-            if (MaxLatency > 0) await Task.Delay(_random.Next(MinLatency, MaxLatency + 1));
-            _datagramHandler(datagram, senderEndPoint);
         }
 
         public void Send(byte[] datagram, int offset, int length, EndPoint receiverEndPoint) =>
