@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Networking.Core;
-using UnityEngine;
+using Networking.Exceptions;
 
 namespace Networking.Transport
 {
@@ -34,22 +34,24 @@ namespace Networking.Transport
         {
             lock (PacketPool)
             {
-                if (PacketPool.Count == 0)
-                {
-                    const string line1 = "Packet pool has been emptied, which means that:";
-                    const string line2 = "A) Packet pool initial size is simply too small.";
-                    const string line3 = "B) There is a memory leak and packet is not getting returned.";
+                EnsurePacketPoolNotEmpty();
 
-                    // TODO - Refactor into "PacketPoolEmptyException" - method "EnsurePoolIsNotEmpty"
-                    Debug.LogError(line1.NewLine() + line2.NewLine() + line3.NewLine());
-                }
-
-                var packet = PacketPool.Count > 0 ? PacketPool.Dequeue() : new Packet(MaxBufferSize);
+                var packet = PacketPool.Dequeue();
                 packet.Id = id;
                 packet.Writer.Write(id);
                 packet.Reader.ReadPosition = sizeof(ushort);
                 return packet;
             }
+        }
+
+        private static void EnsurePacketPoolNotEmpty()
+        {
+            if (PacketPool.Count > 0) return;
+
+            const string line1 = "Packet pool has been emptied, which means that:";
+            const string line2 = "A) Packet pool initial size is simply too small.";
+            const string line3 = "B) There is a memory leak and packet is not getting returned.";
+            throw new PacketPoolEmptyException(line1.NewLine() + line2.NewLine() + line3.NewLine());
         }
 
         private Packet(int size)
