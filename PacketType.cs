@@ -60,22 +60,10 @@ namespace Networking.Transport
         ObjectOwner,
 
         /// <summary>
-        /// Sent by the server to the client to update object's position.
-        /// Payload: ObjectID, Position
+        /// Sent by the server to the client to update object's transform.
+        /// Payload: ObjectID, Transform
         /// </summary>
-        ObjectPosition,
-
-        /// <summary>
-        /// Sent by the server to the client to update object's rotation.
-        /// Payload: ObjectID, Rotation
-        /// </summary>
-        ObjectRotation,
-
-        /// <summary>
-        /// Sent by the server to the client to update object's scale.
-        /// Payload: ObjectID, Scale
-        /// </summary>
-        ObjectScale,
+        ObjectTransform,
 
         /// <summary>
         /// Sent by the server to the client when a networked object should be destroyed.
