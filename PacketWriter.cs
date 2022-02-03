@@ -1,12 +1,11 @@
 using System;
-using System.Runtime.InteropServices;
+using Networking.Transport.Conversion;
 
 namespace Networking.Transport
 {
     public class PacketWriter
     {
         private const int BufferExpansionFactor = 2;
-        private const int ZeroOffset = 0;
 
         public int WritePosition { get; set; }
         private readonly Packet _packet;
@@ -23,11 +22,11 @@ namespace Networking.Transport
 
         public void Write(int value) => WriteFourByteValue(value);
         public void Write(uint value) => WriteFourByteValue((int) value);
-        public void Write(float value) => WriteFourByteValue(new FourBytes {floatValue = value}.intValue);
+        public void Write(float value) => WriteFourByteValue(new FourByteStruct {floatValue = value}.intValue);
 
         public void Write(long value) => WriteEightByteValue(value);
         public void Write(ulong value) => WriteEightByteValue((long) value);
-        public void Write(double value) => WriteEightByteValue(new EightBytes {doubleValue = value}.longValue);
+        public void Write(double value) => WriteEightByteValue(new EightByteStruct {doubleValue = value}.longValue);
 
         private void WriteOneByteValue(byte value)
         {
@@ -39,8 +38,8 @@ namespace Networking.Transport
         {
             EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(short));
 #if BIGENDIAN
-                _packet._buffer[WritePosition++] = (byte) (value >> 8);
-                _packet._buffer[WritePosition++] = (byte) value;
+            _packet.Buffer[WritePosition++] = (byte) (value >> 8);
+            _packet.Buffer[WritePosition++] = (byte) value;
 #else
             _packet.Buffer[WritePosition++] = (byte) value;
             _packet.Buffer[WritePosition++] = (byte) (value >> 8);
@@ -51,10 +50,10 @@ namespace Networking.Transport
         {
             EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(int));
 #if BIGENDIAN
-                _packet._buffer[WritePosition++] = (byte) (value >> 24);
-                _packet._buffer[WritePosition++] = (byte) (value >> 16);
-                _packet._buffer[WritePosition++] = (byte) (value >> 8);
-                _packet._buffer[WritePosition++] = (byte) value;
+            _packet.Buffer[WritePosition++] = (byte) (value >> 24);
+            _packet.Buffer[WritePosition++] = (byte) (value >> 16);
+            _packet.Buffer[WritePosition++] = (byte) (value >> 8);
+            _packet.Buffer[WritePosition++] = (byte) value;
 #else
             _packet.Buffer[WritePosition++] = (byte) value;
             _packet.Buffer[WritePosition++] = (byte) (value >> 8);
@@ -67,14 +66,14 @@ namespace Networking.Transport
         {
             EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(long));
 #if BIGENDIAN
-                _packet._buffer[WritePosition++] = (byte) (value >> 56);
-                _packet._buffer[WritePosition++] = (byte) (value >> 48);
-                _packet._buffer[WritePosition++] = (byte) (value >> 40);
-                _packet._buffer[WritePosition++] = (byte) (value >> 32);
-                _packet._buffer[WritePosition++] = (byte) (value >> 24);
-                _packet._buffer[WritePosition++] = (byte) (value >> 16);
-                _packet._buffer[WritePosition++] = (byte) (value >> 8);
-                _packet._buffer[WritePosition++] = (byte) value;
+            _packet.Buffer[WritePosition++] = (byte) (value >> 56);
+            _packet.Buffer[WritePosition++] = (byte) (value >> 48);
+            _packet.Buffer[WritePosition++] = (byte) (value >> 40);
+            _packet.Buffer[WritePosition++] = (byte) (value >> 32);
+            _packet.Buffer[WritePosition++] = (byte) (value >> 24);
+            _packet.Buffer[WritePosition++] = (byte) (value >> 16);
+            _packet.Buffer[WritePosition++] = (byte) (value >> 8);
+            _packet.Buffer[WritePosition++] = (byte) value;
 #else
             _packet.Buffer[WritePosition++] = (byte) value;
             _packet.Buffer[WritePosition++] = (byte) (value >> 8);
@@ -118,27 +117,6 @@ namespace Networking.Transport
             var expandedBuffer = new byte[Math.Max(currentBuffer.Length * BufferExpansionFactor, requiredBufferSize)];
             Array.Copy(currentBuffer, expandedBuffer, WritePosition);
             _packet.Buffer = expandedBuffer;
-        }
-
-        // TODO - Extract these structs into "Transport" namespace, so "PacketReader" can use them.
-        [StructLayout(LayoutKind.Explicit)]
-        private struct FourBytes
-        {
-            [FieldOffset(ZeroOffset)]
-            public readonly int intValue;
-
-            [FieldOffset(ZeroOffset)]
-            public float floatValue;
-        }
-
-        [StructLayout(LayoutKind.Explicit)]
-        private struct EightBytes
-        {
-            [FieldOffset(ZeroOffset)]
-            public readonly long longValue;
-
-            [FieldOffset(ZeroOffset)]
-            public double doubleValue;
         }
     }
 }

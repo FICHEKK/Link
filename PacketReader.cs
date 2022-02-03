@@ -1,8 +1,7 @@
-using System;
+using Networking.Transport.Conversion;
 
 namespace Networking.Transport
 {
-    // TODO - Implement faster deserialization using raw byte manipulation.
     public class PacketReader
     {
         public int ReadPosition { get; set; }
@@ -10,21 +9,74 @@ namespace Networking.Transport
 
         public PacketReader(Packet packet) => _packet = packet;
 
-        public byte ReadByte() => _packet.Buffer[ReadPosition++];
         public sbyte ReadSignedByte() => (sbyte) ReadByte();
         public bool ReadBool() => ReadByte() != 0;
 
-        public short ReadShort() => Read(BitConverter.ToInt16, sizeof(short));
-        public ushort ReadUnsignedShort() => Read(BitConverter.ToUInt16, sizeof(ushort));
-        public char ReadChar() => Read(BitConverter.ToChar, sizeof(char));
+        public ushort ReadUnsignedShort() => (ushort) ReadShort();
+        public char ReadChar() => (char) ReadShort();
 
-        public int ReadInt() => Read(BitConverter.ToInt32, sizeof(int));
-        public uint ReadUnsignedInt() => Read(BitConverter.ToUInt32, sizeof(uint));
-        public float ReadFloat() => Read(BitConverter.ToSingle, sizeof(float));
+        public uint ReadUnsignedInt() => (uint) ReadInt();
+        public float ReadFloat() => new FourByteStruct {intValue = ReadInt()}.floatValue;
 
-        public long ReadLong() => Read(BitConverter.ToInt64, sizeof(long));
-        public ulong ReadUnsignedLong() => Read(BitConverter.ToUInt64, sizeof(ulong));
-        public double ReadDouble() => Read(BitConverter.ToDouble, sizeof(double));
+        public ulong ReadUnsignedLong() => (ulong) ReadLong();
+        public double ReadDouble() => new EightByteStruct {longValue = ReadLong()}.doubleValue;
+
+        public byte ReadByte() => _packet.Buffer[ReadPosition++];
+
+        public short ReadShort()
+        {
+#if BIGENDIAN
+            var b0 = (int) _packet.Buffer[ReadPosition++];
+            var b1 = (int) _packet.Buffer[ReadPosition++];
+            return (short) (b0 << 8 | b1);
+#else
+            var b0 = (int) _packet.Buffer[ReadPosition++];
+            var b1 = (int) _packet.Buffer[ReadPosition++];
+            return (short) (b0 | b1 << 8);
+#endif
+        }
+
+        public int ReadInt()
+        {
+#if BIGENDIAN
+            var b0 = (int) _packet.Buffer[ReadPosition++];
+            var b1 = (int) _packet.Buffer[ReadPosition++];
+            var b2 = (int) _packet.Buffer[ReadPosition++];
+            var b3 = (int) _packet.Buffer[ReadPosition++];
+            return b0 << 24 | b1 << 16 | b2 << 8 | b3;
+#else
+            var b0 = (int) _packet.Buffer[ReadPosition++];
+            var b1 = (int) _packet.Buffer[ReadPosition++];
+            var b2 = (int) _packet.Buffer[ReadPosition++];
+            var b3 = (int) _packet.Buffer[ReadPosition++];
+            return b0 | b1 << 8 | b2 << 16 | b3 << 24;
+#endif
+        }
+
+        public long ReadLong()
+        {
+#if BIGENDIAN
+            var b0 = (long) _packet.Buffer[ReadPosition++];
+            var b1 = (long) _packet.Buffer[ReadPosition++];
+            var b2 = (long) _packet.Buffer[ReadPosition++];
+            var b3 = (long) _packet.Buffer[ReadPosition++];
+            var b4 = (long) _packet.Buffer[ReadPosition++];
+            var b5 = (long) _packet.Buffer[ReadPosition++];
+            var b6 = (long) _packet.Buffer[ReadPosition++];
+            var b7 = (long) _packet.Buffer[ReadPosition++];
+            return b0 << 56 | b1 << 48 | b2 << 40 | b3 << 32 | b4 << 24 | b5 << 16 | b6 << 8 | b7;
+#else
+            var b0 = (long) _packet.Buffer[ReadPosition++];
+            var b1 = (long) _packet.Buffer[ReadPosition++];
+            var b2 = (long) _packet.Buffer[ReadPosition++];
+            var b3 = (long) _packet.Buffer[ReadPosition++];
+            var b4 = (long) _packet.Buffer[ReadPosition++];
+            var b5 = (long) _packet.Buffer[ReadPosition++];
+            var b6 = (long) _packet.Buffer[ReadPosition++];
+            var b7 = (long) _packet.Buffer[ReadPosition++];
+            return b0 | b1 << 8 | b2 << 16 | b3 << 24 | b4 << 32 | b5 << 40 | b6 << 48 | b7 << 56;
+#endif
+        }
 
         public string ReadString()
         {
@@ -32,13 +84,6 @@ namespace Networking.Transport
             var stringValue = Packet.Encoding.GetString(_packet.Buffer, ReadPosition, stringLength);
             ReadPosition += stringLength;
             return stringValue;
-        }
-
-        private T Read<T>(Func<byte[], int, T> conversionFunction, int typeSize)
-        {
-            var value = conversionFunction(_packet.Buffer, ReadPosition);
-            ReadPosition += typeSize;
-            return value;
         }
     }
 }
