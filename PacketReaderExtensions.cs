@@ -36,5 +36,18 @@ namespace Networking.Transport
             var a = reader.ReadFloat();
             return new Color(r, g, b, a);
         }
+
+        public static void ReadTransform(this PacketReader reader, out Vector3 position, out Quaternion rotation, out Vector3 scale)
+        {
+            position = Vector3.zero;
+            rotation = Quaternion.identity;
+            scale = Vector3.one;
+
+            var bitmask = reader.ReadByte();
+
+            if ((bitmask & 0x01) != 0) position = reader.ReadVector3();
+            if ((bitmask & 0x02) != 0) rotation = reader.ReadQuaternion();
+            if ((bitmask & 0x04) != 0) scale = reader.ReadVector3();
+        }
     }
 }

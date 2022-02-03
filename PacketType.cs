@@ -44,7 +44,12 @@ namespace Networking.Transport
 
         /// <summary>
         /// Sent by the server to the client when an object should be spawned.
-        /// Payload: PrefabID, ObjectID, Position, Rotation, Scale
+        /// <br/><br/>
+        /// Bitmask is a byte of the following format: 0000 0SRP, where last
+        /// 3 bits represent the optional existence of scale, rotation and
+        /// position fields respectively.
+        /// <br/><br/>
+        /// Payload: PrefabID, ObjectID, Bitmask, {Position}, {Rotation}, {Scale}
         /// </summary>
         ObjectSpawn,
 
