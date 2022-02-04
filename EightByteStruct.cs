@@ -1,9 +1,9 @@
 using System.Runtime.InteropServices;
 
-namespace Networking.Transport.Conversion
+namespace Networking.Transport
 {
     [StructLayout(LayoutKind.Explicit)]
-    public struct EightByteStruct
+    internal struct EightByteStruct
     {
         [FieldOffset(0)]
         public long longValue;

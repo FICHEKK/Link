@@ -1,5 +1,3 @@
-using Networking.Transport.Conversion;
-
 namespace Networking.Transport
 {
     public class PacketReader

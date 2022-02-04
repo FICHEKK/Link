@@ -1,9 +1,9 @@
 using System.Runtime.InteropServices;
 
-namespace Networking.Transport.Conversion
+namespace Networking.Transport
 {
     [StructLayout(LayoutKind.Explicit)]
-    public struct FourByteStruct
+    internal struct FourByteStruct
     {
         [FieldOffset(0)]
         public int intValue;
