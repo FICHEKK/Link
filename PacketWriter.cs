@@ -11,78 +11,88 @@ namespace Networking.Transport
 
         public PacketWriter(Packet packet) => _packet = packet;
 
-        public void Write(byte value) => WriteOneByteValue(value);
-        public void Write(sbyte value) => WriteOneByteValue((byte) value);
-        public void Write(bool value) => WriteOneByteValue((byte) (value ? 1 : 0));
-
-        public void Write(short value) => WriteTwoByteValue(value);
-        public void Write(ushort value) => WriteTwoByteValue((short) value);
-        public void Write(char value) => WriteTwoByteValue((short) value);
-
-        public void Write(int value) => WriteFourByteValue(value);
-        public void Write(uint value) => WriteFourByteValue((int) value);
-        public void Write(float value) => WriteFourByteValue(new FourByteStruct {floatValue = value}.intValue);
-
-        public void Write(long value) => WriteEightByteValue(value);
-        public void Write(ulong value) => WriteEightByteValue((long) value);
-        public void Write(double value) => WriteEightByteValue(new EightByteStruct {doubleValue = value}.longValue);
-
-        private void WriteOneByteValue(byte value)
+        public void Write(byte value)
         {
             EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(byte));
-            _packet.Buffer[WritePosition++] = value;
+            _packet.Buffer.WriteByte(value, WritePosition);
+            WritePosition += sizeof(byte);
         }
 
-        private void WriteTwoByteValue(short value)
+        public void Write(sbyte value)
+        {
+            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(sbyte));
+            _packet.Buffer.WriteSignedByte(value, WritePosition);
+            WritePosition += sizeof(sbyte);
+        }
+
+        public void Write(bool value)
+        {
+            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(bool));
+            _packet.Buffer.WriteBool(value, WritePosition);
+            WritePosition += sizeof(bool);
+        }
+
+        public void Write(short value)
         {
             EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(short));
-#if BIGENDIAN
-            _packet.Buffer[WritePosition++] = (byte) (value >> 8);
-            _packet.Buffer[WritePosition++] = (byte) value;
-#else
-            _packet.Buffer[WritePosition++] = (byte) value;
-            _packet.Buffer[WritePosition++] = (byte) (value >> 8);
-#endif
+            _packet.Buffer.WriteShort(value, WritePosition);
+            WritePosition += sizeof(short);
         }
 
-        private void WriteFourByteValue(int value)
+        public void Write(ushort value)
+        {
+            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(ushort));
+            _packet.Buffer.WriteUnsignedShort(value, WritePosition);
+            WritePosition += sizeof(ushort);
+        }
+
+        public void Write(char value)
+        {
+            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(char));
+            _packet.Buffer.WriteChar(value, WritePosition);
+            WritePosition += sizeof(char);
+        }
+
+        public void Write(int value)
         {
             EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(int));
-#if BIGENDIAN
-            _packet.Buffer[WritePosition++] = (byte) (value >> 24);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 16);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 8);
-            _packet.Buffer[WritePosition++] = (byte) value;
-#else
-            _packet.Buffer[WritePosition++] = (byte) value;
-            _packet.Buffer[WritePosition++] = (byte) (value >> 8);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 16);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 24);
-#endif
+            _packet.Buffer.WriteInt(value, WritePosition);
+            WritePosition += sizeof(int);
         }
 
-        private void WriteEightByteValue(long value)
+        public void Write(uint value)
+        {
+            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(uint));
+            _packet.Buffer.WriteUnsignedInt(value, WritePosition);
+            WritePosition += sizeof(uint);
+        }
+
+        public void Write(float value)
+        {
+            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(float));
+            _packet.Buffer.WriteFloat(value, WritePosition);
+            WritePosition += sizeof(float);
+        }
+
+        public void Write(long value)
         {
             EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(long));
-#if BIGENDIAN
-            _packet.Buffer[WritePosition++] = (byte) (value >> 56);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 48);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 40);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 32);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 24);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 16);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 8);
-            _packet.Buffer[WritePosition++] = (byte) value;
-#else
-            _packet.Buffer[WritePosition++] = (byte) value;
-            _packet.Buffer[WritePosition++] = (byte) (value >> 8);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 16);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 24);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 32);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 40);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 48);
-            _packet.Buffer[WritePosition++] = (byte) (value >> 56);
-#endif
+            _packet.Buffer.WriteLong(value, WritePosition);
+            WritePosition += sizeof(long);
+        }
+
+        public void Write(ulong value)
+        {
+            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(ulong));
+            _packet.Buffer.WriteUnsignedLong(value, WritePosition);
+            WritePosition += sizeof(ulong);
+        }
+
+        public void Write(double value)
+        {
+            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(double));
+            _packet.Buffer.WriteDouble(value, WritePosition);
+            WritePosition += sizeof(double);
         }
 
         public void Write(string value)
