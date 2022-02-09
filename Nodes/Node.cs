@@ -24,6 +24,11 @@ namespace Networking.Transport.Nodes
         private Socket _socket;
 
         /// <summary>
+        /// Returns packet handlers registered for this network node.
+        /// </summary>
+        public IReadOnlyDictionary<ushort, Action<PacketReader, EndPoint>> PacketIdToPacketHandler => _packetIdToPacketHandler;
+
+        /// <summary>
         /// Returns true if this node is currently listening for incoming packets.
         /// </summary>
         public bool IsListening => _socket != null;
