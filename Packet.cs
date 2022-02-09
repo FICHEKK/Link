@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using System.Text;
-using Networking.Core;
-using Networking.Exceptions;
 
 namespace Networking.Transport
 {
@@ -12,18 +10,16 @@ namespace Networking.Transport
     {
         // TODO - Find out what this value should actually be.
         private const int MaxBufferSize = 1500;
-        private const int DefaultPacketPoolSize = 32;
 
         public static readonly Encoding Encoding = Encoding.UTF8;
-        private static readonly Queue<Packet> PacketPool = new Queue<Packet>(DefaultPacketPoolSize);
+        private static readonly Queue<Packet> PacketPool = new Queue<Packet>();
 
-        static Packet()
-        {
-            for (var i = 0; i < DefaultPacketPoolSize; i++)
-            {
-                PacketPool.Enqueue(new Packet(MaxBufferSize));
-            }
-        }
+        /// <summary>
+        /// Represents total number of new packet allocations. This value should eventually stagnate
+        /// if packets are properly returned. If this value keeps on increasing, that is a clear sign
+        /// that there is a packet leak - somewhere a packet is taken but not returned to the pool.
+        /// </summary>
+        public static int TotalAllocationCount { get; private set; }
 
         public ushort Id { get; private set; }
         public byte[] Buffer { get; set; }
@@ -34,9 +30,7 @@ namespace Networking.Transport
         {
             lock (PacketPool)
             {
-                EnsurePacketPoolNotEmpty();
-
-                var packet = PacketPool.Dequeue();
+                var packet = DequeueOrCreatePacket();
                 packet.Id = id;
                 packet.Writer.Write(id);
                 packet.Reader.ReadPosition = sizeof(ushort);
@@ -44,14 +38,12 @@ namespace Networking.Transport
             }
         }
 
-        private static void EnsurePacketPoolNotEmpty()
+        private static Packet DequeueOrCreatePacket()
         {
-            if (PacketPool.Count > 0) return;
+            if (PacketPool.Count > 0) return PacketPool.Dequeue();
 
-            const string line1 = "Packet pool has been emptied, which means that:";
-            const string line2 = "A) Packet pool initial size is simply too small.";
-            const string line3 = "B) There is a memory leak and packet is not getting returned.";
-            throw new PacketPoolEmptyException(line1.NewLine() + line2.NewLine() + line3.NewLine());
+            TotalAllocationCount++;
+            return new Packet(MaxBufferSize);
         }
 
         private Packet(int size)
