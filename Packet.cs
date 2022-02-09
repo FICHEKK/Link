@@ -12,7 +12,7 @@ namespace Networking.Transport
     {
         // TODO - Find out what this value should actually be.
         private const int MaxBufferSize = 1500;
-        private const int DefaultPacketPoolSize = 15;
+        private const int DefaultPacketPoolSize = 32;
 
         public static readonly Encoding Encoding = Encoding.UTF8;
         private static readonly Queue<Packet> PacketPool = new Queue<Packet>(DefaultPacketPoolSize);
