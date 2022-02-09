@@ -1,7 +1,6 @@
 using System;
 using System.Net;
 using Networking.Attributes;
-using UnityEngine;
 
 namespace Networking.Transport.Nodes
 {
@@ -30,6 +29,11 @@ namespace Networking.Transport.Nodes
         /// Invoked each time client disconnects from the server.
         /// </summary>
         public event Action OnDisconnectedFromServer;
+
+        /// <summary>
+        /// Returns true if this client is currently attempting to connect to the server.
+        /// </summary>
+        public bool IsConnecting => ServerEndPoint != null && !IsConnected;
         
         /// <summary>
         /// Returns true if this client is currently connected to the server.

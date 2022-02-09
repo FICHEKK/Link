@@ -73,6 +73,16 @@ namespace Networking.Transport.Nodes
             }
             catch (SocketException e)
             {
+                if (e.SocketErrorCode == SocketError.ConnectionReset)
+                {
+                    // This is a known ICMP message received when destination port is unreachable.
+                    // This occurs when remote end-point disconnects without sending the disconnect
+                    // packet (or if disconnect packet did not arrive). This error does not need to
+                    // be handled as the connection will get cleaned automatically once it times out.
+                    ReceiveFromAnySource();
+                    return;
+                }
+
                 Debug.LogWarning($"Socket exception {e.ErrorCode}, {e.SocketErrorCode}: {e.Message}");
                 ReceiveFromAnySource();
             }
@@ -98,7 +108,7 @@ namespace Networking.Transport.Nodes
         {
             var buffer = packet.Buffer;
             var size = packet.Writer.WritePosition;
-            _socket.BeginSendTo(buffer, offset: 0, size, SocketFlags.None, receiverEndPoint, callback: null, state: null);
+            _socket.SendTo(buffer, offset: 0, size, SocketFlags.None, receiverEndPoint);
         }
 
         /// <summary>
