@@ -18,11 +18,6 @@ namespace Networking.Transport.Nodes
     {
         private static readonly EndPoint AnyEndPoint = new IPEndPoint(IPAddress.Any, 0);
 
-        private readonly Dictionary<ushort, Action<PacketReader, EndPoint>> _packetIdToPacketHandler = new Dictionary<ushort, Action<PacketReader, EndPoint>>();
-        private readonly Queue<(Packet packet, EndPoint senderEndPoint)> _pendingPackets = new Queue<(Packet, EndPoint)>();
-        private readonly byte[] _receiveBuffer = new byte[4096];
-        private Socket _socket;
-
         /// <summary>
         /// Returns packet handlers registered for this network node.
         /// </summary>
@@ -32,6 +27,12 @@ namespace Networking.Transport.Nodes
         /// Returns true if this node is currently listening for incoming packets.
         /// </summary>
         public bool IsListening => _socket != null;
+
+        private readonly Dictionary<ushort, Action<PacketReader, EndPoint>> _packetIdToPacketHandler = new Dictionary<ushort, Action<PacketReader, EndPoint>>();
+        private readonly Queue<(Packet packet, EndPoint senderEndPoint)> _pendingPackets = new Queue<(Packet, EndPoint)>();
+        private readonly Queue<Action> _mainThreadActions = new Queue<Action>();
+        private readonly byte[] _receiveBuffer = new byte[4096];
+        private Socket _socket;
 
         /// <summary>
         /// Starts listening for incoming packets.
@@ -60,16 +61,14 @@ namespace Networking.Transport.Nodes
 
                 var senderEndPoint = AnyEndPoint;
                 var bytesReceived = _socket.EndReceiveFrom(asyncResult, ref senderEndPoint);
+                if (bytesReceived == 0) goto ReceiveFromAnySource;
 
-                if (bytesReceived > 0)
-                {
-                    var packetId = _receiveBuffer.ReadUnsignedShort(offset: 0);
-                    var packet = Packet.Get(packetId);
+                var packet = Receive(_receiveBuffer, bytesReceived, senderEndPoint);
+                if (packet == null) goto ReceiveFromAnySource;
 
-                    Array.Copy(_receiveBuffer, packet.Buffer, bytesReceived);
-                    lock (_pendingPackets) _pendingPackets.Enqueue((packet, senderEndPoint));
-                }
+                lock (_pendingPackets) _pendingPackets.Enqueue((packet, senderEndPoint));
 
+                ReceiveFromAnySource:
                 ReceiveFromAnySource();
             }
             catch (ObjectDisposedException)
@@ -93,10 +92,19 @@ namespace Networking.Transport.Nodes
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"Unexpected exception: {e}");
+                Debug.LogError($"Unexpected exception: {e}");
                 ReceiveFromAnySource();
             }
         }
+
+        /// <summary>
+        /// Processes received bytes and returns packet instance if bytes represent a data packet.
+        /// </summary>
+        /// <param name="datagram">Buffer containing bytes being processed.</param>
+        /// <param name="bytesReceived">How many bytes were received.</param>
+        /// <param name="senderEndPoint">Specifies from where bytes came from.</param>
+        /// <returns>Packet instance if bytes represent a data packet, null otherwise.</returns>
+        protected abstract Packet Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint);
 
         /// <summary>
         /// Sends outgoing packet to the specified end-point.
@@ -137,16 +145,25 @@ namespace Networking.Transport.Nodes
                 while (_pendingPackets.Count > 0)
                 {
                     var (packet, senderEndPoint) = _pendingPackets.Dequeue();
+                    var packetId = packet.Reader.ReadUnsignedShort();
 
-                    if (!_packetIdToPacketHandler.TryGetValue(packet.Id, out var packetHandler))
+                    if (!_packetIdToPacketHandler.TryGetValue(packetId, out var packetHandler))
                     {
-                        Debug.LogError($"Could not handle packet (ID = {packet.Id}) as it does not have a registered handler.");
+                        Debug.LogError($"Could not handle packet (ID = {packetId}) as it does not have a registered handler.");
                         packet.Return();
                         continue;
                     }
 
                     packetHandler(packet.Reader, senderEndPoint);
                     packet.Return();
+                }
+            }
+
+            lock (_mainThreadActions)
+            {
+                while (_mainThreadActions.Count > 0)
+                {
+                    _mainThreadActions.Dequeue()();
                 }
             }
         }
@@ -201,6 +218,18 @@ namespace Networking.Transport.Nodes
             var header = $"[Packet Handler on {GetType().ToString().C(Color.yellow)}]".B().C(Color.green);
             var body = $"Registered {packetHandler.Method.FullyQualifiedName().B().C(Color.cyan)}, {$"ID = {packetId}".B().C(Color.white)}.";
             Debug.Log($"{header} - {body}");
+        }
+
+        /// <summary>
+        /// Enqueues an action that will be executed on the main thread.
+        /// </summary>
+        /// <param name="action">Action to be executed on the main thread.</param>
+        protected void ExecuteOnMainThread(Action action)
+        {
+            lock (_mainThreadActions)
+            {
+                _mainThreadActions.Enqueue(action);
+            }
         }
     }
 }

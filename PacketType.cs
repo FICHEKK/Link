@@ -6,29 +6,6 @@ namespace Networking.Transport
     public enum PacketType : ushort
     {
         /// <summary>
-        /// Sent by the client to the server when client wants to connect.
-        /// </summary>
-        ConnectionRequest,
-
-        /// <summary>
-        /// Sent by the server to the client if the connection was accepted.
-        /// </summary>
-        ConnectionAccepted,
-
-        /// <summary>
-        /// Sent by the server to the client if the new connection request was declined because the server is full.
-        /// Payload: Reason
-        /// </summary>
-        ConnectionDeclined,
-
-        /// <summary>
-        /// Sent by the client to the server or server to the client when closing the connection.
-        /// Client will send this packet to inform server it wants to disconnect.
-        /// Server will broadcast this packet when shutting down.
-        /// </summary>
-        ConnectionClosing,
-
-        /// <summary>
         /// Sent by the server to the client when the client joins and
         /// needs to recreate an already existing networked scene.
         /// Payload: All objects and their variable values

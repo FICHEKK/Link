@@ -42,54 +42,15 @@ namespace Networking.Transport.Nodes
         /// </summary>
         public int MaxConnectionCount { get; private set; }
 
-        private readonly HashSet<EndPoint> _connections = new HashSet<EndPoint>();
+        /// <summary>
+        /// Connections to all of the clients.
+        /// </summary>
+        private readonly Dictionary<EndPoint, Connection> _connections = new Dictionary<EndPoint, Connection>();
 
-        public Server()
-        {
-            RegisterPacketHandlersOfType<ServerPacketHandlerAttribute>();
-            RegisterPacketHandler(PacketType.ConnectionRequest.Id(), HandleConnectionRequest);
-            RegisterPacketHandler(PacketType.ConnectionClosing.Id(), HandleConnectionClosing);
-        }
-
-        private void HandleConnectionRequest(PacketReader reader, EndPoint senderEndPoint)
-        {
-            Debug.Log($"Client from {senderEndPoint} is trying to connect...");
-
-            if (ConnectionCount >= MaxConnectionCount)
-            {
-                // TODO - Instead of sending strings, send special packet type instead.
-                var connectionDeclinedPacket = Packet.Get(PacketType.ConnectionDeclined.Id());
-                connectionDeclinedPacket.Writer.Write("Server is full.");
-                Send(connectionDeclinedPacket, senderEndPoint);
-                return;
-            }
-
-            if (_connections.Contains(senderEndPoint))
-            {
-                var connectionDeclinedPacket = Packet.Get(PacketType.ConnectionDeclined.Id());
-                connectionDeclinedPacket.Writer.Write("You are already connected.");
-                Send(connectionDeclinedPacket, senderEndPoint);
-                return;
-            }
-
-            _connections.Add(senderEndPoint);
-
-            Send(Packet.Get(PacketType.ConnectionAccepted.Id()), senderEndPoint);
-            OnClientConnected?.Invoke(senderEndPoint);
-        }
-
-        private void HandleConnectionClosing(PacketReader reader, EndPoint senderEndPoint)
-        {
-            if (!_connections.Contains(senderEndPoint))
-            {
-                Debug.LogWarning($"Could not disconnect client from {senderEndPoint} as client was not connected.");
-                return;
-            }
-
-            Debug.Log($"Client from {senderEndPoint} requested disconnect...");
-            _connections.Remove(senderEndPoint);
-            OnClientDisconnected?.Invoke(senderEndPoint);
-        }
+        /// <summary>
+        /// Constructs a new server instance, but does not start it.
+        /// </summary>
+        public Server() => RegisterPacketHandlersOfType<ServerPacketHandlerAttribute>();
 
         /// <summary>
         /// Starts this server and listens for incoming client connections.
@@ -98,9 +59,80 @@ namespace Networking.Transport.Nodes
         /// <param name="maxClientCount">Maximum number of clients allowed.</param>
         public void Start(int port, int maxClientCount)
         {
+            if (IsListening) throw new InvalidOperationException("Server has already started.");
+
             StartListening(port);
             MaxConnectionCount = maxClientCount;
             OnStarted?.Invoke(port);
+        }
+
+        protected override Packet Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
+        {
+            var headerType = (HeaderType) datagram[0];
+
+            switch (headerType)
+            {
+                case HeaderType.Connect:
+                    HandleConnectPacket(senderEndPoint);
+                    return null;
+
+                case HeaderType.UnreliableData:
+                case HeaderType.SequencedData:
+                case HeaderType.ReliableData:
+                    return HandleDataPacket(datagram, bytesReceived, senderEndPoint);
+
+                case HeaderType.Disconnect:
+                    HandleDisconnectPacket(senderEndPoint);
+                    return null;
+
+                default:
+                    Debug.LogWarning($"Server received invalid packet header {headerType:D} from {senderEndPoint}.");
+                    return null;
+            }
+        }
+
+        private void HandleConnectPacket(EndPoint senderEndPoint)
+        {
+            Debug.Log($"Client from {senderEndPoint} is trying to connect...");
+
+            // This client is already connected, but might have not received the approval.
+            if (_connections.ContainsKey(senderEndPoint))
+            {
+                Send(Packet.Get(HeaderType.ConnectApproved), senderEndPoint);
+                return;
+            }
+
+            // If server is not full, we accept new connection. Otherwise, ignore the sender.
+            if (ConnectionCount < MaxConnectionCount)
+            {
+                _connections.Add(senderEndPoint, new Connection {RemoteEndPoint = senderEndPoint, CurrentState = Connection.State.Connected});
+                Send(Packet.Get(HeaderType.ConnectApproved), senderEndPoint);
+                ExecuteOnMainThread(() => OnClientConnected?.Invoke(senderEndPoint));
+            }
+        }
+
+        private Packet HandleDataPacket(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
+        {
+            if (!_connections.TryGetValue(senderEndPoint, out var connection))
+            {
+                Debug.LogWarning($"Received data packet from a non-connected client at {senderEndPoint}.");
+                return null;
+            }
+
+            return connection.PreparePacketForHandling(datagram, bytesReceived);
+        }
+
+        private void HandleDisconnectPacket(EndPoint senderEndPoint)
+        {
+            if (!_connections.ContainsKey(senderEndPoint))
+            {
+                Debug.LogWarning($"Could not disconnect client from {senderEndPoint} as client was not connected.");
+                return;
+            }
+
+            Debug.Log($"Client from {senderEndPoint} requested disconnect...");
+            _connections.Remove(senderEndPoint);
+            ExecuteOnMainThread(() => OnClientDisconnected?.Invoke(senderEndPoint));
         }
 
         /// <summary>
@@ -109,9 +141,10 @@ namespace Networking.Transport.Nodes
         /// <param name="packet">Packet being sent.</param>
         public void Broadcast(Packet packet)
         {
-            foreach (var connection in _connections)
+            foreach (var connection in _connections.Values)
             {
-                SendWithoutReturningToPool(packet, connection);
+                connection.PreparePacketForSending(packet);
+                SendWithoutReturningToPool(packet, connection.RemoteEndPoint);
             }
 
             packet.Return();
@@ -123,7 +156,7 @@ namespace Networking.Transport.Nodes
         /// </summary>
         public void Stop()
         {
-            Broadcast(Packet.Get(PacketType.ConnectionClosing.Id()));
+            Broadcast(Packet.Get(HeaderType.Disconnect));
             StopListening();
             _connections.Clear();
             OnStopped?.Invoke();

@@ -21,26 +21,37 @@ namespace Networking.Transport
         /// </summary>
         public static int TotalAllocationCount { get; private set; }
 
-        public ushort Id { get; private set; }
+        internal HeaderType HeaderType => (HeaderType) Buffer[0];
+
         public byte[] Buffer { get; set; }
         public PacketWriter Writer { get; }
         public PacketReader Reader { get; }
 
-        public static Packet Get(ushort id)
+        public static Packet Get(ushort id) =>
+            Get(id, DeliveryMethod.Unreliable);
+
+        public static Packet Get(ushort id, DeliveryMethod deliveryMethod)
         {
-            lock (PacketPool)
-            {
-                var packet = DequeueOrCreatePacket();
-                packet.Id = id;
-                packet.Writer.Write(id);
-                packet.Reader.ReadPosition = sizeof(ushort);
-                return packet;
-            }
+            var packet = Get((HeaderType) deliveryMethod.Id);
+            packet.Reader.ReadPosition = deliveryMethod.HeaderSizeInBytes;
+            packet.Writer.WritePosition = deliveryMethod.HeaderSizeInBytes;
+            packet.Writer.Write(id);
+            return packet;
         }
 
-        private static Packet DequeueOrCreatePacket()
+        internal static Packet Get(HeaderType headerType)
         {
-            if (PacketPool.Count > 0) return PacketPool.Dequeue();
+            var packet = Get();
+            packet.Writer.Write((byte) headerType);
+            packet.Reader.ReadPosition = packet.Writer.WritePosition;
+            return packet;
+        }
+
+        internal static Packet Get()
+        {
+            lock (PacketPool)
+                if (PacketPool.Count > 0)
+                    return PacketPool.Dequeue();
 
             TotalAllocationCount++;
             return new Packet(MaxBufferSize);
@@ -55,12 +66,10 @@ namespace Networking.Transport
 
         public void Return()
         {
-            lock (PacketPool)
-            {
-                Writer.WritePosition = 0;
-                Reader.ReadPosition = 0;
-                PacketPool.Enqueue(this);
-            }
+            Writer.WritePosition = 0;
+            Reader.ReadPosition = 0;
+
+            lock (PacketPool) PacketPool.Enqueue(this);
         }
     }
 }
