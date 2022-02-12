@@ -1,7 +1,6 @@
 using System;
 using System.Net;
 using Networking.Attributes;
-using UnityEngine;
 
 namespace Networking.Transport.Nodes
 {
@@ -73,7 +72,7 @@ namespace Networking.Transport.Nodes
         {
             if (!_connection.RemoteEndPoint.Equals(senderEndPoint))
             {
-                Debug.LogWarning("Malicious packet: Packet end-point does not match server end-point.");
+                Log.Warning("Malicious packet: Packet end-point does not match server end-point.");
                 return null;
             }
 
@@ -93,7 +92,7 @@ namespace Networking.Transport.Nodes
                     return null;
 
                 default:
-                    Debug.LogWarning($"Client received invalid packet header {datagram[0]:X} from server.");
+                    Log.Warning($"Client received invalid packet header {datagram[0]:D} from server.");
                     return null;
             }
         }

@@ -6,7 +6,6 @@ using System.Reflection;
 using Networking.Attributes;
 using Networking.Core;
 using Networking.Exceptions;
-using UnityEngine;
 
 namespace Networking.Transport.Nodes
 {
@@ -73,7 +72,7 @@ namespace Networking.Transport.Nodes
             }
             catch (ObjectDisposedException)
             {
-                Debug.Log("Socket has been disposed.");
+                Log.Info("Socket has been disposed.");
             }
             catch (SocketException e)
             {
@@ -87,12 +86,12 @@ namespace Networking.Transport.Nodes
                     return;
                 }
 
-                Debug.LogWarning($"Socket exception {e.ErrorCode}, {e.SocketErrorCode}: {e.Message}");
+                Log.Warning($"Socket exception {e.ErrorCode}, {e.SocketErrorCode}: {e.Message}");
                 ReceiveFromAnySource();
             }
             catch (Exception e)
             {
-                Debug.LogError($"Unexpected exception: {e}");
+                Log.Error($"Unexpected exception: {e}");
                 ReceiveFromAnySource();
             }
         }
@@ -149,7 +148,7 @@ namespace Networking.Transport.Nodes
 
                     if (!_packetIdToPacketHandler.TryGetValue(packetId, out var packetHandler))
                     {
-                        Debug.LogError($"Could not handle packet (ID = {packetId}) as it does not have a registered handler.");
+                        Log.Error($"Could not handle packet (ID = {packetId}) as it does not have a registered handler.");
                         packet.Return();
                         continue;
                     }
@@ -181,9 +180,9 @@ namespace Networking.Transport.Nodes
 
                         if (!method.IsStatic)
                         {
-                            var line1 = $"Could not register non-static method {method.FullyQualifiedName().B().C(Color.cyan)}.";
-                            var line2 = $"Packet handlers registered with {nameof(PacketHandlerAttribute).B().C(Color.yellow)} must be static methods.";
-                            var line3 = $"For instance methods, use {nameof(RegisterPacketHandler).B().C(Color.cyan)} instead.";
+                            var line1 = $"Could not register non-static method {method.FullyQualifiedName().B()}.";
+                            var line2 = $"Packet handlers registered with {nameof(PacketHandlerAttribute).B()} must be static methods.";
+                            var line3 = $"For instance methods, use {nameof(RegisterPacketHandler).B()} instead.";
                             throw new PacketHandlerNotStaticException(line1.NewLine() + line2.NewLine() + line3.NewLine());
                         }
 
@@ -192,8 +191,8 @@ namespace Networking.Transport.Nodes
 
                         if (packetHandler == null)
                         {
-                            var line1 = $"Method {method.FullyQualifiedName().B().C(Color.cyan)} does not match required packet handler signature.";
-                            var line2 = $"Required signature must match delegate of type {requiredType.ToString().B().C(Color.cyan)}.";
+                            var line1 = $"Method {method.FullyQualifiedName().B()} does not match required packet handler signature.";
+                            var line2 = $"Required signature must match delegate of type {requiredType.ToString().B()}.";
                             throw new PacketHandlerSignatureMismatchException(line1.NewLine() + line2.NewLine());
                         }
 
@@ -207,17 +206,13 @@ namespace Networking.Transport.Nodes
         {
             if (_packetIdToPacketHandler.TryGetValue(packetId, out var existingPacketHandler))
             {
-                var line1 = $"Packet handler collision for packet with {$"ID = {packetId}".B().C(Color.white)}, on {GetType().ToString().B().C(Color.yellow)}.";
-                var line2 = $"Method 1: {packetHandler.Method.FullyQualifiedName().B().C(Color.cyan)}";
-                var line3 = $"Method 2: {existingPacketHandler.Method.FullyQualifiedName().B().C(Color.cyan)}";
+                var line1 = $"Packet handler collision for packet with {$"ID = {packetId}".B()}, on {GetType().ToString().B()}.";
+                var line2 = $"Method 1: {packetHandler.Method.FullyQualifiedName().B()}";
+                var line3 = $"Method 2: {existingPacketHandler.Method.FullyQualifiedName().B()}";
                 throw new PacketHandlerCollisionException(line1.NewLine() + line2.NewLine() + line3.NewLine());
             }
 
             _packetIdToPacketHandler.Add(packetId, packetHandler);
-
-            var header = $"[Packet Handler on {GetType().ToString().C(Color.yellow)}]".B().C(Color.green);
-            var body = $"Registered {packetHandler.Method.FullyQualifiedName().B().C(Color.cyan)}, {$"ID = {packetId}".B().C(Color.white)}.";
-            Debug.Log($"{header} - {body}");
         }
 
         /// <summary>

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using Networking.Attributes;
-using UnityEngine;
 
 namespace Networking.Transport.Nodes
 {
@@ -68,9 +67,7 @@ namespace Networking.Transport.Nodes
 
         protected override Packet Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
-            var headerType = (HeaderType) datagram[0];
-
-            switch (headerType)
+            switch ((HeaderType) datagram[0])
             {
                 case HeaderType.Connect:
                     HandleConnectPacket(senderEndPoint);
@@ -86,14 +83,14 @@ namespace Networking.Transport.Nodes
                     return null;
 
                 default:
-                    Debug.LogWarning($"Server received invalid packet header {headerType:D} from {senderEndPoint}.");
+                    Log.Warning($"Server received invalid packet header {datagram[0]:D} from {senderEndPoint}.");
                     return null;
             }
         }
 
         private void HandleConnectPacket(EndPoint senderEndPoint)
         {
-            Debug.Log($"Client from {senderEndPoint} is trying to connect...");
+            Log.Info($"Client from {senderEndPoint} is trying to connect...");
 
             // This client is already connected, but might have not received the approval.
             if (_connections.ContainsKey(senderEndPoint))
@@ -115,7 +112,7 @@ namespace Networking.Transport.Nodes
         {
             if (!_connections.TryGetValue(senderEndPoint, out var connection))
             {
-                Debug.LogWarning($"Received data packet from a non-connected client at {senderEndPoint}.");
+                Log.Warning($"Received data packet from a non-connected client at {senderEndPoint}.");
                 return null;
             }
 
@@ -126,11 +123,11 @@ namespace Networking.Transport.Nodes
         {
             if (!_connections.ContainsKey(senderEndPoint))
             {
-                Debug.LogWarning($"Could not disconnect client from {senderEndPoint} as client was not connected.");
+                Log.Warning($"Could not disconnect client from {senderEndPoint} as client was not connected.");
                 return;
             }
 
-            Debug.Log($"Client from {senderEndPoint} requested disconnect...");
+            Log.Info($"Client from {senderEndPoint} requested disconnect...");
             _connections.Remove(senderEndPoint);
             ExecuteOnMainThread(() => OnClientDisconnected?.Invoke(senderEndPoint));
         }

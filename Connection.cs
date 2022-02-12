@@ -1,6 +1,5 @@
 using System;
 using System.Net;
-using UnityEngine;
 
 namespace Networking.Transport
 {
@@ -35,7 +34,7 @@ namespace Networking.Transport
             if (deliveryMethodId == DeliveryMethod.Sequenced.Id)
                 return ReceiveUnreliableSequencedPacket(datagram, bytesReceived);
 
-            Debug.LogError($"Received datagram contains invalid first byte {deliveryMethodId}.");
+            Log.Error($"Received datagram contains invalid first byte {deliveryMethodId}.");
             return null;
         }
 
