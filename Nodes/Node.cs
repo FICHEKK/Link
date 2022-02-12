@@ -2,10 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Reflection;
-using Networking.Attributes;
-using Networking.Core;
-using Networking.Exceptions;
 
 namespace Networking.Transport.Nodes
 {
@@ -167,53 +163,17 @@ namespace Networking.Transport.Nodes
             }
         }
 
-        protected void RegisterPacketHandlersOfType<T>() where T : PacketHandlerAttribute
-        {
-            foreach (var assembly in GetType().Assembly.GetAssembliesThatReferenceThisAssembly(includeSelf: true))
-            {
-                foreach (var type in assembly.GetTypes())
-                {
-                    foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
-                    {
-                        var attribute = method.GetCustomAttribute<T>();
-                        if (attribute == null) return;
-
-                        if (!method.IsStatic)
-                        {
-                            var line1 = $"Could not register non-static method {method.FullyQualifiedName().B()}.";
-                            var line2 = $"Packet handlers registered with {nameof(PacketHandlerAttribute).B()} must be static methods.";
-                            var line3 = $"For instance methods, use {nameof(RegisterPacketHandler).B()} instead.";
-                            throw new PacketHandlerNotStaticException(line1.NewLine() + line2.NewLine() + line3.NewLine());
-                        }
-
-                        var requiredType = typeof(Action<PacketReader, EndPoint>);
-                        var packetHandler = Delegate.CreateDelegate(requiredType, method, throwOnBindFailure: false);
-
-                        if (packetHandler == null)
-                        {
-                            var line1 = $"Method {method.FullyQualifiedName().B()} does not match required packet handler signature.";
-                            var line2 = $"Required signature must match delegate of type {requiredType.ToString().B()}.";
-                            throw new PacketHandlerSignatureMismatchException(line1.NewLine() + line2.NewLine());
-                        }
-
-                        RegisterPacketHandler(attribute.PacketId, (Action<PacketReader, EndPoint>) packetHandler);
-                    }
-                }
-            }
-        }
-
-        public void RegisterPacketHandler(ushort packetId, Action<PacketReader, EndPoint> packetHandler)
-        {
-            if (_packetIdToPacketHandler.TryGetValue(packetId, out var existingPacketHandler))
-            {
-                var line1 = $"Packet handler collision for packet with {$"ID = {packetId}".B()}, on {GetType().ToString().B()}.";
-                var line2 = $"Method 1: {packetHandler.Method.FullyQualifiedName().B()}";
-                var line3 = $"Method 2: {existingPacketHandler.Method.FullyQualifiedName().B()}";
-                throw new PacketHandlerCollisionException(line1.NewLine() + line2.NewLine() + line3.NewLine());
-            }
-
+        /// <summary>
+        /// Registers a new packet handler for a packet with specific ID.
+        /// </summary>
+        public void RegisterPacketHandler(ushort packetId, Action<PacketReader, EndPoint> packetHandler) =>
             _packetIdToPacketHandler.Add(packetId, packetHandler);
-        }
+
+        /// <summary>
+        /// Returns true if packet handler for specific ID exists, false otherwise.
+        /// </summary>
+        public bool TryGetPacketHandler(ushort packedId, out Action<PacketReader, EndPoint> packetHandler) =>
+            _packetIdToPacketHandler.TryGetValue(packedId, out packetHandler);
 
         /// <summary>
         /// Enqueues an action that will be executed on the main thread.

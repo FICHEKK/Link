@@ -1,6 +1,5 @@
 using System;
 using System.Net;
-using Networking.Attributes;
 
 namespace Networking.Transport.Nodes
 {
@@ -44,11 +43,6 @@ namespace Networking.Transport.Nodes
         /// Connection to the server.
         /// </summary>
         private readonly Connection _connection = new Connection();
-
-        /// <summary>
-        /// Constructs a new client instance, but does not attempt to connect.
-        /// </summary>
-        public Client() => RegisterPacketHandlersOfType<ClientPacketHandlerAttribute>();
 
         /// <summary>
         /// Attempts to establish a connection with the server.

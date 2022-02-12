@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
-using Networking.Attributes;
 
 namespace Networking.Transport.Nodes
 {
@@ -45,11 +44,6 @@ namespace Networking.Transport.Nodes
         /// Connections to all of the clients.
         /// </summary>
         private readonly Dictionary<EndPoint, Connection> _connections = new Dictionary<EndPoint, Connection>();
-
-        /// <summary>
-        /// Constructs a new server instance, but does not start it.
-        /// </summary>
-        public Server() => RegisterPacketHandlersOfType<ServerPacketHandlerAttribute>();
 
         /// <summary>
         /// Starts this server and listens for incoming client connections.
