@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 
-namespace Networking.Transport.Nodes
+namespace Networking.Transport
 {
     /// <summary>
     /// Represents a network node - a fundamental building block
