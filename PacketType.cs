@@ -13,13 +13,6 @@ namespace Networking.Transport
         ObjectSceneCreate,
 
         /// <summary>
-        /// Sent by the server to the client each update tick when
-        /// there are any scene updates (object variable updates).
-        /// Payload: All objects' variable updates
-        /// </summary>
-        ObjectSceneUpdate,
-
-        /// <summary>
         /// Sent by the server to the client when an object should be spawned.
         /// <br/><br/>
         /// Bitmask is a byte of the following format: 0000 0SRP, where last
@@ -35,6 +28,12 @@ namespace Networking.Transport
         /// Payload: ObjectID, IsOwner
         /// </summary>
         ObjectOwner,
+
+        /// <summary>
+        /// Sent by the server to the client each update tick when there are any object variable updates.
+        /// Payload: ObjectID, variable updates
+        /// </summary>
+        ObjectUpdate,
 
         /// <summary>
         /// Sent by the server to the client to update object's transform.
