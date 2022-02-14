@@ -140,7 +140,7 @@ namespace Networking.Transport
                 while (_pendingPackets.Count > 0)
                 {
                     var (packet, senderEndPoint) = _pendingPackets.Dequeue();
-                    var packetId = packet.Reader.ReadUnsignedShort();
+                    var packetId = packet.Reader.Read<ushort>();
 
                     if (!_packetIdToPacketHandler.TryGetValue(packetId, out var packetHandler))
                     {

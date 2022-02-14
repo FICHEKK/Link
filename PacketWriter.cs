@@ -11,88 +11,11 @@ namespace Networking.Transport
 
         public PacketWriter(Packet packet) => _packet = packet;
 
-        public void Write(byte value)
+        public unsafe void Write<T>(T value) where T : unmanaged
         {
-            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(byte));
-            _packet.Buffer.WriteByte(value, WritePosition);
-            WritePosition += sizeof(byte);
-        }
-
-        public void Write(sbyte value)
-        {
-            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(sbyte));
-            _packet.Buffer.WriteSignedByte(value, WritePosition);
-            WritePosition += sizeof(sbyte);
-        }
-
-        public void Write(bool value)
-        {
-            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(bool));
-            _packet.Buffer.WriteBool(value, WritePosition);
-            WritePosition += sizeof(bool);
-        }
-
-        public void Write(short value)
-        {
-            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(short));
-            _packet.Buffer.WriteShort(value, WritePosition);
-            WritePosition += sizeof(short);
-        }
-
-        public void Write(ushort value)
-        {
-            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(ushort));
-            _packet.Buffer.WriteUnsignedShort(value, WritePosition);
-            WritePosition += sizeof(ushort);
-        }
-
-        public void Write(char value)
-        {
-            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(char));
-            _packet.Buffer.WriteChar(value, WritePosition);
-            WritePosition += sizeof(char);
-        }
-
-        public void Write(int value)
-        {
-            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(int));
-            _packet.Buffer.WriteInt(value, WritePosition);
-            WritePosition += sizeof(int);
-        }
-
-        public void Write(uint value)
-        {
-            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(uint));
-            _packet.Buffer.WriteUnsignedInt(value, WritePosition);
-            WritePosition += sizeof(uint);
-        }
-
-        public void Write(float value)
-        {
-            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(float));
-            _packet.Buffer.WriteFloat(value, WritePosition);
-            WritePosition += sizeof(float);
-        }
-
-        public void Write(long value)
-        {
-            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(long));
-            _packet.Buffer.WriteLong(value, WritePosition);
-            WritePosition += sizeof(long);
-        }
-
-        public void Write(ulong value)
-        {
-            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(ulong));
-            _packet.Buffer.WriteUnsignedLong(value, WritePosition);
-            WritePosition += sizeof(ulong);
-        }
-
-        public void Write(double value)
-        {
-            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(double));
-            _packet.Buffer.WriteDouble(value, WritePosition);
-            WritePosition += sizeof(double);
+            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(T));
+            _packet.Buffer.Write(value, WritePosition);
+            WritePosition += sizeof(T);
         }
 
         public void Write(string value)

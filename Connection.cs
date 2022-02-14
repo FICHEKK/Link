@@ -21,7 +21,7 @@ namespace Networking.Transport
         public void PreparePacketForSending(Packet packet)
         {
             if (packet.HeaderType == HeaderType.SequencedData)
-                packet.Buffer.WriteUnsignedShort(_localSequenceNumber++, offset: 1);
+                packet.Buffer.Write(_localSequenceNumber++, offset: 1);
         }
 
         public Packet PreparePacketForHandling(byte[] datagram, int bytesReceived)
@@ -40,7 +40,7 @@ namespace Networking.Transport
 
         private Packet ReceiveUnreliableSequencedPacket(byte[] datagram, int bytesReceived)
         {
-            var sequenceNumber = datagram.ReadUnsignedShort(offset: 1);
+            var sequenceNumber = datagram.Read<ushort>(offset: 1);
 
             if (sequenceNumber == _remoteSequenceNumber)
                 return null;
