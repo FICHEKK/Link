@@ -5,7 +5,16 @@ namespace Networking.Transport
         public int ReadPosition { get; set; }
         private readonly Packet _packet;
 
-        public PacketReader(Packet packet) => _packet = packet;
+        public PacketReader(Packet packet) =>
+            _packet = packet;
+
+        public string ReadString()
+        {
+            var stringByteCount = Read<int>();
+            var stringValue = Packet.Encoding.GetString(_packet.Buffer, ReadPosition, stringByteCount);
+            ReadPosition += stringByteCount;
+            return stringValue;
+        }
 
         public unsafe T Read<T>() where T : unmanaged
         {
@@ -14,12 +23,11 @@ namespace Networking.Transport
             return value;
         }
 
-        public string ReadString()
+        public unsafe T[] ReadArray<T>() where T : unmanaged
         {
-            var stringLength = Read<int>();
-            var stringValue = Packet.Encoding.GetString(_packet.Buffer, ReadPosition, stringLength);
-            ReadPosition += stringLength;
-            return stringValue;
+            var array = _packet.Buffer.ReadArray<T>(ReadPosition);
+            ReadPosition += sizeof(int) + array.Length * sizeof(T);
+            return array;
         }
     }
 }

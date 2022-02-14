@@ -9,36 +9,26 @@ namespace Networking.Transport
         public int WritePosition { get; set; }
         private readonly Packet _packet;
 
-        public PacketWriter(Packet packet) => _packet = packet;
+        public PacketWriter(Packet packet) =>
+            _packet = packet;
+
+        public void Write(string value) =>
+            WriteArray(Packet.Encoding.GetBytes(value));
 
         public unsafe void Write<T>(T value) where T : unmanaged
         {
-            EnsureBufferSize(requiredBufferSize: WritePosition + sizeof(T));
+            var bytesToWrite = sizeof(T);
+            EnsureBufferSize(requiredBufferSize: WritePosition + bytesToWrite);
             _packet.Buffer.Write(value, WritePosition);
-            WritePosition += sizeof(T);
+            WritePosition += bytesToWrite;
         }
 
-        public void Write(string value)
+        public unsafe void WriteArray<T>(T[] array) where T : unmanaged
         {
-            Write(value.Length);
-            Write(Packet.Encoding.GetBytes(value));
-        }
-
-        public void Write(int[] array)
-        {
-            var bytes = new byte[array.Length * sizeof(int)];
-            Buffer.BlockCopy(array, 0, bytes, 0, bytes.Length);
-            Write(bytes);
-        }
-
-        private void Write(byte[] bytes)
-        {
-            EnsureBufferSize(requiredBufferSize: WritePosition + bytes.Length);
-
-            foreach (var b in bytes)
-            {
-                _packet.Buffer[WritePosition++] = b;
-            }
+            var bytesToWrite = sizeof(int) + array.Length * sizeof(T);
+            EnsureBufferSize(requiredBufferSize: WritePosition + bytesToWrite);
+            _packet.Buffer.WriteArray(array, WritePosition);
+            WritePosition += bytesToWrite;
         }
 
         private void EnsureBufferSize(int requiredBufferSize)
