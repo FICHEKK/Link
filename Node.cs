@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using Networking.Exceptions;
 
 namespace Networking.Transport
 {
@@ -35,7 +36,7 @@ namespace Networking.Transport
         /// <param name="port">Port to listen on.</param>
         protected void StartListening(int port)
         {
-            if (IsListening) throw new InvalidOperationException("Could not start listening as node is already listening.");
+            if (IsListening) throw Error.NodeAlreadyListening("Could not start listening as node is already listening.");
 
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             _socket.Bind(new IPEndPoint(IPAddress.Any, port));
@@ -124,7 +125,7 @@ namespace Networking.Transport
         /// </summary>
         protected void StopListening()
         {
-            if (!IsListening) throw new InvalidOperationException("Could not stop listening as node is already not listening.");
+            if (!IsListening) throw Error.NodeAlreadyNotListening("Could not stop listening as node is already not listening.");
 
             _socket.Dispose();
             _socket = null;

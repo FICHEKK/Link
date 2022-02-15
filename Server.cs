@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using Networking.Exceptions;
 
 namespace Networking.Transport
 {
@@ -52,7 +53,7 @@ namespace Networking.Transport
         /// <param name="maxClientCount">Maximum number of clients allowed.</param>
         public void Start(int port, int maxClientCount)
         {
-            if (IsListening) throw new InvalidOperationException("Server has already started.");
+            if (IsListening) throw Error.ServerAlreadyStarted("Cannot start a server that is already running.");
 
             StartListening(port);
             MaxConnectionCount = maxClientCount;

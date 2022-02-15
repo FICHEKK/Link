@@ -1,5 +1,6 @@
 using System;
 using System.Net;
+using Networking.Exceptions;
 
 namespace Networking.Transport
 {
@@ -51,8 +52,8 @@ namespace Networking.Transport
         /// <param name="port">Server port.</param>
         public void Connect(string ipAddress, int port)
         {
-            if (IsConnecting) throw new InvalidOperationException("Client is currently trying to connect.");
-            if (IsConnected) throw new InvalidOperationException("Client is already connected.");
+            if (IsConnecting) throw Error.ClientAlreadyConnecting("Client is currently trying to connect.");
+            if (IsConnected) throw Error.ClientAlreadyConnected("Client is already connected.");
 
             StartListening(port: 0);
             _connection.RemoteEndPoint = new IPEndPoint(IPAddress.Parse(ipAddress), port);
@@ -113,7 +114,7 @@ namespace Networking.Transport
         /// <param name="packet">Packet being sent.</param>
         public void Send(Packet packet)
         {
-            if (!IsConnected) throw new InvalidOperationException("Client is not connected to the server.");
+            if (!IsConnected) throw Error.SendCalledOnDisconnectedClient("Client is not connected to the server.");
             _connection.PreparePacketForSending(packet);
             Send(packet, _connection.RemoteEndPoint);
         }
