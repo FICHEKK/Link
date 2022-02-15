@@ -1,3 +1,5 @@
+using Networking.Synchronization;
+
 namespace Networking.Transport
 {
     public class PacketReader
@@ -14,6 +16,13 @@ namespace Networking.Transport
             var stringValue = Packet.Encoding.GetString(_packet.Buffer, ReadPosition, stringByteCount);
             ReadPosition += stringByteCount;
             return stringValue;
+        }
+
+        public T ReadSerializable<T>() where T : INetworkSerializable, new()
+        {
+            var serializable = new T();
+            serializable.Deserialize(this);
+            return serializable;
         }
 
         public unsafe T Read<T>() where T : unmanaged

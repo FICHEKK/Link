@@ -1,4 +1,5 @@
 using System;
+using Networking.Synchronization;
 
 namespace Networking.Transport
 {
@@ -14,6 +15,9 @@ namespace Networking.Transport
 
         public void Write(string value) =>
             WriteArray(Packet.Encoding.GetBytes(value));
+
+        public void WriteSerializable(INetworkSerializable serializable) =>
+            serializable.Serialize(this);
 
         public unsafe void Write<T>(T value) where T : unmanaged
         {
