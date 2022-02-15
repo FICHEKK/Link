@@ -1,4 +1,5 @@
 using System;
+using Networking.Exceptions;
 using Networking.Synchronization;
 
 namespace Networking.Transport
@@ -27,7 +28,7 @@ namespace Networking.Transport
             foreach (var serializable in serializableArray)
             {
                 if (serializable.GetType() != requiredElementType)
-                    throw new Exception($"Inherited type '{serializable.GetType()}' could not be serialized as type '{requiredElementType}'.");
+                    throw new InheritedTypePassedException($"Inherited type '{serializable.GetType()}' could not be serialized as type '{requiredElementType}'.");
 
                 WriteSerializable(serializable);
             }
