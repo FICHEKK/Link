@@ -25,6 +25,19 @@ namespace Networking.Transport
             return serializable;
         }
 
+        public T[] ReadSerializableArray<T>() where T : INetworkSerializable, new()
+        {
+            var length = Read<int>();
+            var serializableArray = new T[length];
+
+            for (var i = 0; i < length; i++)
+            {
+                serializableArray[i] = ReadSerializable<T>();
+            }
+
+            return serializableArray;
+        }
+
         public unsafe T Read<T>() where T : unmanaged
         {
             var value = _packet.Buffer.Read<T>(ReadPosition);
