@@ -47,7 +47,7 @@ namespace Networking.Transport
             return packet;
         }
 
-        internal static Packet Get()
+        public static Packet Get()
         {
             lock (PacketPool)
                 if (PacketPool.Count > 0)
