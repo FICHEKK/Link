@@ -1,6 +1,6 @@
 using System;
 using Networking.Exceptions;
-using Networking.Synchronization;
+using Networking.Serialization;
 
 namespace Networking.Transport
 {

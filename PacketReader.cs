@@ -1,4 +1,4 @@
-using Networking.Synchronization;
+using Networking.Serialization;
 
 namespace Networking.Transport
 {
