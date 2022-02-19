@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace Networking.Transport
 {
     /// <summary>
@@ -13,16 +15,16 @@ namespace Networking.Transport
         /// <summary>
         /// Logs informative messages that are useful during development.
         /// </summary>
-        public static Logger Info;
+        public static Logger Info = Debug.Log;
 
         /// <summary>
         /// Logs unexpected events that might indicate a problem in application logic.
         /// </summary>
-        public static Logger Warning;
+        public static Logger Warning = Debug.LogWarning;
 
         /// <summary>
         /// Logs serious problems that should never occur during application runtime.
         /// </summary>
-        public static Logger Error;
+        public static Logger Error = Debug.LogError;
     }
 }
