@@ -7,8 +7,7 @@ using Networking.Exceptions;
 namespace Networking.Transport
 {
     /// <summary>
-    /// Represents a network node - a fundamental building block
-    /// of any network graph that can send and receive data.
+    /// Represents a network node - a fundamental building block of any network graph that can send and receive data.
     /// </summary>
     public abstract class Node
     {
@@ -28,7 +27,10 @@ namespace Networking.Transport
         private readonly Queue<(Packet packet, EndPoint senderEndPoint)> _pendingPackets = new Queue<(Packet, EndPoint)>();
         private readonly Queue<Action> _mainThreadActions = new Queue<Action>();
         private readonly byte[] _receiveBuffer = new byte[4096];
+        private readonly AsyncCallback _receiveCallback;
         private Socket _socket;
+
+        protected Node() => _receiveCallback = HandleReceive;
 
         /// <summary>
         /// Starts listening for incoming packets.
@@ -46,7 +48,7 @@ namespace Networking.Transport
         private void ReceiveFromAnySource()
         {
             var anyEndPoint = AnyEndPoint;
-            _socket.BeginReceiveFrom(_receiveBuffer, offset: 0, _receiveBuffer.Length, SocketFlags.None, ref anyEndPoint, HandleReceive, state: null);
+            _socket.BeginReceiveFrom(_receiveBuffer, offset: 0, _receiveBuffer.Length, SocketFlags.None, ref anyEndPoint, _receiveCallback, state: null);
         }
 
         private void HandleReceive(IAsyncResult asyncResult)
