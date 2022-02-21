@@ -12,7 +12,7 @@ namespace Networking.Transport
         private const int MaxBufferSize = 1500;
 
         public static readonly Encoding Encoding = Encoding.UTF8;
-        private static readonly Queue<Packet> PacketPool = new Queue<Packet>();
+        private static readonly Queue<Packet> PacketPool = new();
 
         /// <summary>
         /// Represents total number of new packet allocations. This value should eventually stagnate

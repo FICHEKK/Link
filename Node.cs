@@ -24,9 +24,9 @@ namespace Networking.Transport
         /// </summary>
         public bool IsListening => _socket != null;
 
-        private readonly Dictionary<ushort, Action<PacketReader, EndPoint>> _packetIdToPacketHandler = new Dictionary<ushort, Action<PacketReader, EndPoint>>();
-        private readonly Queue<(Packet packet, EndPoint senderEndPoint)> _pendingPackets = new Queue<(Packet, EndPoint)>();
-        private readonly Queue<Action> _mainThreadActions = new Queue<Action>();
+        private readonly Dictionary<ushort, Action<PacketReader, EndPoint>> _packetIdToPacketHandler = new();
+        private readonly Queue<(Packet packet, EndPoint senderEndPoint)> _pendingPackets = new();
+        private readonly Queue<Action> _mainThreadActions = new();
         private readonly byte[] _receiveBuffer = new byte[4096];
         private Socket _socket;
 

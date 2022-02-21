@@ -11,7 +11,7 @@ namespace Networking.Transport
         /// <br/><br/>
         /// Header size is 1 byte: delivery method ID.
         /// </summary>
-        public static readonly DeliveryMethod Unreliable = new DeliveryMethod(id: (byte) HeaderType.UnreliableData, headerSizeInBytes: 1);
+        public static readonly DeliveryMethod Unreliable = new(id: (byte) HeaderType.UnreliableData, headerSizeInBytes: 1);
 
         /// <summary>
         /// Sequence number is attached to each packet. Packets can be lost, but won't be duplicated and will preserve order.
@@ -21,7 +21,7 @@ namespace Networking.Transport
         /// <br/><br/>
         /// Header size is 3 bytes (1+2): delivery method ID, sequence number.
         /// </summary>
-        public static readonly DeliveryMethod Sequenced = new DeliveryMethod(id: (byte) HeaderType.SequencedData, headerSizeInBytes: 3);
+        public static readonly DeliveryMethod Sequenced = new(id: (byte) HeaderType.SequencedData, headerSizeInBytes: 3);
 
         /// <summary>
         /// Each packet is guaranteed to be delivered (unless the connection is faulty), won't be duplicated and will arrive in order.
@@ -30,7 +30,7 @@ namespace Networking.Transport
         /// <br/><br/>
         /// Header size is 9 bytes (1+2+2+4): delivery method ID, local sequence number, acknowledge sequence number, acknowledge bit-field.
         /// </summary>
-        public static readonly DeliveryMethod Reliable = new DeliveryMethod(id: (byte) HeaderType.ReliableData, headerSizeInBytes: 9);
+        public static readonly DeliveryMethod Reliable = new(id: (byte) HeaderType.ReliableData, headerSizeInBytes: 9);
 
         public byte Id { get; }
         public int HeaderSizeInBytes { get; }

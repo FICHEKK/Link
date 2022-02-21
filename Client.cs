@@ -43,7 +43,7 @@ namespace Networking.Transport
         /// <summary>
         /// Connection to the server.
         /// </summary>
-        private readonly Connection _connection = new Connection();
+        private readonly Connection _connection = new();
 
         /// <summary>
         /// Attempts to establish a connection with the server.

@@ -44,7 +44,7 @@ namespace Networking.Transport
         /// <summary>
         /// Connections to all of the clients.
         /// </summary>
-        private readonly Dictionary<EndPoint, Connection> _connections = new Dictionary<EndPoint, Connection>();
+        private readonly Dictionary<EndPoint, Connection> _connections = new();
 
         /// <summary>
         /// Starts this server and listens for incoming client connections.
