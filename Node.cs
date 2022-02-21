@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using Networking.Exceptions;
 
 namespace Networking.Transport
@@ -27,10 +28,7 @@ namespace Networking.Transport
         private readonly Queue<(Packet packet, EndPoint senderEndPoint)> _pendingPackets = new Queue<(Packet, EndPoint)>();
         private readonly Queue<Action> _mainThreadActions = new Queue<Action>();
         private readonly byte[] _receiveBuffer = new byte[4096];
-        private readonly AsyncCallback _receiveCallback;
         private Socket _socket;
-
-        protected Node() => _receiveCallback = HandleReceive;
 
         /// <summary>
         /// Starts listening for incoming packets.
@@ -42,57 +40,58 @@ namespace Networking.Transport
 
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             _socket.Bind(new IPEndPoint(IPAddress.Any, port));
-            ReceiveFromAnySource();
+
+            new Thread(Listen)
+            {
+                Name = $"{GetType()}::{nameof(Listen)}",
+                IsBackground = true
+            }.Start();
         }
 
-        private void ReceiveFromAnySource()
+        private void Listen()
         {
-            var anyEndPoint = AnyEndPoint;
-            _socket.BeginReceiveFrom(_receiveBuffer, offset: 0, _receiveBuffer.Length, SocketFlags.None, ref anyEndPoint, _receiveCallback, state: null);
-        }
+            Log.Info($"Starting thread '{Thread.CurrentThread.Name}'...");
 
-        private void HandleReceive(IAsyncResult asyncResult)
-        {
-            try
+            while (true)
             {
-                if (_socket == null) return;
-
-                var senderEndPoint = AnyEndPoint;
-                var bytesReceived = _socket.EndReceiveFrom(asyncResult, ref senderEndPoint);
-                if (bytesReceived == 0) goto ReceiveFromAnySource;
-
-                var packet = Receive(_receiveBuffer, bytesReceived, senderEndPoint);
-                if (packet == null) goto ReceiveFromAnySource;
-
-                lock (_pendingPackets) _pendingPackets.Enqueue((packet, senderEndPoint));
-
-                ReceiveFromAnySource:
-                ReceiveFromAnySource();
-            }
-            catch (ObjectDisposedException)
-            {
-                Log.Info("Socket has been disposed.");
-            }
-            catch (SocketException e)
-            {
-                if (e.SocketErrorCode == SocketError.ConnectionReset)
+                try
                 {
+                    if (_socket == null) break;
+
+                    var senderEndPoint = AnyEndPoint;
+                    var bytesReceived = _socket.ReceiveFrom(_receiveBuffer, ref senderEndPoint);
+                    if (bytesReceived == 0) continue;
+
+                    var packet = Receive(_receiveBuffer, bytesReceived, senderEndPoint);
+                    if (packet == null) continue;
+
+                    lock (_pendingPackets) _pendingPackets.Enqueue((packet, senderEndPoint));
+                }
+                catch (ObjectDisposedException)
+                {
+                    Log.Info("Socket has been disposed.");
+                    break;
+                }
+                catch (SocketException e)
+                {
+                    // Socket has been forcefully disposed while receiving.
+                    if (e.SocketErrorCode == SocketError.Interrupted) break;
+
                     // This is a known ICMP message received when destination port is unreachable.
                     // This occurs when remote end-point disconnects without sending the disconnect
                     // packet (or if disconnect packet did not arrive). This error does not need to
                     // be handled as the connection will get cleaned automatically once it times out.
-                    ReceiveFromAnySource();
-                    return;
-                }
+                    if (e.SocketErrorCode == SocketError.ConnectionReset) continue;
 
-                Log.Warning($"Socket exception {e.ErrorCode}, {e.SocketErrorCode}: {e.Message}");
-                ReceiveFromAnySource();
+                    Log.Warning($"Socket exception {e.ErrorCode}, {e.SocketErrorCode}: {e.Message}");
+                }
+                catch (Exception e)
+                {
+                    Log.Error($"Unexpected exception: {e}");
+                }
             }
-            catch (Exception e)
-            {
-                Log.Error($"Unexpected exception: {e}");
-                ReceiveFromAnySource();
-            }
+
+            Log.Info($"Stopping thread '{Thread.CurrentThread.Name}'...");
         }
 
         /// <summary>
