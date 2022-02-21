@@ -56,14 +56,14 @@ namespace Networking.Transport
             {
                 try
                 {
-                    if (_socket == null) break;
+                    if (_socket is null) break;
 
                     var senderEndPoint = AnyEndPoint;
                     var bytesReceived = _socket.ReceiveFrom(_receiveBuffer, ref senderEndPoint);
                     if (bytesReceived == 0) continue;
 
                     var packet = Receive(_receiveBuffer, bytesReceived, senderEndPoint);
-                    if (packet == null) continue;
+                    if (packet is null) continue;
 
                     lock (_pendingPackets) _pendingPackets.Enqueue((packet, senderEndPoint));
                 }
