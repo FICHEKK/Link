@@ -2,7 +2,7 @@ using System;
 using System.Net;
 using Networking.Exceptions;
 
-namespace Networking.Transport
+namespace Networking.Transport.Nodes
 {
     /// <summary>
     /// Represents a network node that has one to one relationship with the server.
