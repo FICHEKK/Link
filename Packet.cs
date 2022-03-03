@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using Networking.Transport.Channels;
 
 namespace Networking.Transport
 {
@@ -21,20 +22,19 @@ namespace Networking.Transport
         /// </summary>
         public static int TotalAllocationCount { get; private set; }
 
-        internal HeaderType HeaderType => (HeaderType) Buffer[0];
-
         public byte[] Buffer { get; set; }
         public PacketWriter Writer { get; }
         public PacketReader Reader { get; }
 
+        // TODO - Remove this overload and require developer to specify channel.
         public static Packet Get(ushort id) =>
-            Get(id, DeliveryMethod.Unreliable);
+            Get(id, Channel.Unreliable);
 
-        public static Packet Get(ushort id, DeliveryMethod deliveryMethod)
+        public static Packet Get(ushort id, Channel channel)
         {
-            var packet = Get((HeaderType) deliveryMethod.Id);
-            packet.Reader.ReadPosition = deliveryMethod.HeaderSizeInBytes;
-            packet.Writer.WritePosition = deliveryMethod.HeaderSizeInBytes;
+            var packet = Get((HeaderType) channel.Id);
+            packet.Reader.ReadPosition = channel.HeaderSizeInBytes;
+            packet.Writer.WritePosition = channel.HeaderSizeInBytes;
             packet.Writer.Write(id);
             return packet;
         }

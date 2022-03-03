@@ -1,3 +1,5 @@
+using Networking.Transport.Channels;
+
 namespace Networking.Transport
 {
     /// <summary>
@@ -21,19 +23,19 @@ namespace Networking.Transport
 
         /// <summary>
         /// Indicates that this packet is a data packet that should be treated as unreliable.
-        /// For more information, check <see cref="DeliveryMethod.Unreliable"/>.
+        /// For more information, check <see cref="UnreliableChannel"/>.
         /// </summary>
         UnreliableData,
 
         /// <summary>
         /// Indicates that this packet is a data packet that should be treated as sequenced.
-        /// For more information, check <see cref="DeliveryMethod.Sequenced"/>.
+        /// For more information, check <see cref="SequencedChannel"/>.
         /// </summary>
         SequencedData,
 
         /// <summary>
         /// Indicates that this packet is a data packet that should be treated as reliable.
-        /// For more information, check <see cref="DeliveryMethod.Reliable"/>.
+        /// For more information, check <see cref="ReliableChannel"/>.
         /// </summary>
         ReliableData,
 
