@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using Networking.Transport.Channels;
+using Networking.Transport.Nodes;
 
 namespace Networking.Transport
 {
@@ -10,17 +11,42 @@ namespace Networking.Transport
     /// </summary>
     public class Connection
     {
-        public State CurrentState { get; internal set; }
-        public EndPoint RemoteEndPoint { get; internal set; }
+        /// <summary>
+        /// Underlying node that this connection belongs to.
+        /// </summary>
+        public Node Node { get; }
+
+        /// <summary>
+        /// Remote end-point to which this connection is pointing to.
+        /// </summary>
+        public EndPoint RemoteEndPoint { get; }
+
+        /// <summary>
+        /// If <c>true</c>, connection has been fully established.
+        /// If <c>false</c>, connection is in process of connecting.
+        /// </summary>
+        public bool IsConnected { get; internal set; }
 
         private readonly Channel _unreliableChannel = new UnreliableChannel();
         private readonly Channel _sequencedChannel = new SequencedChannel();
         private readonly Channel _reliableChannel = new ReliableChannel();
 
-        public void PreparePacketForSending(Packet packet) =>
-            GetChannel(packet.Buffer[0]).PreparePacketForSending(packet);
+        public Connection(Node node, EndPoint remoteEndPoint, bool isConnected)
+        {
+            Node = node;
+            RemoteEndPoint = remoteEndPoint;
+            IsConnected = isConnected;
 
-        public Packet PreparePacketForHandling(byte[] datagram, int bytesReceived) =>
+            Node.Send(Packet.Get(isConnected ? HeaderType.ConnectApproved : HeaderType.Connect), RemoteEndPoint);
+        }
+
+        public void Send(Packet packet, bool returnPacketToPool = true)
+        {
+            GetChannel(packet.Buffer[0]).PreparePacketForSending(packet);
+            Node.Send(packet, RemoteEndPoint, returnPacketToPool);
+        }
+
+        public Packet Receive(byte[] datagram, int bytesReceived) =>
             GetChannel(datagram[0]).PreparePacketForHandling(datagram, bytesReceived);
 
         private Channel GetChannel(byte channelId) => channelId switch
@@ -31,14 +57,6 @@ namespace Networking.Transport
             _ => throw new ArgumentException($"Channel with id {channelId} does not exist.")
         };
 
-        /// <summary>
-        /// Defines all of the states that a connection can be in.
-        /// </summary>
-        public enum State
-        {
-            Disconnected,
-            Connecting,
-            Connected
-        }
+        public void Close() => Node.Send(Packet.Get(HeaderType.Disconnect), RemoteEndPoint);
     }
 }

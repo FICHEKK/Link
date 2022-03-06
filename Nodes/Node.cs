@@ -108,17 +108,11 @@ namespace Networking.Transport.Nodes
         /// </summary>
         /// <param name="packet">Packet being sent.</param>
         /// <param name="receiverEndPoint">Where to send the packet to.</param>
-        public void Send(Packet packet, EndPoint receiverEndPoint)
+        /// <param name="returnPacketToPool">Whether given packet should be returned to pool after sending.</param>
+        public void Send(Packet packet, EndPoint receiverEndPoint, bool returnPacketToPool = true)
         {
-            SendWithoutReturningToPool(packet, receiverEndPoint);
-            packet.Return();
-        }
-
-        protected void SendWithoutReturningToPool(Packet packet, EndPoint receiverEndPoint)
-        {
-            var buffer = packet.Buffer;
-            var size = packet.Writer.WritePosition;
-            _socket.SendTo(buffer, offset: 0, size, SocketFlags.None, receiverEndPoint);
+            _socket.SendTo(packet.Buffer, offset: 0, size: packet.Writer.WritePosition, SocketFlags.None, receiverEndPoint);
+            if (returnPacketToPool) packet.Return();
         }
 
         /// <summary>

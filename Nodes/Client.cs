@@ -31,19 +31,19 @@ namespace Networking.Transport.Nodes
         public event Action OnDisconnectedFromServer;
 
         /// <summary>
-        /// Returns true if this client is currently attempting to connect to the server.
+        /// Returns <c>true</c> if this client is currently attempting to connect to the server.
         /// </summary>
-        public bool IsConnecting => _connection.CurrentState == Connection.State.Connecting;
+        public bool IsConnecting => _connection is not null && !_connection.IsConnected;
 
         /// <summary>
-        /// Returns true if this client is currently connected to the server.
+        /// Returns <c>true</c> if this client is currently connected to the server.
         /// </summary>
-        public bool IsConnected => _connection.CurrentState == Connection.State.Connected;
+        public bool IsConnected => _connection is not null && _connection.IsConnected;
 
         /// <summary>
         /// Connection to the server.
         /// </summary>
-        private readonly Connection _connection = new();
+        private Connection _connection;
 
         /// <summary>
         /// Attempts to establish a connection with the server.
@@ -56,16 +56,13 @@ namespace Networking.Transport.Nodes
             if (IsConnected) throw Error.ClientAlreadyConnected("Client is already connected.");
 
             StartListening(port: 0);
-            _connection.RemoteEndPoint = new IPEndPoint(IPAddress.Parse(ipAddress), port);
-            _connection.CurrentState = Connection.State.Connecting;
-            Send(Packet.Get(HeaderType.Connect), _connection.RemoteEndPoint);
-
+            _connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port), isConnected: false);
             OnConnectingToServer?.Invoke(_connection.RemoteEndPoint);
         }
 
         protected override Packet Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
-            if (!_connection.RemoteEndPoint.Equals(senderEndPoint))
+            if (_connection is null || !_connection.RemoteEndPoint.Equals(senderEndPoint))
             {
                 Log.Warning("Malicious packet: Packet end-point does not match server end-point.");
                 return null;
@@ -73,39 +70,23 @@ namespace Networking.Transport.Nodes
 
             switch ((HeaderType) datagram[0])
             {
+                case HeaderType.UnreliableData or HeaderType.SequencedData or HeaderType.ReliableData:
+                    return _connection.Receive(datagram, bytesReceived);
+
                 case HeaderType.ConnectApproved:
-                    HandleConnectApprovedPacket();
+                    _connection.IsConnected = true;
+                    ExecuteOnMainThread(() => OnConnectedToServer?.Invoke(_connection.RemoteEndPoint));
                     return null;
 
-                case HeaderType.UnreliableData:
-                case HeaderType.SequencedData:
-                case HeaderType.ReliableData:
-                    return HandleDataPacket(datagram, bytesReceived);
-
                 case HeaderType.Disconnect:
-                    HandleDisconnectPacket();
+                    _connection = null;
+                    ExecuteOnMainThread(() => OnDisconnectedFromServer?.Invoke());
                     return null;
 
                 default:
                     Log.Warning($"Client received invalid packet header {datagram[0]:D} from server.");
                     return null;
             }
-        }
-
-        private void HandleConnectApprovedPacket()
-        {
-            _connection.CurrentState = Connection.State.Connected;
-            ExecuteOnMainThread(() => OnConnectedToServer?.Invoke(_connection.RemoteEndPoint));
-        }
-
-        private Packet HandleDataPacket(byte[] datagram, int bytesReceived) =>
-            _connection.PreparePacketForHandling(datagram, bytesReceived);
-
-        private void HandleDisconnectPacket()
-        {
-            _connection.RemoteEndPoint = null;
-            _connection.CurrentState = Connection.State.Disconnected;
-            ExecuteOnMainThread(() => OnDisconnectedFromServer?.Invoke());
         }
 
         /// <summary>
@@ -115,8 +96,7 @@ namespace Networking.Transport.Nodes
         public void Send(Packet packet)
         {
             if (!IsConnected) throw Error.SendCalledOnDisconnectedClient("Client is not connected to the server.");
-            _connection.PreparePacketForSending(packet);
-            Send(packet, _connection.RemoteEndPoint);
+            _connection.Send(packet);
         }
 
         /// <summary>
@@ -124,11 +104,10 @@ namespace Networking.Transport.Nodes
         /// </summary>
         public void Disconnect()
         {
-            if (IsConnected)
+            if (_connection is not null)
             {
-                Send(Packet.Get(HeaderType.Disconnect), _connection.RemoteEndPoint);
-                _connection.RemoteEndPoint = null;
-                _connection.CurrentState = Connection.State.Disconnected;
+                _connection.Close();
+                _connection = null;
                 OnDisconnectedFromServer?.Invoke();
             }
 

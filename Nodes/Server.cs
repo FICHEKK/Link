@@ -64,14 +64,12 @@ namespace Networking.Transport.Nodes
         {
             switch ((HeaderType) datagram[0])
             {
+                case HeaderType.UnreliableData or HeaderType.SequencedData or HeaderType.ReliableData:
+                    return HandleDataPacket(datagram, bytesReceived, senderEndPoint);
+
                 case HeaderType.Connect:
                     HandleConnectPacket(senderEndPoint);
                     return null;
-
-                case HeaderType.UnreliableData:
-                case HeaderType.SequencedData:
-                case HeaderType.ReliableData:
-                    return HandleDataPacket(datagram, bytesReceived, senderEndPoint);
 
                 case HeaderType.Disconnect:
                     HandleDisconnectPacket(senderEndPoint);
@@ -97,8 +95,7 @@ namespace Networking.Transport.Nodes
             // If server is not full, we accept new connection. Otherwise, ignore the sender.
             if (ConnectionCount < MaxConnectionCount)
             {
-                _connections.Add(senderEndPoint, new Connection {RemoteEndPoint = senderEndPoint, CurrentState = Connection.State.Connected});
-                Send(Packet.Get(HeaderType.ConnectApproved), senderEndPoint);
+                _connections.Add(senderEndPoint, new Connection(node: this, remoteEndPoint: senderEndPoint, isConnected: true));
                 ExecuteOnMainThread(() => OnClientConnected?.Invoke(senderEndPoint));
             }
         }
@@ -111,7 +108,7 @@ namespace Networking.Transport.Nodes
                 return null;
             }
 
-            return connection.PreparePacketForHandling(datagram, bytesReceived);
+            return connection.Receive(datagram, bytesReceived);
         }
 
         private void HandleDisconnectPacket(EndPoint senderEndPoint)
@@ -134,10 +131,7 @@ namespace Networking.Transport.Nodes
         public void Broadcast(Packet packet)
         {
             foreach (var connection in _connections.Values)
-            {
-                connection.PreparePacketForSending(packet);
-                SendWithoutReturningToPool(packet, connection.RemoteEndPoint);
-            }
+                connection.Send(packet, returnPacketToPool: false);
 
             packet.Return();
         }
@@ -148,7 +142,9 @@ namespace Networking.Transport.Nodes
         /// </summary>
         public void Stop()
         {
-            Broadcast(Packet.Get(HeaderType.Disconnect));
+            foreach (var connection in _connections.Values)
+                connection.Close();
+
             StopListening();
             _connections.Clear();
             OnStopped?.Invoke();
