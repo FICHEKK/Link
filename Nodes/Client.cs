@@ -11,14 +11,14 @@ namespace Networking.Transport.Nodes
     public class Client : Node
     {
         /// <summary>
-        /// Invoked each time client starts to process of establishing connection with the server.
+        /// Invoked each time client starts the process of establishing connection with the server.
         /// </summary>
-        public event Action<EndPoint> OnConnectingToServer;
+        public event Action<Connection> OnConnectingToServer;
 
         /// <summary>
         /// Invoked each time client successfully connects to the server.
         /// </summary>
-        public event Action<EndPoint> OnConnectedToServer;
+        public event Action<Connection> OnConnectedToServer;
 
         /// <summary>
         /// Invoked each time client fails to connect to the server for any reason.
@@ -57,7 +57,7 @@ namespace Networking.Transport.Nodes
 
             StartListening(port: 0);
             _connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port), isConnected: false);
-            OnConnectingToServer?.Invoke(_connection.RemoteEndPoint);
+            OnConnectingToServer?.Invoke(_connection);
         }
 
         protected override Packet Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
@@ -75,7 +75,7 @@ namespace Networking.Transport.Nodes
 
                 case HeaderType.ConnectApproved:
                     _connection.IsConnected = true;
-                    ExecuteOnMainThread(() => OnConnectedToServer?.Invoke(_connection.RemoteEndPoint));
+                    ExecuteOnMainThread(() => OnConnectedToServer?.Invoke(_connection));
                     return null;
 
                 case HeaderType.Disconnect:

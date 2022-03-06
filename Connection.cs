@@ -27,6 +27,14 @@ namespace Networking.Transport
         /// </summary>
         public bool IsConnected { get; internal set; }
 
+        /// <summary>
+        /// Defines the probability of a packet being lost.
+        /// This property should only be used only for testing purposes.
+        /// </summary>
+        /// <remarks>Value should be in range from 0 to 1.</remarks>
+        public float PacketLossProbability { get; set; }
+
+        private readonly Random _random = new();
         private readonly Channel _unreliableChannel = new UnreliableChannel();
         private readonly Channel _sequencedChannel = new SequencedChannel();
         private readonly Channel _reliableChannel = new ReliableChannel();
@@ -42,12 +50,16 @@ namespace Networking.Transport
 
         public void Send(Packet packet, bool returnPacketToPool = true)
         {
+            if (PacketLossProbability > 0 && _random.NextDouble() < PacketLossProbability) return;
             GetChannel(packet.Buffer[0]).PreparePacketForSending(packet);
             Node.Send(packet, RemoteEndPoint, returnPacketToPool);
         }
 
-        public Packet Receive(byte[] datagram, int bytesReceived) =>
-            GetChannel(datagram[0]).PreparePacketForHandling(datagram, bytesReceived);
+        public Packet Receive(byte[] datagram, int bytesReceived)
+        {
+            if (PacketLossProbability > 0 && _random.NextDouble() < PacketLossProbability) return null;
+            return GetChannel(datagram[0]).PreparePacketForHandling(datagram, bytesReceived);
+        }
 
         private Channel GetChannel(byte channelId) => channelId switch
         {

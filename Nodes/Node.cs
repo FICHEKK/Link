@@ -20,6 +20,11 @@ namespace Networking.Transport.Nodes
         public IReadOnlyDictionary<ushort, Action<PacketReader, EndPoint>> PacketIdToPacketHandler => _packetIdToPacketHandler;
 
         /// <summary>
+        /// Returns port on which this node is listening on, or <c>-1</c> if not currently listening.
+        /// </summary>
+        public int Port => IsListening ? ((IPEndPoint) _socket.LocalEndPoint).Port : -1;
+
+        /// <summary>
         /// Returns true if this node is currently listening for incoming packets.
         /// </summary>
         public bool IsListening => _socket != null;

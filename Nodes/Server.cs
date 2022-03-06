@@ -14,17 +14,17 @@ namespace Networking.Transport.Nodes
         /// <summary>
         /// Invoked each time server starts and begins listening for client connections.
         /// </summary>
-        public event Action<int> OnStarted;
+        public event Action OnStarted;
 
         /// <summary>
         /// Invoked each time a new client connects to the server.
         /// </summary>
-        public event Action<EndPoint> OnClientConnected;
+        public event Action<Connection> OnClientConnected;
 
         /// <summary>
         /// Invoked each time an already connected client disconnects from the server.
         /// </summary>
-        public event Action<EndPoint> OnClientDisconnected;
+        public event Action<Connection> OnClientDisconnected;
 
         /// <summary>
         /// Invoked each time server stops and no longer listens for client connections.
@@ -57,7 +57,7 @@ namespace Networking.Transport.Nodes
 
             StartListening(port);
             MaxConnectionCount = maxClientCount;
-            OnStarted?.Invoke(port);
+            OnStarted?.Invoke();
         }
 
         protected override Packet Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
@@ -95,8 +95,9 @@ namespace Networking.Transport.Nodes
             // If server is not full, we accept new connection. Otherwise, ignore the sender.
             if (ConnectionCount < MaxConnectionCount)
             {
-                _connections.Add(senderEndPoint, new Connection(node: this, remoteEndPoint: senderEndPoint, isConnected: true));
-                ExecuteOnMainThread(() => OnClientConnected?.Invoke(senderEndPoint));
+                var connection = new Connection(node: this, remoteEndPoint: senderEndPoint, isConnected: true);
+                _connections.Add(senderEndPoint, connection);
+                ExecuteOnMainThread(() => OnClientConnected?.Invoke(connection));
             }
         }
 
@@ -120,8 +121,10 @@ namespace Networking.Transport.Nodes
             }
 
             Log.Info($"Client from {senderEndPoint} requested disconnect...");
+
+            var connection = _connections[senderEndPoint];
             _connections.Remove(senderEndPoint);
-            ExecuteOnMainThread(() => OnClientDisconnected?.Invoke(senderEndPoint));
+            ExecuteOnMainThread(() => OnClientDisconnected?.Invoke(connection));
         }
 
         /// <summary>
