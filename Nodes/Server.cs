@@ -64,11 +64,19 @@ namespace Networking.Transport.Nodes
         {
             switch ((HeaderType) datagram[0])
             {
+                case HeaderType.Connect:
+                    HandleConnectPacket(senderEndPoint);
+                    return null;
+
                 case HeaderType.UnreliableData or HeaderType.SequencedData or HeaderType.ReliableData:
                     return HandleDataPacket(datagram, bytesReceived, senderEndPoint);
 
-                case HeaderType.Connect:
-                    HandleConnectPacket(senderEndPoint);
+                case HeaderType.Ping:
+                    HandlePingPacket(datagram, senderEndPoint);
+                    return null;
+
+                case HeaderType.Pong:
+                    HandlePongPacket(datagram, senderEndPoint);
                     return null;
 
                 case HeaderType.Disconnect:
@@ -103,13 +111,35 @@ namespace Networking.Transport.Nodes
 
         private Packet HandleDataPacket(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
-            if (!_connections.TryGetValue(senderEndPoint, out var connection))
-            {
-                Log.Warning($"Received data packet from a non-connected client at {senderEndPoint}.");
-                return null;
-            }
+            if (_connections.TryGetValue(senderEndPoint, out var connection))
+                return connection.Receive(datagram, bytesReceived);
 
-            return connection.Receive(datagram, bytesReceived);
+            Log.Warning($"Received data packet from a non-connected client at {senderEndPoint}.");
+            return null;
+        }
+
+        private void HandlePingPacket(byte[] datagram, EndPoint senderEndPoint)
+        {
+            if (_connections.TryGetValue(senderEndPoint, out var connection))
+            {
+                connection.ReceivePing(datagram);
+            }
+            else
+            {
+                Log.Warning($"Received ping packet from a non-connected client at {senderEndPoint}.");
+            }
+        }
+
+        private void HandlePongPacket(byte[] datagram, EndPoint senderEndPoint)
+        {
+            if (_connections.TryGetValue(senderEndPoint, out var connection))
+            {
+                connection.ReceivePong(datagram);
+            }
+            else
+            {
+                Log.Warning($"Received pong packet from a non-connected client at {senderEndPoint}.");
+            }
         }
 
         private void HandleDisconnectPacket(EndPoint senderEndPoint)

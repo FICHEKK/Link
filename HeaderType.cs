@@ -22,6 +22,18 @@ namespace Networking.Transport
         ConnectApproved,
 
         /// <summary>
+        /// Marks this packet as a ping packet. This packet type is used for measuring
+        /// connection latency and serves as a keep-alive packet.
+        /// </summary>
+        Ping,
+
+        /// <summary>
+        /// Marks this packet as a pong packet, which acts as a response packet to the
+        /// <see cref="Ping"/> packet.
+        /// </summary>
+        Pong,
+
+        /// <summary>
         /// Indicates that this packet is a data packet that should be treated as unreliable.
         /// For more information, check <see cref="UnreliableChannel"/>.
         /// </summary>

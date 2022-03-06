@@ -70,12 +70,20 @@ namespace Networking.Transport.Nodes
 
             switch ((HeaderType) datagram[0])
             {
-                case HeaderType.UnreliableData or HeaderType.SequencedData or HeaderType.ReliableData:
-                    return _connection.Receive(datagram, bytesReceived);
-
                 case HeaderType.ConnectApproved:
                     _connection.IsConnected = true;
                     ExecuteOnMainThread(() => OnConnectedToServer?.Invoke(_connection));
+                    return null;
+
+                case HeaderType.UnreliableData or HeaderType.SequencedData or HeaderType.ReliableData:
+                    return _connection.Receive(datagram, bytesReceived);
+
+                case HeaderType.Ping:
+                    _connection.ReceivePing(datagram);
+                    return null;
+
+                case HeaderType.Pong:
+                    _connection.ReceivePong(datagram);
                     return null;
 
                 case HeaderType.Disconnect:
