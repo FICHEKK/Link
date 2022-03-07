@@ -64,7 +64,7 @@ namespace Networking.Transport
             Node.Send(Packet.Get(isConnected ? HeaderType.ConnectApproved : HeaderType.Connect), RemoteEndPoint);
         }
 
-        internal void Send(Packet packet, bool returnPacketToPool = true)
+        public void Send(Packet packet, bool returnPacketToPool = true)
         {
             GetChannel(packet.Buffer[0]).PreparePacketForSending(packet);
             Node.Send(packet, RemoteEndPoint, returnPacketToPool);
