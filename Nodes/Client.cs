@@ -1,6 +1,5 @@
 using System;
 using System.Net;
-using Networking.Exceptions;
 
 namespace Networking.Transport.Nodes
 {
@@ -47,9 +46,6 @@ namespace Networking.Transport.Nodes
         /// <param name="port">Server port.</param>
         public void Connect(string ipAddress, int port)
         {
-            if (IsConnecting) throw Error.ClientAlreadyConnecting("Client is currently trying to connect.");
-            if (IsConnected) throw Error.ClientAlreadyConnected("Client is already connected.");
-
             StartListening(port: 0);
             Connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port), isConnected: false);
             OnConnectingToServer?.Invoke();
@@ -99,7 +95,7 @@ namespace Networking.Transport.Nodes
         /// <param name="packet">Packet being sent.</param>
         public void Send(Packet packet)
         {
-            if (!IsConnected) throw Error.SendCalledOnDisconnectedClient("Client is not connected to the server.");
+            if (!IsConnected) throw new InvalidOperationException("Cannot send packet as client is not connected to the server.");
             Connection.Send(packet);
         }
 
