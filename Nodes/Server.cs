@@ -153,6 +153,7 @@ namespace Networking.Transport.Nodes
             Log.Info($"Client from {senderEndPoint} requested disconnect...");
 
             var connection = _connections[senderEndPoint];
+            connection.Close(sendDisconnectPacket: false);
             _connections.Remove(senderEndPoint);
             ExecuteOnMainThread(() => OnClientDisconnected?.Invoke(connection));
         }
@@ -176,7 +177,7 @@ namespace Networking.Transport.Nodes
         public void Stop()
         {
             foreach (var connection in _connections.Values)
-                connection.Close();
+                connection.Close(sendDisconnectPacket: true);
 
             StopListening();
             _connections.Clear();

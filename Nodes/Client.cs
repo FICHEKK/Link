@@ -13,17 +13,12 @@ namespace Networking.Transport.Nodes
         /// <summary>
         /// Invoked each time client starts the process of establishing connection with the server.
         /// </summary>
-        public event Action<Connection> OnConnectingToServer;
+        public event Action OnConnectingToServer;
 
         /// <summary>
         /// Invoked each time client successfully connects to the server.
         /// </summary>
-        public event Action<Connection> OnConnectedToServer;
-
-        /// <summary>
-        /// Invoked each time client fails to connect to the server for any reason.
-        /// </summary>
-        public event Action<string> OnCouldNotConnectToServer;
+        public event Action OnConnectedToServer;
 
         /// <summary>
         /// Invoked each time client disconnects from the server.
@@ -33,17 +28,17 @@ namespace Networking.Transport.Nodes
         /// <summary>
         /// Returns <c>true</c> if this client is currently attempting to connect to the server.
         /// </summary>
-        public bool IsConnecting => _connection is not null && !_connection.IsConnected;
+        public bool IsConnecting => Connection is not null && !Connection.IsConnected;
 
         /// <summary>
         /// Returns <c>true</c> if this client is currently connected to the server.
         /// </summary>
-        public bool IsConnected => _connection is not null && _connection.IsConnected;
+        public bool IsConnected => Connection is not null && Connection.IsConnected;
 
         /// <summary>
         /// Connection to the server.
         /// </summary>
-        private Connection _connection;
+        public Connection Connection { get; private set; }
 
         /// <summary>
         /// Attempts to establish a connection with the server.
@@ -56,13 +51,13 @@ namespace Networking.Transport.Nodes
             if (IsConnected) throw Error.ClientAlreadyConnected("Client is already connected.");
 
             StartListening(port: 0);
-            _connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port), isConnected: false);
-            OnConnectingToServer?.Invoke(_connection);
+            Connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port), isConnected: false);
+            OnConnectingToServer?.Invoke();
         }
 
         protected override Packet Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
-            if (_connection is null || !_connection.RemoteEndPoint.Equals(senderEndPoint))
+            if (Connection is null || !Connection.RemoteEndPoint.Equals(senderEndPoint))
             {
                 Log.Warning("Malicious packet: Packet end-point does not match server end-point.");
                 return null;
@@ -71,23 +66,24 @@ namespace Networking.Transport.Nodes
             switch ((HeaderType) datagram[0])
             {
                 case HeaderType.ConnectApproved:
-                    _connection.IsConnected = true;
-                    ExecuteOnMainThread(() => OnConnectedToServer?.Invoke(_connection));
+                    Connection.IsConnected = true;
+                    ExecuteOnMainThread(() => OnConnectedToServer?.Invoke());
                     return null;
 
                 case HeaderType.UnreliableData or HeaderType.SequencedData or HeaderType.ReliableData:
-                    return _connection.Receive(datagram, bytesReceived);
+                    return Connection.Receive(datagram, bytesReceived);
 
                 case HeaderType.Ping:
-                    _connection.ReceivePing(datagram);
+                    Connection.ReceivePing(datagram);
                     return null;
 
                 case HeaderType.Pong:
-                    _connection.ReceivePong(datagram);
+                    Connection.ReceivePong(datagram);
                     return null;
 
                 case HeaderType.Disconnect:
-                    _connection = null;
+                    Connection.Close(sendDisconnectPacket: false);
+                    Connection = null;
                     ExecuteOnMainThread(() => OnDisconnectedFromServer?.Invoke());
                     return null;
 
@@ -104,7 +100,7 @@ namespace Networking.Transport.Nodes
         public void Send(Packet packet)
         {
             if (!IsConnected) throw Error.SendCalledOnDisconnectedClient("Client is not connected to the server.");
-            _connection.Send(packet);
+            Connection.Send(packet);
         }
 
         /// <summary>
@@ -112,10 +108,10 @@ namespace Networking.Transport.Nodes
         /// </summary>
         public void Disconnect()
         {
-            if (_connection is not null)
+            if (Connection is not null)
             {
-                _connection.Close();
-                _connection = null;
+                Connection.Close(sendDisconnectPacket: true);
+                Connection = null;
                 OnDisconnectedFromServer?.Invoke();
             }
 

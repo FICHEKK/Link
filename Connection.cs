@@ -9,7 +9,7 @@ namespace Networking.Transport
 {
     /// <summary>
     /// Represents a connection between two end-points. It is a higher level class that
-    /// internally handles packet delivery methods and keeps track of packet statistics.
+    /// internally handles different channels and keeps track of packet statistics.
     /// </summary>
     public class Connection
     {
@@ -44,24 +44,16 @@ namespace Networking.Transport
             }
         }
 
-        /// <summary>
-        /// Defines the probability of a packet being lost.
-        /// This property should only be used only for testing purposes.
-        /// </summary>
-        /// <remarks>Value should be in range from 0 to 1.</remarks>
-        public float PacketLossProbability { get; set; }
-
         private bool _isConnected;
         private ushort _pingId;
         private readonly Timer _pingTimer;
         private readonly Stopwatch _pingStopwatch = new();
 
-        private readonly Random _random = new();
         private readonly Channel _unreliableChannel = new UnreliableChannel();
         private readonly Channel _sequencedChannel = new SequencedChannel();
         private readonly Channel _reliableChannel = new ReliableChannel();
 
-        public Connection(Node node, EndPoint remoteEndPoint, bool isConnected)
+        internal Connection(Node node, EndPoint remoteEndPoint, bool isConnected)
         {
             _pingTimer = new Timer(_ => SendPing());
 
@@ -72,18 +64,14 @@ namespace Networking.Transport
             Node.Send(Packet.Get(isConnected ? HeaderType.ConnectApproved : HeaderType.Connect), RemoteEndPoint);
         }
 
-        public void Send(Packet packet, bool returnPacketToPool = true)
+        internal void Send(Packet packet, bool returnPacketToPool = true)
         {
-            if (PacketLossProbability > 0 && _random.NextDouble() < PacketLossProbability) return;
             GetChannel(packet.Buffer[0]).PreparePacketForSending(packet);
             Node.Send(packet, RemoteEndPoint, returnPacketToPool);
         }
 
-        public Packet Receive(byte[] datagram, int bytesReceived)
-        {
-            if (PacketLossProbability > 0 && _random.NextDouble() < PacketLossProbability) return null;
-            return GetChannel(datagram[0]).PreparePacketForHandling(datagram, bytesReceived);
-        }
+        internal Packet Receive(byte[] datagram, int bytesReceived) =>
+            GetChannel(datagram[0]).PreparePacketForHandling(datagram, bytesReceived);
 
         private Channel GetChannel(byte channelId) => channelId switch
         {
@@ -115,10 +103,12 @@ namespace Networking.Transport
             if (pongId == _pingId) Ping = _pingStopwatch.ElapsedMilliseconds;
         }
 
-        public void Close()
+        internal void Close(bool sendDisconnectPacket)
         {
+            if (sendDisconnectPacket)
+                Node.Send(Packet.Get(HeaderType.Disconnect), RemoteEndPoint);
+
             _pingTimer.Dispose();
-            Node.Send(Packet.Get(HeaderType.Disconnect), RemoteEndPoint);
         }
     }
 }

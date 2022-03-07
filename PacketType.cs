@@ -52,17 +52,5 @@ namespace Networking.Transport
         /// Payload: ObjectID, BehaviourIndex, RpcHash, RpcParameters
         /// </summary>
         Rpc,
-
-        /// <summary>
-        /// Sent by the client to the server in order to calculate the response time and check server availability.
-        /// Payload: SequenceNumber
-        /// </summary>
-        Ping,
-
-        /// <summary>
-        /// Sent by the server to the client as a response to the ping packet.
-        /// Payload: SequenceNumber
-        /// </summary>
-        Pong,
     }
 }
