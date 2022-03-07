@@ -9,8 +9,25 @@ namespace Networking.Transport
     /// </summary>
     public sealed class Packet
     {
-        // TODO - Find out what this value should actually be.
-        private const int MaxBufferSize = 1500;
+        /// <summary>
+        /// Maximum number of data bytes that can be transferred in a single Ethernet frame.
+        /// </summary>
+        private const int EthernetMtu = 1500;
+
+        /// <summary>
+        /// Internet protocol maximum header size, in bytes.
+        /// </summary>
+        private const int MaxIPHeaderSize = 60;
+
+        /// <summary>
+        /// User Datagram Protocol header size, in bytes.
+        /// </summary>
+        private const int UdpHeaderSize = 8;
+
+        /// <summary>
+        /// Maximum packet size that will not result in packet fragmentation.
+        /// </summary>
+        private const int MaxBufferSize = EthernetMtu - MaxIPHeaderSize - UdpHeaderSize;
 
         public static readonly Encoding Encoding = Encoding.UTF8;
         private static readonly Queue<Packet> PacketPool = new();
