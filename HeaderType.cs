@@ -47,6 +47,12 @@ namespace Networking.Transport
         ReliableData,
 
         /// <summary>
+        /// Indicates that this packet is an acknowledgement packet which is used in reliable
+        /// channels to indicate that specific packet or a set of packets have been received.
+        /// </summary>
+        Acknowledgement,
+
+        /// <summary>
         /// Marks this packet as a disconnect packet which means that the sender has closed its
         /// side of the connection and will no longer send or receive any packets.
         /// </summary>

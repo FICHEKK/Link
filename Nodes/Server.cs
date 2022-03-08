@@ -57,32 +57,37 @@ namespace Networking.Transport.Nodes
             OnStarted?.Invoke();
         }
 
-        protected override Packet Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
+        protected override void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
             switch ((HeaderType) datagram[0])
             {
-                case HeaderType.Connect:
-                    HandleConnectPacket(senderEndPoint);
-                    return null;
-
                 case HeaderType.UnreliableData or HeaderType.SequencedData or HeaderType.ReliableData:
-                    return HandleDataPacket(datagram, bytesReceived, senderEndPoint);
+                    HandleDataPacket(datagram, bytesReceived, senderEndPoint);
+                    return;
+                
+                case HeaderType.Acknowledgement:
+                    HandleAcknowledgementPacket(datagram, senderEndPoint);
+                    return;
 
                 case HeaderType.Ping:
                     HandlePingPacket(datagram, senderEndPoint);
-                    return null;
+                    return;
 
                 case HeaderType.Pong:
                     HandlePongPacket(datagram, senderEndPoint);
-                    return null;
+                    return;
+
+                case HeaderType.Connect:
+                    HandleConnectPacket(senderEndPoint);
+                    return;
 
                 case HeaderType.Disconnect:
                     HandleDisconnectPacket(senderEndPoint);
-                    return null;
+                    return;
 
                 default:
                     Log.Warning($"Server received invalid packet header {datagram[0]:D} from {senderEndPoint}.");
-                    return null;
+                    return;
             }
         }
 
@@ -106,13 +111,26 @@ namespace Networking.Transport.Nodes
             }
         }
 
-        private Packet HandleDataPacket(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
+        private void HandleDataPacket(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
             if (_connections.TryGetValue(senderEndPoint, out var connection))
-                return connection.Receive(datagram, bytesReceived);
+            {
+                connection.Receive(datagram, bytesReceived);
+                return;
+            }
 
             Log.Warning($"Received data packet from a non-connected client at {senderEndPoint}.");
-            return null;
+        }
+
+        private void HandleAcknowledgementPacket(byte[] datagram, EndPoint senderEndPoint)
+        {
+            if (_connections.TryGetValue(senderEndPoint, out var connection))
+            {
+                connection.ReceiveAcknowledgement(datagram);
+                return;
+            }
+
+            Log.Warning($"Received acknowledgement packet from a non-connected client at {senderEndPoint}.");
         }
 
         private void HandlePingPacket(byte[] datagram, EndPoint senderEndPoint)

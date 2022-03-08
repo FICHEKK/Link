@@ -1,3 +1,6 @@
+using System.Net;
+using Networking.Transport.Nodes;
+
 namespace Networking.Transport.Channels
 {
     /// <summary>
@@ -8,25 +11,37 @@ namespace Networking.Transport.Channels
     /// </summary>
     public class SequencedChannel : Channel
     {
-        private ushort _localSequenceNumber;
-        private ushort _remoteSequenceNumber;
-
         public override byte Id => (byte) HeaderType.SequencedData;
         public override int HeaderSizeInBytes => 3;
 
-        internal override void PreparePacketForSending(Packet packet)
+        private readonly Node _node;
+        private readonly EndPoint _remoteEndPoint;
+
+        private ushort _localSequenceNumber;
+        private ushort _remoteSequenceNumber;
+
+        public SequencedChannel(Node node, EndPoint remoteEndPoint)
         {
-            _localSequenceNumber++;
-            packet.Buffer.Write(_localSequenceNumber, offset: 1);
+            _node = node;
+            _remoteEndPoint = remoteEndPoint;
         }
 
-        internal override Packet PreparePacketForHandling(byte[] datagram, int bytesReceived)
+        internal override void Send(Packet packet, bool returnPacketToPool = true)
+        {
+            packet.Buffer.Write(++_localSequenceNumber, offset: 1);
+            _node.Send(packet, _remoteEndPoint, returnPacketToPool);
+        }
+
+        internal override void Receive(byte[] datagram, int bytesReceived)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: 1);
-            if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber)) return null;
+            if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber)) return;
 
             _remoteSequenceNumber = sequenceNumber;
-            return ConvertDatagramToPacket(datagram, bytesReceived);
+            _node.EnqueuePendingPacket(ConvertDatagramToPacket(datagram, bytesReceived), _remoteEndPoint);
         }
+
+        internal override void ReceiveAcknowledgement(byte[] datagram) =>
+            Log.Warning($"Acknowledgement packet received on '{nameof(SequencedChannel)}'.");
     }
 }

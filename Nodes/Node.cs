@@ -64,12 +64,7 @@ namespace Networking.Transport.Nodes
 
                     var senderEndPoint = AnyEndPoint;
                     var bytesReceived = _socket.ReceiveFrom(_receiveBuffer, ref senderEndPoint);
-                    if (bytesReceived == 0) continue;
-
-                    var packet = Receive(_receiveBuffer, bytesReceived, senderEndPoint);
-                    if (packet is null) continue;
-
-                    lock (_pendingPackets) _pendingPackets.Enqueue((packet, senderEndPoint));
+                    if (bytesReceived > 0) Receive(_receiveBuffer, bytesReceived, senderEndPoint);
                 }
                 catch (ObjectDisposedException)
                 {
@@ -105,7 +100,7 @@ namespace Networking.Transport.Nodes
         /// <param name="bytesReceived">How many bytes were received.</param>
         /// <param name="senderEndPoint">Specifies from where bytes came from.</param>
         /// <returns>Packet instance if bytes represent a data packet, null otherwise.</returns>
-        protected abstract Packet Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint);
+        protected abstract void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint);
 
         /// <summary>
         /// Sends outgoing packet to the specified end-point.
@@ -128,6 +123,17 @@ namespace Networking.Transport.Nodes
 
             _socket.Dispose();
             _socket = null;
+        }
+
+        /// <summary>
+        /// Enqueues a packet that will be handled in the next update loop.
+        /// </summary>
+        internal void EnqueuePendingPacket(Packet packet, EndPoint senderEndPoint)
+        {
+            lock (_pendingPackets)
+            {
+                _pendingPackets.Enqueue((packet, senderEndPoint));
+            }
         }
 
         /// <summary>

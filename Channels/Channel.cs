@@ -7,14 +7,15 @@ namespace Networking.Transport.Channels
     /// </summary>
     public abstract class Channel
     {
+        // TODO - Refactor this list of available channels into something more flexible.
         /// <inheritdoc cref="UnreliableChannel"/>
-        public static readonly Channel Unreliable = new UnreliableChannel();
+        public static readonly Channel Unreliable = new UnreliableChannel(null, null);
 
         /// <inheritdoc cref="SequencedChannel"/>
-        public static readonly Channel Sequenced = new SequencedChannel();
+        public static readonly Channel Sequenced = new SequencedChannel(null, null);
 
         /// <inheritdoc cref="ReliableChannel"/>
-        public static readonly Channel Reliable = new ReliableChannel();
+        public static readonly Channel Reliable = new ReliableChannel(null, null);
 
         /// <summary>
         /// Uniquely identifies this channel.
@@ -22,19 +23,25 @@ namespace Networking.Transport.Channels
         public abstract byte Id { get; }
 
         /// <summary>
-        /// Defines how many bytes needed to store header information.
+        /// Defines how many bytes are needed to store header information.
         /// </summary>
         public abstract int HeaderSizeInBytes { get; }
 
         /// <summary>
-        /// Writes required header information to the given outgoing packet.
+        /// Writes header information and sends given packet to the remote end-point.
         /// </summary>
-        internal abstract void PreparePacketForSending(Packet packet);
+        internal abstract void Send(Packet packet, bool returnPacketToPool = true);
 
         /// <summary>
-        /// Attempts to convert incoming datagram bytes into a packet instance.
+        /// Reads header information and attempts to convert incoming bytes to packet instance(s).
         /// </summary>
-        internal abstract Packet PreparePacketForHandling(byte[] datagram, int bytesReceived);
+        internal abstract void Receive(byte[] datagram, int bytesReceived);
+
+        /// <summary>
+        /// Receives and processes acknowledgement packet. This method should be implemented by reliable channels,
+        /// but is also useful as a diagnostic tool to write warnings if ack is received on the unreliable channel.
+        /// </summary>
+        internal abstract void ReceiveAcknowledgement(byte[] datagram);
 
         /// <summary>
         /// Converts given raw bytes to a packet instance.

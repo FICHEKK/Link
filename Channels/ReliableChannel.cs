@@ -1,4 +1,6 @@
 using System;
+using System.Net;
+using Networking.Transport.Nodes;
 
 namespace Networking.Transport.Channels
 {
@@ -10,16 +12,24 @@ namespace Networking.Transport.Channels
     public class ReliableChannel : Channel
     {
         public override byte Id => (byte) HeaderType.ReliableData;
-        public override int HeaderSizeInBytes => 9;
+        public override int HeaderSizeInBytes => 3;
 
-        internal override void PreparePacketForSending(Packet packet)
+        private readonly Node _node;
+        private readonly EndPoint _remoteEndPoint;
+
+        public ReliableChannel(Node node, EndPoint remoteEndPoint)
         {
-            throw new NotImplementedException();
+            _node = node;
+            _remoteEndPoint = remoteEndPoint;
         }
 
-        internal override Packet PreparePacketForHandling(byte[] datagram, int bytesReceived)
-        {
+        internal override void Send(Packet packet, bool returnPacketToPool = true) =>
             throw new NotImplementedException();
-        }
+
+        internal override void Receive(byte[] datagram, int bytesReceived) =>
+            throw new NotImplementedException();
+
+        internal override void ReceiveAcknowledgement(byte[] datagram) =>
+            throw new NotImplementedException();
     }
 }

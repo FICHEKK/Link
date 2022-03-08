@@ -51,41 +51,46 @@ namespace Networking.Transport.Nodes
             OnConnectingToServer?.Invoke();
         }
 
-        protected override Packet Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
+        protected override void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
             if (Connection is null || !Connection.RemoteEndPoint.Equals(senderEndPoint))
             {
                 Log.Warning("Malicious packet: Packet end-point does not match server end-point.");
-                return null;
+                return;
             }
 
             switch ((HeaderType) datagram[0])
             {
-                case HeaderType.ConnectApproved:
-                    Connection.IsConnected = true;
-                    ExecuteOnMainThread(() => OnConnectedToServer?.Invoke());
-                    return null;
-
                 case HeaderType.UnreliableData or HeaderType.SequencedData or HeaderType.ReliableData:
-                    return Connection.Receive(datagram, bytesReceived);
+                    Connection.Receive(datagram, bytesReceived);
+                    return;
+
+                case HeaderType.Acknowledgement:
+                    Connection.ReceiveAcknowledgement(datagram);
+                    return;
 
                 case HeaderType.Ping:
                     Connection.ReceivePing(datagram);
-                    return null;
+                    return;
 
                 case HeaderType.Pong:
                     Connection.ReceivePong(datagram);
-                    return null;
+                    return;
+
+                case HeaderType.ConnectApproved:
+                    Connection.IsConnected = true;
+                    ExecuteOnMainThread(() => OnConnectedToServer?.Invoke());
+                    return;
 
                 case HeaderType.Disconnect:
                     Connection.Close(sendDisconnectPacket: false);
                     Connection = null;
                     ExecuteOnMainThread(() => OnDisconnectedFromServer?.Invoke());
-                    return null;
+                    return;
 
                 default:
                     Log.Warning($"Client received invalid packet header {datagram[0]:D} from server.");
-                    return null;
+                    return;
             }
         }
 

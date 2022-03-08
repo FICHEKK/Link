@@ -49,12 +49,17 @@ namespace Networking.Transport
         private readonly Timer _pingTimer;
         private readonly Stopwatch _pingStopwatch = new();
 
-        private readonly Channel _unreliableChannel = new UnreliableChannel();
-        private readonly Channel _sequencedChannel = new SequencedChannel();
-        private readonly Channel _reliableChannel = new ReliableChannel();
+        // TODO - Don't hardcode channels.
+        private readonly Channel _unreliableChannel;
+        private readonly Channel _sequencedChannel;
+        private readonly Channel _reliableChannel;
 
         internal Connection(Node node, EndPoint remoteEndPoint, bool isConnected)
         {
+            _unreliableChannel = new UnreliableChannel(node, remoteEndPoint);
+            _sequencedChannel = new SequencedChannel(node, remoteEndPoint);
+            _reliableChannel = new ReliableChannel(node, remoteEndPoint);
+
             _pingTimer = new Timer(_ => SendPing());
 
             Node = node;
@@ -64,14 +69,14 @@ namespace Networking.Transport
             Node.Send(Packet.Get(isConnected ? HeaderType.ConnectApproved : HeaderType.Connect), RemoteEndPoint);
         }
 
-        public void Send(Packet packet, bool returnPacketToPool = true)
-        {
-            GetChannel(packet.Buffer[0]).PreparePacketForSending(packet);
-            Node.Send(packet, RemoteEndPoint, returnPacketToPool);
-        }
+        public void Send(Packet packet, bool returnPacketToPool = true) =>
+            GetChannel(packet.Buffer[0]).Send(packet, returnPacketToPool);
 
-        internal Packet Receive(byte[] datagram, int bytesReceived) =>
-            GetChannel(datagram[0]).PreparePacketForHandling(datagram, bytesReceived);
+        internal void Receive(byte[] datagram, int bytesReceived) =>
+            GetChannel(datagram[0]).Receive(datagram, bytesReceived);
+
+        internal void ReceiveAcknowledgement(byte[] datagram) =>
+            GetChannel(datagram[0]).ReceiveAcknowledgement(datagram);
 
         private Channel GetChannel(byte channelId) => channelId switch
         {
