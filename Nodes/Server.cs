@@ -59,9 +59,9 @@ namespace Networking.Transport.Nodes
 
         protected override void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
-            switch ((HeaderType) datagram[0])
+            switch ((HeaderType) (datagram[0] & 0x0F))
             {
-                case HeaderType.UnreliableData or HeaderType.SequencedData or HeaderType.ReliableData:
+                case HeaderType.Data:
                     HandleDataPacket(datagram, bytesReceived, senderEndPoint);
                     return;
                 
@@ -115,7 +115,7 @@ namespace Networking.Transport.Nodes
         {
             if (_connections.TryGetValue(senderEndPoint, out var connection))
             {
-                connection.Receive(datagram, bytesReceived);
+                connection.ReceiveData(datagram, bytesReceived);
                 return;
             }
 

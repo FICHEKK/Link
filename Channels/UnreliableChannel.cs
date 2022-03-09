@@ -9,7 +9,7 @@ namespace Networking.Transport.Channels
     /// </summary>
     public class UnreliableChannel : Channel
     {
-        public override byte Id => (byte) HeaderType.UnreliableData;
+        public override byte Id => 0;
         public override int HeaderSizeInBytes => 1;
 
         private readonly Node _node;

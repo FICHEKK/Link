@@ -48,17 +48,16 @@ namespace Networking.Transport
         private ushort _pingId;
         private readonly Timer _pingTimer;
         private readonly Stopwatch _pingStopwatch = new();
-
-        // TODO - Don't hardcode channels.
-        private readonly Channel _unreliableChannel;
-        private readonly Channel _sequencedChannel;
-        private readonly Channel _reliableChannel;
+        private readonly Channel[] _channels;
 
         internal Connection(Node node, EndPoint remoteEndPoint, bool isConnected)
         {
-            _unreliableChannel = new UnreliableChannel(node, remoteEndPoint);
-            _sequencedChannel = new SequencedChannel(node, remoteEndPoint);
-            _reliableChannel = new ReliableChannel(node, remoteEndPoint);
+            _channels = new Channel[]
+            {
+                new UnreliableChannel(node, remoteEndPoint),
+                new SequencedChannel(node, remoteEndPoint),
+                new ReliableChannel(node, remoteEndPoint)
+            };
 
             _pingTimer = new Timer(_ => SendPing());
 
@@ -72,19 +71,21 @@ namespace Networking.Transport
         public void Send(Packet packet, bool returnPacketToPool = true) =>
             GetChannel(packet.Buffer[0]).Send(packet, returnPacketToPool);
 
-        internal void Receive(byte[] datagram, int bytesReceived) =>
+        internal void ReceiveData(byte[] datagram, int bytesReceived) =>
             GetChannel(datagram[0]).Receive(datagram, bytesReceived);
 
         internal void ReceiveAcknowledgement(byte[] datagram) =>
             GetChannel(datagram[0]).ReceiveAcknowledgement(datagram);
 
-        private Channel GetChannel(byte channelId) => channelId switch
+        private Channel GetChannel(byte header)
         {
-            (int) HeaderType.UnreliableData => _unreliableChannel,
-            (int) HeaderType.SequencedData => _sequencedChannel,
-            (int) HeaderType.ReliableData => _reliableChannel,
-            _ => throw new ArgumentException($"Channel with id {channelId} does not exist.")
-        };
+            var channelId = header >> 4;
+
+            if (channelId >= _channels.Length)
+                throw new ArgumentException($"Channel with ID {channelId} does not exist.");
+
+            return _channels[channelId];
+        }
 
         private void SendPing()
         {

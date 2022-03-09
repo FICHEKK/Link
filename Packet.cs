@@ -44,12 +44,12 @@ namespace Networking.Transport
         public PacketReader Reader { get; }
 
         // TODO - Remove this overload and require developer to specify channel.
-        public static Packet Get(ushort id) =>
-            Get(id, Channel.Unreliable);
+        public static Packet Get(ushort id) => Get(id, Channel.Unreliable);
 
         public static Packet Get(ushort id, Channel channel)
         {
-            var packet = Get((HeaderType) channel.Id);
+            var packet = Get(HeaderType.Data);
+            packet.Buffer[0] |= (byte) (channel.Id << 4);
             packet.Reader.ReadPosition = channel.HeaderSizeInBytes;
             packet.Writer.WritePosition = channel.HeaderSizeInBytes;
             packet.Writer.Write(id);

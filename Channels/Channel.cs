@@ -18,7 +18,8 @@ namespace Networking.Transport.Channels
         public static readonly Channel Reliable = new ReliableChannel(null, null);
 
         /// <summary>
-        /// Uniquely identifies this channel.
+        /// Uniquely identifies this channel. This value must not exceed
+        /// 15 as it is used as the left nibble in the header byte.
         /// </summary>
         public abstract byte Id { get; }
 

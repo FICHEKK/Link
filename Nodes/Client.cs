@@ -59,10 +59,10 @@ namespace Networking.Transport.Nodes
                 return;
             }
 
-            switch ((HeaderType) datagram[0])
+            switch ((HeaderType) (datagram[0] & 0x0F))
             {
-                case HeaderType.UnreliableData or HeaderType.SequencedData or HeaderType.ReliableData:
-                    Connection.Receive(datagram, bytesReceived);
+                case HeaderType.Data:
+                    Connection.ReceiveData(datagram, bytesReceived);
                     return;
 
                 case HeaderType.Acknowledgement:

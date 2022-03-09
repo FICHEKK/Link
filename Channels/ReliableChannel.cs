@@ -11,7 +11,7 @@ namespace Networking.Transport.Channels
     /// </summary>
     public class ReliableChannel : Channel
     {
-        public override byte Id => (byte) HeaderType.ReliableData;
+        public override byte Id => 2;
         public override int HeaderSizeInBytes => 3;
 
         private readonly Node _node;

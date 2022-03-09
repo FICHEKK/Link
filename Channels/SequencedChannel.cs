@@ -11,7 +11,7 @@ namespace Networking.Transport.Channels
     /// </summary>
     public class SequencedChannel : Channel
     {
-        public override byte Id => (byte) HeaderType.SequencedData;
+        public override byte Id => 1;
         public override int HeaderSizeInBytes => 3;
 
         private readonly Node _node;
