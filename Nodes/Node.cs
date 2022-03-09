@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Networking.Transport.Nodes
 {
@@ -135,12 +136,13 @@ namespace Networking.Transport.Nodes
         /// <summary>
         /// Enqueues a packet that will be handled in the next update loop.
         /// </summary>
-        internal void EnqueuePendingPacket(Packet packet, EndPoint senderEndPoint)
+        internal async void EnqueuePendingPacket(Packet packet, EndPoint senderEndPoint)
         {
+            if (SimulationSettings.MaxLatency > 0)
+                await Task.Delay(Random.Next(SimulationSettings.MinLatency, SimulationSettings.MaxLatency + 1));
+
             lock (_pendingPackets)
-            {
                 _pendingPackets.Enqueue((packet, senderEndPoint));
-            }
         }
 
         /// <summary>
