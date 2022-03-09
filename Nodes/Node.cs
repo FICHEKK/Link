@@ -12,6 +12,7 @@ namespace Networking.Transport.Nodes
     public abstract class Node
     {
         private static readonly EndPoint AnyEndPoint = new IPEndPoint(IPAddress.Any, 0);
+        private static readonly Random Random = new();
 
         /// <summary>
         /// Returns packet handlers registered for this network node.
@@ -27,6 +28,9 @@ namespace Networking.Transport.Nodes
         /// Returns true if this node is currently listening for incoming packets.
         /// </summary>
         public bool IsListening => _socket != null;
+
+        /// <inheritdoc cref="Transport.SimulationSettings"/>
+        public SimulationSettings SimulationSettings { get; } = new();
 
         private readonly Dictionary<ushort, Action<PacketReader, EndPoint>> _packetIdToPacketHandler = new();
         private readonly Queue<(Packet packet, EndPoint senderEndPoint)> _pendingPackets = new();
@@ -64,7 +68,10 @@ namespace Networking.Transport.Nodes
 
                     var senderEndPoint = AnyEndPoint;
                     var bytesReceived = _socket.ReceiveFrom(_receiveBuffer, ref senderEndPoint);
-                    if (bytesReceived > 0) Receive(_receiveBuffer, bytesReceived, senderEndPoint);
+                    if (bytesReceived == 0) continue;
+
+                    if (SimulationSettings.PacketLoss > 0 && Random.NextDouble() < SimulationSettings.PacketLoss) continue;
+                    Receive(_receiveBuffer, bytesReceived, senderEndPoint);
                 }
                 catch (ObjectDisposedException)
                 {
