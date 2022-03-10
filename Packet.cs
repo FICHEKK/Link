@@ -48,19 +48,21 @@ namespace Networking.Transport
 
         public static Packet Get(ushort id, Channel channel)
         {
-            var packet = Get(HeaderType.Data);
-            packet.Buffer[0] |= (byte) (channel.Id << 4);
+            var packet = Get(HeaderType.Data, channel);
             packet.Reader.ReadPosition = channel.HeaderSizeInBytes;
             packet.Writer.WritePosition = channel.HeaderSizeInBytes;
             packet.Writer.Write(id);
             return packet;
         }
 
-        internal static Packet Get(HeaderType headerType)
+        internal static Packet Get(HeaderType headerType) => Get(headerType, Channel.Unreliable);
+
+        internal static Packet Get(HeaderType headerType, Channel channel)
         {
             var packet = Get();
-            packet.Writer.Write((byte) headerType);
-            packet.Reader.ReadPosition = packet.Writer.WritePosition;
+            var header = (int) headerType | channel.Id << 4;
+            packet.Writer.Write((byte) header);
+            packet.Reader.ReadPosition = 1;
             return packet;
         }
 
