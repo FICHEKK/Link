@@ -1,10 +1,11 @@
 using System;
+using System.Text;
 
 namespace Networking.Transport
 {
     public class PacketWriter
     {
-        private const int BufferExpansionFactor = 2;
+        private static readonly Encoding Encoding = Encoding.UTF8;
 
         public int WritePosition { get; set; }
         private readonly Packet _packet;
@@ -13,7 +14,7 @@ namespace Networking.Transport
             _packet = packet;
 
         public void Write(string value) =>
-            WriteArray(Packet.Encoding.GetBytes(value));
+            WriteArray(Encoding.GetBytes(value));
 
         public unsafe void Write<T>(T value) where T : unmanaged
         {
@@ -36,7 +37,7 @@ namespace Networking.Transport
             var currentBuffer = _packet.Buffer;
             if (currentBuffer.Length >= requiredBufferSize) return;
 
-            var expandedBuffer = new byte[Math.Max(currentBuffer.Length * BufferExpansionFactor, requiredBufferSize)];
+            var expandedBuffer = new byte[Math.Max(currentBuffer.Length * 2, requiredBufferSize)];
             Array.Copy(currentBuffer, expandedBuffer, WritePosition);
             _packet.Buffer = expandedBuffer;
         }

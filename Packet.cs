@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace Networking.Transport
 {
@@ -28,9 +27,6 @@ namespace Networking.Transport
         /// Maximum packet size that will not result in packet fragmentation.
         /// </summary>
         private const int MaxBufferSize = EthernetMtu - MaxIPHeaderSize - UdpHeaderSize;
-
-        // TODO - Move to another spot as packet should not care about what encoding is used.
-        public static readonly Encoding Encoding = Encoding.UTF8;
 
         /// <summary>
         /// Collection of reusable packet instances used to avoid frequent memory allocations.

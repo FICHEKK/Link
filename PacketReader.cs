@@ -1,7 +1,11 @@
+using System.Text;
+
 namespace Networking.Transport
 {
     public class PacketReader
     {
+        private static readonly Encoding Encoding = Encoding.UTF8;
+
         public int ReadPosition { get; set; }
         private readonly Packet _packet;
 
@@ -11,7 +15,7 @@ namespace Networking.Transport
         public string ReadString()
         {
             var stringByteCount = Read<int>();
-            var stringValue = Packet.Encoding.GetString(_packet.Buffer, ReadPosition, stringByteCount);
+            var stringValue = Encoding.GetString(_packet.Buffer, ReadPosition, stringByteCount);
             ReadPosition += stringByteCount;
             return stringValue;
         }
