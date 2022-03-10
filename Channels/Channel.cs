@@ -1,33 +1,10 @@
-using System;
-
 namespace Networking.Transport.Channels
 {
     /// <summary>
     /// Defines the way data is sent and received.
     /// </summary>
-    public abstract class Channel
+    internal abstract class Channel
     {
-        // TODO - Refactor this list of available channels into something more flexible.
-        /// <inheritdoc cref="UnreliableChannel"/>
-        public static readonly Channel Unreliable = new UnreliableChannel(null, null);
-
-        /// <inheritdoc cref="SequencedChannel"/>
-        public static readonly Channel Sequenced = new SequencedChannel(null, null);
-
-        /// <inheritdoc cref="ReliableChannel"/>
-        public static readonly Channel Reliable = new ReliableChannel(null, null);
-
-        /// <summary>
-        /// Uniquely identifies this channel. This value must not exceed
-        /// 15 as it is used as the left nibble in the header byte.
-        /// </summary>
-        public abstract byte Id { get; }
-
-        /// <summary>
-        /// Defines how many bytes are needed to store header information.
-        /// </summary>
-        public abstract int HeaderSizeInBytes { get; }
-
         /// <summary>
         /// Writes header information and sends given packet to the remote end-point.
         /// </summary>
@@ -43,19 +20,6 @@ namespace Networking.Transport.Channels
         /// but is also useful as a diagnostic tool to write warnings if ack is received on the unreliable channel.
         /// </summary>
         internal abstract void ReceiveAcknowledgement(byte[] datagram);
-
-        /// <summary>
-        /// Converts given raw bytes to a packet instance.
-        /// </summary>
-        protected Packet ConvertDatagramToPacket(byte[] datagram, int bytesReceived)
-        {
-            var packet = Packet.Get();
-            Array.Copy(datagram, packet.Buffer, bytesReceived);
-
-            // This is a packet that we receive, therefore only valid read position is important.
-            packet.Reader.ReadPosition = HeaderSizeInBytes;
-            return packet;
-        }
 
         /// <summary>
         /// Returns true if first sequence number is greater than the second. This method

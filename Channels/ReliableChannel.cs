@@ -4,20 +4,12 @@ using Networking.Transport.Nodes;
 
 namespace Networking.Transport.Channels
 {
-    /// <summary>
-    /// Each packet is guaranteed to be delivered (unless the connection is faulty), won't be duplicated and will arrive in order.
-    /// This is the most expensive delivery method as every packet needs to be acknowledged by the receiving end-point.
-    /// Any data that must be delivered and be in order should use this delivery method (example: chat messages).
-    /// </summary>
-    public class ReliableChannel : Channel
+    internal class ReliableChannel : Channel
     {
         private const int BufferSize = ushort.MaxValue + 1;
         private const int BitsInAckBitField = sizeof(int) * 8;
         private const int ResendDelayInMs = 1000;
         private const int MaxSendAttempts = 5;
-
-        public override byte Id => 2;
-        public override int HeaderSizeInBytes => 3;
 
         private readonly Node _node;
         private readonly EndPoint _remoteEndPoint;
@@ -81,7 +73,7 @@ namespace Networking.Transport.Channels
             var alreadyReceived = _receivedPackets[sequenceNumber].IsReceived;
             if (alreadyReceived) return;
 
-            _receivedPackets[sequenceNumber].Packet = ConvertDatagramToPacket(datagram, bytesReceived);
+            _receivedPackets[sequenceNumber].Packet = Packet.From(datagram, bytesReceived);
 
             while (_receivedPackets[_nextReceiveSequenceNumber].IsReceived)
             {
@@ -114,7 +106,7 @@ namespace Networking.Transport.Channels
                 if (wasReceived) acknowledgeBitField |= 1 << i;
             }
 
-            var packet = Packet.Get(HeaderType.Acknowledgement, channel: this);
+            var packet = Packet.Get(HeaderType.Acknowledgement, Delivery.Reliable);
             packet.Writer.Write(sequenceNumber);
             packet.Writer.Write(acknowledgeBitField);
             _node.Send(packet, _remoteEndPoint);

@@ -1,6 +1,6 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
-using Networking.Transport.Channels;
 
 namespace Networking.Transport
 {
@@ -29,7 +29,12 @@ namespace Networking.Transport
         /// </summary>
         private const int MaxBufferSize = EthernetMtu - MaxIPHeaderSize - UdpHeaderSize;
 
+        // TODO - Move to another spot as packet should not care about what encoding is used.
         public static readonly Encoding Encoding = Encoding.UTF8;
+
+        /// <summary>
+        /// Collection of reusable packet instances used to avoid frequent memory allocations.
+        /// </summary>
         private static readonly Queue<Packet> PacketPool = new();
 
         /// <summary>
@@ -39,30 +44,49 @@ namespace Networking.Transport
         /// </summary>
         public static int TotalAllocationCount { get; private set; }
 
+        /// <summary>
+        /// Defines how many bytes are needed to store header information for each delivery type.
+        /// </summary>
+        private static readonly int[] DeliveryHeaderSizes = new int[Enum.GetValues(typeof(Delivery)).Length];
+
+        static Packet()
+        {
+            DeliveryHeaderSizes[(int) Delivery.Unreliable] = 1;
+            DeliveryHeaderSizes[(int) Delivery.Sequenced] = 3;
+            DeliveryHeaderSizes[(int) Delivery.Reliable] = 3;
+        }
+
         public byte[] Buffer { get; set; }
         public PacketWriter Writer { get; }
         public PacketReader Reader { get; }
 
-        // TODO - Remove this overload and require developer to specify channel.
-        public static Packet Get(ushort id) => Get(id, Channel.Unreliable);
-
-        public static Packet Get(ushort id, Channel channel)
+        public static Packet Get(ushort id, Delivery delivery = Delivery.Unreliable)
         {
-            var packet = Get(HeaderType.Data, channel);
-            packet.Reader.ReadPosition = channel.HeaderSizeInBytes;
-            packet.Writer.WritePosition = channel.HeaderSizeInBytes;
+            var packet = Get(HeaderType.Data, delivery);
+            var headerSize = DeliveryHeaderSizes[(int) delivery];
+            packet.Reader.ReadPosition = headerSize;
+            packet.Writer.WritePosition = headerSize;
             packet.Writer.Write(id);
             return packet;
         }
 
-        internal static Packet Get(HeaderType headerType) => Get(headerType, Channel.Unreliable);
-
-        internal static Packet Get(HeaderType headerType, Channel channel)
+        internal static Packet Get(HeaderType headerType, Delivery delivery = Delivery.Unreliable)
         {
             var packet = Get();
-            var header = (int) headerType | channel.Id << 4;
+            var header = (int) headerType | (int) delivery << 4;
             packet.Writer.Write((byte) header);
             packet.Reader.ReadPosition = 1;
+            return packet;
+        }
+
+        internal static Packet From(byte[] datagram, int bytesReceived)
+        {
+            var packet = Get();
+            Array.Copy(datagram, packet.Buffer, bytesReceived);
+
+            var headerSize = DeliveryHeaderSizes[datagram[0] >> 4];
+            packet.Reader.ReadPosition = headerSize;
+            packet.Writer.WritePosition = headerSize;
             return packet;
         }
 
