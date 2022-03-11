@@ -1,3 +1,4 @@
+using System;
 using System.Net;
 using System.Threading.Tasks;
 using Networking.Transport.Nodes;
@@ -8,11 +9,12 @@ namespace Networking.Transport.Channels
     {
         private const int BufferSize = ushort.MaxValue + 1;
         private const int BitsInAckBitField = sizeof(int) * 8;
-        private const int ResendDelayInMs = 1000;
-        private const int MaxSendAttempts = 5;
+        private const int MinResendDelayInMs = 1;
+        private const int MaxSendAttempts = 16;
 
         private readonly Node _node;
         private readonly EndPoint _remoteEndPoint;
+        private readonly Connection _connection;
 
         private readonly SentPacket[] _sentPackets = new SentPacket[BufferSize];
         private readonly ReceivedPacket[] _receivedPackets = new ReceivedPacket[BufferSize];
@@ -21,10 +23,11 @@ namespace Networking.Transport.Channels
         private ushort _remoteSequenceNumber;
         private ushort _nextReceiveSequenceNumber;
 
-        public ReliableChannel(Node node, EndPoint remoteEndPoint)
+        public ReliableChannel(Node node, EndPoint remoteEndPoint, Connection connection)
         {
             _node = node;
             _remoteEndPoint = remoteEndPoint;
+            _connection = connection;
         }
 
         internal override void Send(Packet packet, bool returnPacketToPool = true)
@@ -47,7 +50,12 @@ namespace Networking.Transport.Channels
 
         private async void ResendPacketIfLostAsync(ushort sequenceNumber, int sendAttempts)
         {
-            await Task.Delay(millisecondsDelay: ResendDelayInMs);
+            var resendDelayDuration = _connection.Ping * 2;
+
+            if (resendDelayDuration.TotalMilliseconds < MinResendDelayInMs)
+                resendDelayDuration = TimeSpan.FromMilliseconds(MinResendDelayInMs);
+
+            await Task.Delay(resendDelayDuration);
 
             var sentPacket = _sentPackets[sequenceNumber];
             if (sentPacket.IsAcknowledged) return;

@@ -14,9 +14,9 @@ namespace Networking.Transport
     public class Connection
     {
         /// <summary>
-        /// Returns the most recently calculated round-trip time, in milliseconds.
+        /// Returns the most recently calculated round-trip time.
         /// </summary>
-        public long Ping { get; private set; }
+        public TimeSpan Ping { get; private set; }
 
         /// <summary>
         /// Underlying node that this connection belongs to.
@@ -56,7 +56,7 @@ namespace Networking.Transport
             {
                 new UnreliableChannel(node, remoteEndPoint),
                 new SequencedChannel(node, remoteEndPoint),
-                new ReliableChannel(node, remoteEndPoint)
+                new ReliableChannel(node, remoteEndPoint, connection: this)
             };
 
             _pingTimer = new Timer(_ => SendPing());
@@ -106,7 +106,7 @@ namespace Networking.Transport
         internal void ReceivePong(byte[] datagram)
         {
             var pongId = datagram.Read<ushort>(offset: 1);
-            if (pongId == _pingId) Ping = _pingStopwatch.ElapsedMilliseconds;
+            if (pongId == _pingId) Ping = _pingStopwatch.Elapsed;
         }
 
         internal void Close(bool sendDisconnectPacket)
