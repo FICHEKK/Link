@@ -9,24 +9,24 @@ namespace Networking.Transport
     public sealed class Packet
     {
         /// <summary>
+        /// Maximum packet size that will (most likely) not result in packet fragmentation.
+        /// </summary>
+        private const int MaxSize = EthernetMtu - MaxIpHeaderSize - UdpHeaderSize;
+
+        /// <summary>
         /// Maximum number of data bytes that can be transferred in a single Ethernet frame.
         /// </summary>
         private const int EthernetMtu = 1500;
 
         /// <summary>
-        /// Internet protocol maximum header size, in bytes.
+        /// Internet Protocol (IP) maximum header size, in bytes.
         /// </summary>
-        private const int MaxIPHeaderSize = 60;
+        private const int MaxIpHeaderSize = 60;
 
         /// <summary>
-        /// User Datagram Protocol header size, in bytes.
+        /// User Datagram Protocol (UDP) header size, in bytes.
         /// </summary>
         private const int UdpHeaderSize = 8;
-
-        /// <summary>
-        /// Maximum packet size that will not result in packet fragmentation.
-        /// </summary>
-        private const int MaxBufferSize = EthernetMtu - MaxIPHeaderSize - UdpHeaderSize;
 
         /// <summary>
         /// Collection of reusable packet instances used to avoid frequent memory allocations.
@@ -93,7 +93,7 @@ namespace Networking.Transport
                     return PacketPool.Dequeue();
 
             TotalAllocationCount++;
-            return new Packet(MaxBufferSize);
+            return new Packet(MaxSize);
         }
 
         private Packet(int size)

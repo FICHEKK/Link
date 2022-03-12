@@ -14,9 +14,9 @@ namespace Networking.Transport
     public class Connection
     {
         /// <summary>
-        /// Returns the most recently calculated round-trip time.
+        /// Returns the most recently calculated round-trip time, in milliseconds.
         /// </summary>
-        public TimeSpan Ping { get; private set; }
+        public double RoundTripTime { get; private set; }
 
         /// <summary>
         /// Underlying node that this connection belongs to.
@@ -106,7 +106,7 @@ namespace Networking.Transport
         internal void ReceivePong(byte[] datagram)
         {
             var pongId = datagram.Read<ushort>(offset: 1);
-            if (pongId == _pingId) Ping = _pingStopwatch.Elapsed;
+            if (pongId == _pingId) RoundTripTime = _pingStopwatch.Elapsed.TotalMilliseconds;
         }
 
         internal void Close(bool sendDisconnectPacket)

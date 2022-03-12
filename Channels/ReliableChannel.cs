@@ -1,27 +1,26 @@
-using System;
+using System.Collections.Generic;
 using System.Net;
-using System.Threading.Tasks;
 using Networking.Transport.Nodes;
 
 namespace Networking.Transport.Channels
 {
-    internal class ReliableChannel : Channel
+    internal class ReliableChannel : Channel, IReliableChannel
     {
         private const int BufferSize = ushort.MaxValue + 1;
         private const int BitsInAckBitField = sizeof(int) * 8;
-        private const int MinResendDelayInMs = 1;
-        private const int MaxSendAttempts = 16;
 
         private readonly Node _node;
         private readonly EndPoint _remoteEndPoint;
         private readonly Connection _connection;
 
-        private readonly SentPacket[] _sentPackets = new SentPacket[BufferSize];
+        private readonly Dictionary<ushort, PendingPacket> _sequenceNumberToPendingPacket = new();
         private readonly ReceivedPacket[] _receivedPackets = new ReceivedPacket[BufferSize];
 
         private ushort _localSequenceNumber;
         private ushort _remoteSequenceNumber;
         private ushort _nextReceiveSequenceNumber;
+
+        public double RoundTripTime => _connection.RoundTripTime;
 
         public ReliableChannel(Node node, EndPoint remoteEndPoint, Connection connection)
         {
@@ -32,44 +31,41 @@ namespace Networking.Transport.Channels
 
         internal override void Send(Packet packet, bool returnPacketToPool = true)
         {
-            if (!_sentPackets[_localSequenceNumber + 1].IsAcknowledged)
+            if (_sequenceNumberToPendingPacket.ContainsKey(_localSequenceNumber))
             {
-                // TODO - Add to queue of packets that need to be sent, or just disconnect?
-                Log.Warning("Send sequence buffer has been exhausted. Packet will not be sent.");
+                // TODO - Disconnect?
+                Log.Warning($"Pending packet with sequence number {_localSequenceNumber} already exists.");
                 packet.Return();
                 return;
             }
 
-            var sequenceNumber = _localSequenceNumber++;
-            packet.Buffer.Write(sequenceNumber, offset: 1);
-            _node.Send(packet, _remoteEndPoint, returnPacketToPool: false);
+            packet.Buffer.Write(_localSequenceNumber, offset: 1);
+            _sequenceNumberToPendingPacket[_localSequenceNumber++] = PendingPacket.Get(packet, reliableChannel: this);
 
-            _sentPackets[sequenceNumber].Packet = packet;
-            ResendPacketIfLostAsync(sequenceNumber, sendAttempts: 1);
+            _node.Send(packet, _remoteEndPoint, returnPacketToPool: false);
         }
 
-        private async void ResendPacketIfLostAsync(ushort sequenceNumber, int sendAttempts)
+        public void ResendPacket(Packet packet)
         {
-            var resendDelayDuration = _connection.Ping * 2;
+            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
 
-            if (resendDelayDuration.TotalMilliseconds < MinResendDelayInMs)
-                resendDelayDuration = TimeSpan.FromMilliseconds(MinResendDelayInMs);
-
-            await Task.Delay(resendDelayDuration);
-
-            var sentPacket = _sentPackets[sequenceNumber];
-            if (sentPacket.IsAcknowledged) return;
-
-            if (sendAttempts >= MaxSendAttempts)
+            if (!_sequenceNumberToPendingPacket.ContainsKey(sequenceNumber))
             {
-                Log.Warning($"Packet with sequence number {sequenceNumber} reached maximum send attempts.");
-                // TODO - Bad connection, disconnect client?
-                sentPacket.Packet.Return();
+                Log.Warning($"Cannot resend packet that is not pending (sequence number {sequenceNumber}).");
                 return;
             }
 
-            _node.Send(sentPacket.Packet, _remoteEndPoint, returnPacketToPool: false);
-            ResendPacketIfLostAsync(sequenceNumber, sendAttempts + 1);
+            _node.Send(packet, _remoteEndPoint, returnPacketToPool: false);
+        }
+
+        public void HandleLostPacket(Packet packet)
+        {
+            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
+
+            // TODO - Bad connection, disconnect?
+            Log.Warning($"Packet was lost as it exceeded maximum resend attempts (sequence number {sequenceNumber}).");
+
+            _sequenceNumberToPendingPacket.Remove(sequenceNumber);
         }
 
         internal override void Receive(byte[] datagram, int bytesReceived)
@@ -136,17 +132,10 @@ namespace Networking.Transport.Channels
 
         private void AcknowledgeSentPacket(ushort sequenceNumber)
         {
-            ref var sentPacket = ref _sentPackets[sequenceNumber];
-            if (sentPacket.IsAcknowledged) return;
+            if (!_sequenceNumberToPendingPacket.TryGetValue(sequenceNumber, out var pendingPacket)) return;
 
-            sentPacket.Packet.Return();
-            sentPacket.Packet = null;
-        }
-
-        private struct SentPacket
-        {
-            public bool IsAcknowledged => Packet is null;
-            public Packet Packet;
+            pendingPacket.Acknowledge();
+            _sequenceNumberToPendingPacket.Remove(sequenceNumber);
         }
 
         private struct ReceivedPacket
