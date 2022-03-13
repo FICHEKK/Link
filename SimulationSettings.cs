@@ -30,9 +30,16 @@ namespace Networking.Transport
         public int MinLatency
         {
             get => _minLatency;
-            set => _minLatency = value >= 0
-                ? value
-                : throw new ArgumentOutOfRangeException(nameof(MinLatency), "Min latency must be a non-negative value.");
+            set
+            {
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException(nameof(MinLatency), "Min latency must be a non-negative value.");
+
+                if (value > _maxLatency)
+                    throw new ArgumentOutOfRangeException(nameof(MinLatency), "Min latency cannot be greater than max latency.");
+
+                _minLatency = value;
+            }
         }
 
         /// <summary>
@@ -41,9 +48,16 @@ namespace Networking.Transport
         public int MaxLatency
         {
             get => _maxLatency;
-            set => _maxLatency = value >= 0
-                ? value
-                : throw new ArgumentOutOfRangeException(nameof(MaxLatency), "Max latency must be a non-negative value.");
+            set
+            {
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException(nameof(MaxLatency), "Max latency must be a non-negative value.");
+
+                if (value < _minLatency)
+                    throw new ArgumentOutOfRangeException(nameof(MaxLatency), "Max latency cannot be less than min latency.");
+
+                _maxLatency = value;
+            }
         }
     }
 }
