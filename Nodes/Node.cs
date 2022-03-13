@@ -69,10 +69,7 @@ namespace Networking.Transport.Nodes
 
                     var senderEndPoint = AnyEndPoint;
                     var bytesReceived = _socket.ReceiveFrom(_receiveBuffer, ref senderEndPoint);
-                    if (bytesReceived == 0) continue;
-
-                    if (SimulationSettings.PacketLoss > 0 && Random.NextDouble() < SimulationSettings.PacketLoss) continue;
-                    Receive(_receiveBuffer, bytesReceived, senderEndPoint);
+                    if (bytesReceived > 0) ReceiveAsync(bytesReceived, senderEndPoint);
                 }
                 catch (ObjectDisposedException)
                 {
@@ -99,6 +96,26 @@ namespace Networking.Transport.Nodes
             }
 
             Log.Info($"Stopping thread '{Thread.CurrentThread.Name}'...");
+        }
+
+        private async void ReceiveAsync(int bytesReceived, EndPoint senderEndPoint)
+        {
+            if (SimulationSettings.PacketLoss > 0 && Random.NextDouble() < SimulationSettings.PacketLoss) return;
+
+            if (SimulationSettings.MaxLatency == 0)
+            {
+                Receive(_receiveBuffer, bytesReceived, senderEndPoint);
+            }
+            else
+            {
+                // We need to copy receive buffer as it is going to get overwritten by new incoming packets.
+                // However, this is totally fine as this branch is only executing when using the simulation.
+                var receiveBufferCopy = new byte[bytesReceived];
+                Array.Copy(_receiveBuffer, receiveBufferCopy, bytesReceived);
+
+                await Task.Delay(Random.Next(SimulationSettings.MinLatency, SimulationSettings.MaxLatency + 1));
+                Receive(receiveBufferCopy, bytesReceived, senderEndPoint);
+            }
         }
 
         /// <summary>
@@ -142,13 +159,12 @@ namespace Networking.Transport.Nodes
         /// <summary>
         /// Enqueues a packet that will be handled in the next update loop.
         /// </summary>
-        internal async void EnqueuePendingPacket(Packet packet, EndPoint senderEndPoint)
+        internal void EnqueuePendingPacket(Packet packet, EndPoint senderEndPoint)
         {
-            if (SimulationSettings.MaxLatency > 0)
-                await Task.Delay(Random.Next(SimulationSettings.MinLatency, SimulationSettings.MaxLatency + 1));
-
             lock (_pendingPackets)
+            {
                 _pendingPackets.Enqueue((packet, senderEndPoint));
+            }
         }
 
         /// <summary>

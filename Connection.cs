@@ -26,6 +26,17 @@ namespace Networking.Transport
         private const int PingTimeout = 10_000;
 
         /// <summary>
+        /// Factor used to apply exponential smoothing in order to calculate
+        /// the value of <see cref="SmoothRoundTripTime"/>.
+        /// </summary>
+        private const double RttSmoothingFactor = 0.618;
+
+        /// <summary>
+        /// Returns round-trip time with applied exponential smoothing.
+        /// </summary>
+        public double SmoothRoundTripTime { get; private set; }
+
+        /// <summary>
         /// Returns the most recently calculated round-trip time, in milliseconds.
         /// </summary>
         public double RoundTripTime { get; private set; }
@@ -131,6 +142,8 @@ namespace Networking.Transport
             if (pongId != _pingId) return;
 
             RoundTripTime = _pingStopwatch.Elapsed.TotalMilliseconds;
+            SmoothRoundTripTime = RttSmoothingFactor * RoundTripTime + (1 - RttSmoothingFactor) * SmoothRoundTripTime;
+
             _lastPingResponseTime = DateTime.UtcNow;
         }
 
