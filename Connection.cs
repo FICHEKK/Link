@@ -4,6 +4,7 @@ using System.Net;
 using System.Threading;
 using Networking.Transport.Channels;
 using Networking.Transport.Nodes;
+using static System.Threading.Timeout;
 
 namespace Networking.Transport
 {
@@ -13,6 +14,17 @@ namespace Networking.Transport
     /// </summary>
     public class Connection
     {
+        /// <summary>
+        /// Duration between two consecutive ping packets, in milliseconds.
+        /// </summary>
+        private const int PingPeriod = 1000;
+
+        /// <summary>
+        /// If valid ping response is not received for this duration of time
+        /// (in milliseconds), connection is going to time-out.
+        /// </summary>
+        private const int PingTimeout = 10_000;
+
         /// <summary>
         /// Returns the most recently calculated round-trip time, in milliseconds.
         /// </summary>
@@ -38,13 +50,15 @@ namespace Networking.Transport
             internal set
             {
                 _isConnected = value;
-                var dueTime = _isConnected ? 0 : Timeout.Infinite;
-                var period = _isConnected ? 1000 : Timeout.Infinite;
+                var dueTime = _isConnected ? 0 : Infinite;
+                var period = _isConnected ? PingPeriod : Infinite;
                 _pingTimer.Change(dueTime, period);
             }
         }
 
         private bool _isConnected;
+        private DateTime _lastPingResponseTime;
+
         private ushort _pingId;
         private readonly Timer _pingTimer;
         private readonly Stopwatch _pingStopwatch = new();
@@ -60,6 +74,7 @@ namespace Networking.Transport
             };
 
             _pingTimer = new Timer(_ => SendPing());
+            _lastPingResponseTime = DateTime.UtcNow;
 
             Node = node;
             RemoteEndPoint = remoteEndPoint;
@@ -89,6 +104,13 @@ namespace Networking.Transport
 
         private void SendPing()
         {
+            if ((DateTime.UtcNow - _lastPingResponseTime).TotalMilliseconds > PingTimeout)
+            {
+                Timeout();
+                Log.Info($"Connection timed-out: Ping response was not received in over {PingTimeout} ms.");
+                return;
+            }
+
             var pingPacket = Packet.Get(HeaderType.Ping);
             pingPacket.Writer.Write(++_pingId);
             Node.Send(pingPacket, RemoteEndPoint);
@@ -106,7 +128,10 @@ namespace Networking.Transport
         internal void ReceivePong(byte[] datagram)
         {
             var pongId = datagram.Read<ushort>(offset: 1);
-            if (pongId == _pingId) RoundTripTime = _pingStopwatch.Elapsed.TotalMilliseconds;
+            if (pongId != _pingId) return;
+
+            RoundTripTime = _pingStopwatch.Elapsed.TotalMilliseconds;
+            _lastPingResponseTime = DateTime.UtcNow;
         }
 
         internal void Close(bool sendDisconnectPacket)
@@ -116,5 +141,12 @@ namespace Networking.Transport
 
             _pingTimer.Dispose();
         }
+
+        /// <summary>
+        /// Called each time connection gets timed-out. This could happen for multiple
+        /// reasons, such as not receiving valid ping response for an extended period
+        /// of time, or an external component detected faulty connection.
+        /// </summary>
+        internal void Timeout() => Node.Timeout(connection: this);
     }
 }

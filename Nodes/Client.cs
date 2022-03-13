@@ -53,7 +53,13 @@ namespace Networking.Transport.Nodes
 
         protected override void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
-            if (Connection is null || !Connection.RemoteEndPoint.Equals(senderEndPoint))
+            if (Connection is null)
+            {
+                Log.Warning("Cannot receive on client with no server connection.");
+                return;
+            }
+
+            if (!Connection.RemoteEndPoint.Equals(senderEndPoint))
             {
                 Log.Warning("Malicious packet: Packet end-point does not match server end-point.");
                 return;
@@ -83,9 +89,7 @@ namespace Networking.Transport.Nodes
                     return;
 
                 case HeaderType.Disconnect:
-                    Connection.Close(sendDisconnectPacket: false);
-                    Connection = null;
-                    ExecuteOnMainThread(() => OnDisconnectedFromServer?.Invoke());
+                    Disconnect(sendDisconnectPacket: false);
                     return;
 
                 default:
@@ -93,6 +97,9 @@ namespace Networking.Transport.Nodes
                     return;
             }
         }
+
+        internal override void Timeout(Connection connection) =>
+            Disconnect(sendDisconnectPacket: false);
 
         /// <summary>
         /// Sends a packet to the server.
@@ -107,13 +114,13 @@ namespace Networking.Transport.Nodes
         /// <summary>
         /// Disconnects from the server and stops listening for incoming packets.
         /// </summary>
-        public void Disconnect()
+        public void Disconnect(bool sendDisconnectPacket = true)
         {
             if (Connection is not null)
             {
-                Connection.Close(sendDisconnectPacket: true);
+                Connection.Close(sendDisconnectPacket);
                 Connection = null;
-                OnDisconnectedFromServer?.Invoke();
+                ExecuteOnMainThread(() => OnDisconnectedFromServer?.Invoke());
             }
 
             StopListening();

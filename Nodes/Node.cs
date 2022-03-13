@@ -111,6 +111,12 @@ namespace Networking.Transport.Nodes
         protected abstract void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint);
 
         /// <summary>
+        /// Handles the case of connection getting timed-out.
+        /// </summary>
+        /// <param name="connection">Connection that timed-out.</param>
+        internal abstract void Timeout(Connection connection);
+
+        /// <summary>
         /// Sends outgoing packet to the specified end-point.
         /// </summary>
         /// <param name="packet">Packet being sent.</param>

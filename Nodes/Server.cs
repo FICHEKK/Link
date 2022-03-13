@@ -91,6 +91,17 @@ namespace Networking.Transport.Nodes
             }
         }
 
+        internal override void Timeout(Connection connection)
+        {
+            var clientEndPoint = connection.RemoteEndPoint;
+            if (!_connections.Remove(clientEndPoint)) return;
+
+            Log.Info($"Client from {clientEndPoint} timed-out.");
+
+            connection.Close(sendDisconnectPacket: false);
+            ExecuteOnMainThread(() => OnClientDisconnected?.Invoke(connection));
+        }
+
         private void HandleConnectPacket(EndPoint senderEndPoint)
         {
             Log.Info($"Client from {senderEndPoint} is trying to connect...");

@@ -60,12 +60,8 @@ namespace Networking.Transport.Channels
 
         public void HandleLostPacket(Packet packet)
         {
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
-
-            // TODO - Bad connection, disconnect?
-            Log.Warning($"Packet was lost as it exceeded maximum resend attempts (sequence number {sequenceNumber}).");
-
-            _sequenceNumberToPendingPacket.Remove(sequenceNumber);
+            _connection.Timeout();
+            Log.Info("Connection timed-out: Packet exceeded maximum resend attempts.");
         }
 
         internal override void Receive(byte[] datagram, int bytesReceived)
