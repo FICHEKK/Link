@@ -21,6 +21,14 @@ namespace Networking.Transport.Channels
         private const int MaxResendAttempts = 15;
 
         /// <summary>
+        /// Time between each consecutive resend is going to get increased by this factor.
+        /// Sometimes connection can have a sudden burst of packet loss and trying to
+        /// rapidly resend packets is not going to ensure it gets thorough. Waiting for
+        /// more and more time gives connection time to stabilize itself.
+        /// </summary>
+        private const double BackoffFactor = 1.2;
+
+        /// <summary>
         /// Collection of reusable pending packet instances used to avoid frequent memory allocations.
         /// </summary>
         private static readonly Queue<PendingPacket> PendingPacketPool = new();
@@ -31,12 +39,16 @@ namespace Networking.Transport.Channels
         private Packet _packet;
         private IReliableChannel _reliableChannel;
         private int _resendAttempts;
+        private double _backoff;
 
         public static PendingPacket Get(Packet packet, IReliableChannel reliableChannel)
         {
             var pendingPacket = Get();
             pendingPacket._packet = packet;
             pendingPacket._reliableChannel = reliableChannel;
+            pendingPacket._resendAttempts = 0;
+            pendingPacket._backoff = 1;
+
             pendingPacket.ScheduleResend();
             return pendingPacket;
         }
@@ -77,7 +89,8 @@ namespace Networking.Transport.Channels
 
         private void ScheduleResend()
         {
-            var resendDelayDuration = (int) (_reliableChannel.RoundTripTime * 2);
+            var resendDelayDuration = (int) (2 * _reliableChannel.RoundTripTime * _backoff);
+            _backoff *= BackoffFactor;
 
             if (resendDelayDuration < MinResendDelay)
                 resendDelayDuration = MinResendDelay;
@@ -97,9 +110,9 @@ namespace Networking.Transport.Channels
                 _resendTimer.Change(dueTime: Timeout.Infinite, period: Timeout.Infinite);
                 _packet.Return();
 
+                // Lose references so they can be garbage collected.
                 _packet = null;
                 _reliableChannel = null;
-                _resendAttempts = 0;
 
                 lock (PendingPacketPool) PendingPacketPool.Enqueue(this);
             }
