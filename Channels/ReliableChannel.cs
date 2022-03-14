@@ -29,41 +29,44 @@ namespace Networking.Transport.Channels
             _connection = connection;
         }
 
+        // Executed on: Main thread
         internal override void Send(Packet packet, bool returnPacketToPool = true)
         {
-            if (_sequenceNumberToPendingPacket.ContainsKey(_localSequenceNumber))
+            lock (_sequenceNumberToPendingPacket)
             {
-                // TODO - Disconnect?
-                Log.Warning($"Pending packet with sequence number {_localSequenceNumber} already exists.");
-                packet.Return();
-                return;
-            }
+                if (_sequenceNumberToPendingPacket.ContainsKey(_localSequenceNumber))
+                {
+                    _connection.Timeout();
+                    Log.Error($"Connection was forcefully timed-out: Pending packet with sequence number {_localSequenceNumber} already exists.");
+                    return;
+                }
 
-            packet.Buffer.Write(_localSequenceNumber, offset: 1);
-            _sequenceNumberToPendingPacket[_localSequenceNumber++] = PendingPacket.Get(packet, reliableChannel: this);
+                packet.Buffer.Write(_localSequenceNumber, offset: 1);
+                _sequenceNumberToPendingPacket.Add(_localSequenceNumber++, PendingPacket.Get(packet, reliableChannel: this));
+            }
 
             _node.Send(packet, _remoteEndPoint, returnPacketToPool: false);
         }
 
+        // Executed on: Worker thread
         public void ResendPacket(Packet packet)
         {
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
-
-            if (!_sequenceNumberToPendingPacket.ContainsKey(sequenceNumber))
-            {
-                Log.Warning($"Cannot resend packet that is not pending (sequence number {sequenceNumber}).");
-                return;
-            }
-
             _node.Send(packet, _remoteEndPoint, returnPacketToPool: false);
+
+            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
+            Log.Info($"Re-sent packet {sequenceNumber}.");
         }
 
+        // Executed on: Worker thread
         public void HandleLostPacket(Packet packet)
         {
             _connection.Timeout();
-            Log.Info("Connection timed-out: Packet exceeded maximum resend attempts.");
+
+            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
+            Log.Info($"Connection timed-out: Packet {sequenceNumber} exceeded maximum resend attempts.");
         }
 
+        // Executed on: Receive thread
         internal override void Receive(byte[] datagram, int bytesReceived)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: 1);
@@ -82,6 +85,7 @@ namespace Networking.Transport.Channels
             }
         }
 
+        // Executed on: Receive thread
         private void UpdateRemoteSequenceNumber(ushort sequenceNumber)
         {
             if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber)) return;
@@ -96,6 +100,7 @@ namespace Networking.Transport.Channels
             _remoteSequenceNumber = sequenceNumber;
         }
 
+        // Executed on: Receive thread
         private void SendAcknowledgement(ushort sequenceNumber)
         {
             var acknowledgeBitField = 0;
@@ -112,26 +117,30 @@ namespace Networking.Transport.Channels
             _node.Send(packet, _remoteEndPoint);
         }
 
+        // Executed on: Receive thread
         internal override void ReceiveAcknowledgement(byte[] datagram)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: 1);
             var acknowledgeBitField = datagram.Read<int>(offset: 3);
 
-            AcknowledgeSentPacket(sequenceNumber);
-
-            for (var i = 0; i < BitsInAckBitField; i++)
+            lock (_sequenceNumberToPendingPacket)
             {
-                var isAcknowledged = (acknowledgeBitField & (1 << i)) != 0;
-                if (isAcknowledged) AcknowledgeSentPacket((ushort) (sequenceNumber - i - 1));
+                AcknowledgePendingPacket(sequenceNumber);
+
+                for (var i = 0; i < BitsInAckBitField; i++)
+                {
+                    var isAcknowledged = (acknowledgeBitField & (1 << i)) != 0;
+                    if (isAcknowledged) AcknowledgePendingPacket((ushort) (sequenceNumber - i - 1));
+                }
             }
-        }
 
-        private void AcknowledgeSentPacket(ushort sequenceNumber)
-        {
-            if (!_sequenceNumberToPendingPacket.TryGetValue(sequenceNumber, out var pendingPacket)) return;
+            void AcknowledgePendingPacket(ushort seq)
+            {
+                if (!_sequenceNumberToPendingPacket.TryGetValue(seq, out var pendingPacket)) return;
 
-            pendingPacket.Acknowledge();
-            _sequenceNumberToPendingPacket.Remove(sequenceNumber);
+                pendingPacket.Acknowledge();
+                _sequenceNumberToPendingPacket.Remove(seq);
+            }
         }
 
         private struct ReceivedPacket
