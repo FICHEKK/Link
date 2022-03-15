@@ -55,6 +55,7 @@ namespace Networking.Transport
         public byte[] Buffer { get; set; }
         public PacketWriter Writer { get; }
         public PacketReader Reader { get; }
+        private bool IsInPool { get; set; }
 
         public static Packet Get(ushort id, Delivery delivery = Delivery.Unreliable)
         {
@@ -89,8 +90,16 @@ namespace Networking.Transport
         public static Packet Get()
         {
             lock (PacketPool)
+            {
                 if (PacketPool.Count > 0)
-                    return PacketPool.Dequeue();
+                {
+                    var packet = PacketPool.Dequeue();
+                    packet.Writer.WritePosition = 0;
+                    packet.Reader.ReadPosition = 0;
+                    packet.IsInPool = false;
+                    return packet;
+                }
+            }
 
             TotalAllocationCount++;
             return new Packet(MaxSize);
@@ -105,10 +114,17 @@ namespace Networking.Transport
 
         public void Return()
         {
-            Writer.WritePosition = 0;
-            Reader.ReadPosition = 0;
+            lock (PacketPool)
+            {
+                if (IsInPool)
+                {
+                    Log.Error("Attempt was made to return a packet that is already in pool.");
+                    return;
+                }
 
-            lock (PacketPool) PacketPool.Enqueue(this);
+                PacketPool.Enqueue(this);
+                IsInPool = true;
+            }
         }
     }
 }
