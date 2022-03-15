@@ -1,26 +1,18 @@
-using System.Net;
-using Networking.Transport.Nodes;
-
 namespace Networking.Transport.Channels
 {
-    internal class SequencedChannel : Channel
+    public class SequencedChannel : Channel
     {
-        private readonly Node _node;
-        private readonly EndPoint _remoteEndPoint;
-
+        private readonly Connection _connection;
         private ushort _localSequenceNumber;
         private ushort _remoteSequenceNumber;
 
-        public SequencedChannel(Node node, EndPoint remoteEndPoint)
-        {
-            _node = node;
-            _remoteEndPoint = remoteEndPoint;
-        }
+        public SequencedChannel(Connection connection) =>
+            _connection = connection;
 
         internal override void Send(Packet packet, bool returnPacketToPool = true)
         {
             packet.Buffer.Write(++_localSequenceNumber, offset: 1);
-            _node.Send(packet, _remoteEndPoint, returnPacketToPool);
+            _connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool);
         }
 
         internal override void Receive(byte[] datagram, int bytesReceived)
@@ -29,7 +21,7 @@ namespace Networking.Transport.Channels
             if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber)) return;
 
             _remoteSequenceNumber = sequenceNumber;
-            _node.EnqueuePendingPacket(Packet.From(datagram, bytesReceived), _remoteEndPoint);
+            _connection.Node.EnqueuePendingPacket(Packet.From(datagram, bytesReceived), _connection.RemoteEndPoint);
         }
 
         internal override void ReceiveAcknowledgement(byte[] datagram) =>

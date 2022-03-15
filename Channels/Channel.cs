@@ -3,7 +3,7 @@ namespace Networking.Transport.Channels
     /// <summary>
     /// Defines the way data is sent and received.
     /// </summary>
-    internal abstract class Channel
+    public abstract class Channel
     {
         /// <summary>
         /// Writes header information and sends given packet to the remote end-point.

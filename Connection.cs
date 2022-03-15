@@ -79,9 +79,9 @@ namespace Networking.Transport
         {
             _channels = new Channel[]
             {
-                new UnreliableChannel(node, remoteEndPoint),
-                new SequencedChannel(node, remoteEndPoint),
-                new ReliableChannel(node, remoteEndPoint, connection: this)
+                new UnreliableChannel(connection: this),
+                new SequencedChannel(connection: this),
+                new ReliableChannel(connection: this)
             };
 
             _pingTimer = new Timer(_ => SendPing());

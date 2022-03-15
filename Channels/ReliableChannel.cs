@@ -1,18 +1,13 @@
 using System.Collections.Generic;
-using System.Net;
-using Networking.Transport.Nodes;
 
 namespace Networking.Transport.Channels
 {
-    internal class ReliableChannel : Channel, IReliableChannel
+    public class ReliableChannel : Channel, IReliableChannel
     {
         private const int BufferSize = ushort.MaxValue + 1;
         private const int BitsInAckBitField = sizeof(int) * 8;
 
-        private readonly Node _node;
-        private readonly EndPoint _remoteEndPoint;
         private readonly Connection _connection;
-
         private readonly Dictionary<ushort, PendingPacket> _sequenceNumberToPendingPacket = new();
         private readonly ReceivedPacket[] _receivedPackets = new ReceivedPacket[BufferSize];
 
@@ -22,12 +17,8 @@ namespace Networking.Transport.Channels
 
         public double RoundTripTime => _connection.RoundTripTime;
 
-        public ReliableChannel(Node node, EndPoint remoteEndPoint, Connection connection)
-        {
-            _node = node;
-            _remoteEndPoint = remoteEndPoint;
+        public ReliableChannel(Connection connection) =>
             _connection = connection;
-        }
 
         // Executed on: Main thread
         internal override void Send(Packet packet, bool returnPacketToPool = true)
@@ -45,13 +36,13 @@ namespace Networking.Transport.Channels
                 _sequenceNumberToPendingPacket.Add(_localSequenceNumber++, PendingPacket.Get(packet, reliableChannel: this));
             }
 
-            _node.Send(packet, _remoteEndPoint, returnPacketToPool: false);
+            _connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool: false);
         }
 
         // Executed on: Worker thread
         public void ResendPacket(Packet packet)
         {
-            _node.Send(packet, _remoteEndPoint, returnPacketToPool: false);
+            _connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool: false);
 
             var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
             Log.Info($"Re-sent packet {sequenceNumber}.");
@@ -80,7 +71,7 @@ namespace Networking.Transport.Channels
 
             while (_receivedPackets[_nextReceiveSequenceNumber].IsReceived)
             {
-                _node.EnqueuePendingPacket(_receivedPackets[_nextReceiveSequenceNumber].Packet, _remoteEndPoint);
+                _connection.Node.EnqueuePendingPacket(_receivedPackets[_nextReceiveSequenceNumber].Packet, _connection.RemoteEndPoint);
                 _nextReceiveSequenceNumber++;
             }
         }
@@ -114,7 +105,7 @@ namespace Networking.Transport.Channels
             var packet = Packet.Get(HeaderType.Acknowledgement, Delivery.Reliable);
             packet.Writer.Write(sequenceNumber);
             packet.Writer.Write(acknowledgeBitField);
-            _node.Send(packet, _remoteEndPoint);
+            _connection.Node.Send(packet, _connection.RemoteEndPoint);
         }
 
         // Executed on: Receive thread
