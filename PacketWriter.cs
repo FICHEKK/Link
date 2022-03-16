@@ -7,7 +7,7 @@ namespace Networking.Transport
     {
         private static readonly Encoding Encoding = Encoding.UTF8;
 
-        public int WritePosition { get; set; }
+        public int Position { get; set; }
         private readonly Packet _packet;
 
         public PacketWriter(Packet packet) =>
@@ -19,17 +19,17 @@ namespace Networking.Transport
         public unsafe void Write<T>(T value) where T : unmanaged
         {
             var bytesToWrite = sizeof(T);
-            EnsureBufferSize(requiredBufferSize: WritePosition + bytesToWrite);
-            _packet.Buffer.Write(value, WritePosition);
-            WritePosition += bytesToWrite;
+            EnsureBufferSize(requiredBufferSize: Position + bytesToWrite);
+            _packet.Buffer.Write(value, Position);
+            Position += bytesToWrite;
         }
 
         public unsafe void WriteArray<T>(T[] array) where T : unmanaged
         {
             var bytesToWrite = sizeof(int) + array.Length * sizeof(T);
-            EnsureBufferSize(requiredBufferSize: WritePosition + bytesToWrite);
-            _packet.Buffer.WriteArray(array, WritePosition);
-            WritePosition += bytesToWrite;
+            EnsureBufferSize(requiredBufferSize: Position + bytesToWrite);
+            _packet.Buffer.WriteArray(array, Position);
+            Position += bytesToWrite;
         }
 
         private void EnsureBufferSize(int requiredBufferSize)
@@ -38,7 +38,7 @@ namespace Networking.Transport
             if (currentBuffer.Length >= requiredBufferSize) return;
 
             var expandedBuffer = new byte[Math.Max(currentBuffer.Length * 2, requiredBufferSize)];
-            Array.Copy(currentBuffer, expandedBuffer, WritePosition);
+            Array.Copy(currentBuffer, expandedBuffer, Position);
             _packet.Buffer = expandedBuffer;
         }
     }

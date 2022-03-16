@@ -141,7 +141,7 @@ namespace Networking.Transport.Nodes
         /// <param name="returnPacketToPool">Whether given packet should be returned to pool after sending.</param>
         public void Send(Packet packet, EndPoint receiverEndPoint, bool returnPacketToPool = true)
         {
-            _socket.SendTo(packet.Buffer, offset: 0, size: packet.Writer.WritePosition, SocketFlags.None, receiverEndPoint);
+            _socket.SendTo(packet.Buffer, offset: 0, size: packet.Writer.Position, SocketFlags.None, receiverEndPoint);
             if (returnPacketToPool) packet.Return();
         }
 

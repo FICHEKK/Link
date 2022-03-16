@@ -6,7 +6,7 @@ namespace Networking.Transport
     {
         private static readonly Encoding Encoding = Encoding.UTF8;
 
-        public int ReadPosition { get; set; }
+        public int Position { get; set; }
         private readonly Packet _packet;
 
         public PacketReader(Packet packet) =>
@@ -15,22 +15,22 @@ namespace Networking.Transport
         public string ReadString()
         {
             var stringByteCount = Read<int>();
-            var stringValue = Encoding.GetString(_packet.Buffer, ReadPosition, stringByteCount);
-            ReadPosition += stringByteCount;
+            var stringValue = Encoding.GetString(_packet.Buffer, Position, stringByteCount);
+            Position += stringByteCount;
             return stringValue;
         }
 
         public unsafe T Read<T>() where T : unmanaged
         {
-            var value = _packet.Buffer.Read<T>(ReadPosition);
-            ReadPosition += sizeof(T);
+            var value = _packet.Buffer.Read<T>(Position);
+            Position += sizeof(T);
             return value;
         }
 
         public unsafe T[] ReadArray<T>() where T : unmanaged
         {
-            var array = _packet.Buffer.ReadArray<T>(ReadPosition);
-            ReadPosition += sizeof(int) + array.Length * sizeof(T);
+            var array = _packet.Buffer.ReadArray<T>(Position);
+            Position += sizeof(int) + array.Length * sizeof(T);
             return array;
         }
     }

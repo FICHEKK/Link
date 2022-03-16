@@ -61,8 +61,8 @@ namespace Networking.Transport
         {
             var packet = Get(HeaderType.Data, delivery);
             var headerSize = DeliveryHeaderSizes[(int) delivery];
-            packet.Reader.ReadPosition = headerSize;
-            packet.Writer.WritePosition = headerSize;
+            packet.Reader.Position = headerSize;
+            packet.Writer.Position = headerSize;
             packet.Writer.Write(id);
             return packet;
         }
@@ -72,7 +72,7 @@ namespace Networking.Transport
             var packet = Get();
             var header = (int) headerType | (int) delivery << 4;
             packet.Writer.Write((byte) header);
-            packet.Reader.ReadPosition = 1;
+            packet.Reader.Position = 1;
             return packet;
         }
 
@@ -82,18 +82,18 @@ namespace Networking.Transport
             Array.Copy(datagram, packet.Buffer, bytesReceived);
 
             var headerSize = DeliveryHeaderSizes[datagram[0] >> 4];
-            packet.Reader.ReadPosition = headerSize;
-            packet.Writer.WritePosition = headerSize;
+            packet.Reader.Position = headerSize;
+            packet.Writer.Position = headerSize;
             return packet;
         }
 
         internal static Packet Copy(Packet packet)
         {
             var packetCopy = Get();
-            Array.Copy(packet.Buffer, packetCopy.Buffer, length: packet.Writer.WritePosition);
+            Array.Copy(packet.Buffer, packetCopy.Buffer, length: packet.Writer.Position);
 
-            packetCopy.Writer.WritePosition = packet.Writer.WritePosition;
-            packetCopy.Reader.ReadPosition = packet.Reader.ReadPosition;
+            packetCopy.Writer.Position = packet.Writer.Position;
+            packetCopy.Reader.Position = packet.Reader.Position;
             return packetCopy;
         }
 
@@ -104,8 +104,8 @@ namespace Networking.Transport
                 if (PacketPool.Count > 0)
                 {
                     var packet = PacketPool.Dequeue();
-                    packet.Writer.WritePosition = 0;
-                    packet.Reader.ReadPosition = 0;
+                    packet.Writer.Position = 0;
+                    packet.Reader.Position = 0;
                     packet.IsInPool = false;
                     return packet;
                 }
