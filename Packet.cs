@@ -9,9 +9,11 @@ namespace Networking.Transport
     public sealed class Packet
     {
         /// <summary>
-        /// Maximum packet size that will (most likely) not result in packet fragmentation.
+        /// Maximum allowed packet size, in bytes. This value is chosen in order to avoid fragmentation
+        /// on the network layer. Any packets that require bigger size must use a fragmented channel
+        /// which will perform fragmentation and reassembly on the application layer.
         /// </summary>
-        private const int MaxSize = EthernetMtu - MaxIpHeaderSize - UdpHeaderSize;
+        public const int MaxSize = EthernetMtu - MaxIpHeaderSize - UdpHeaderSize;
 
         /// <summary>
         /// Maximum number of data bytes that can be transferred in a single Ethernet frame.

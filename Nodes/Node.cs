@@ -36,7 +36,7 @@ namespace Networking.Transport.Nodes
         private readonly Dictionary<ushort, Action<PacketReader, EndPoint>> _packetIdToPacketHandler = new();
         private readonly Queue<(Packet packet, EndPoint senderEndPoint)> _pendingPackets = new();
         private readonly Queue<Action> _mainThreadActions = new();
-        private readonly byte[] _receiveBuffer = new byte[4096];
+        private readonly byte[] _receiveBuffer = new byte[Packet.MaxSize];
         private Socket _socket;
 
         /// <summary>
@@ -138,11 +138,24 @@ namespace Networking.Transport.Nodes
         /// </summary>
         /// <param name="packet">Packet being sent.</param>
         /// <param name="receiverEndPoint">Where to send the packet to.</param>
-        /// <param name="returnPacketToPool">Whether given packet should be returned to pool after sending.</param>
-        public void Send(Packet packet, EndPoint receiverEndPoint, bool returnPacketToPool = true)
+        /// <param name="returnPacketToPool">Whether given packet should be returned to pool.</param>
+        /// <returns><c>true</c> if packet was successfully sent, <c>false</c> otherwise.</returns>
+        public bool Send(Packet packet, EndPoint receiverEndPoint, bool returnPacketToPool = true)
         {
-            _socket.SendTo(packet.Buffer, offset: 0, size: packet.Writer.Position, SocketFlags.None, receiverEndPoint);
+            var packetSize = packet.Writer.Position;
+            var isInRange = packetSize <= Packet.MaxSize;
+
+            if (isInRange)
+            {
+                _socket.SendTo(packet.Buffer, offset: 0, packetSize, SocketFlags.None, receiverEndPoint);
+            }
+            else
+            {
+                Log.Error($"Packet exceeded maximum size of {Packet.MaxSize} bytes (has {packetSize} bytes).");
+            }
+
             if (returnPacketToPool) packet.Return();
+            return isInRange;
         }
 
         /// <summary>

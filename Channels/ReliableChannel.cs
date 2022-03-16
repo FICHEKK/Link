@@ -23,6 +23,9 @@ namespace Networking.Transport.Channels
         // Executed on: Main thread
         internal override void Send(Packet packet, bool returnPacketToPool = true)
         {
+            packet.Buffer.Write(_localSequenceNumber, offset: 1);
+            if (!_connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool)) return;
+
             lock (_sequenceNumberToPendingPacket)
             {
                 if (_sequenceNumberToPendingPacket.ContainsKey(_localSequenceNumber))
@@ -32,11 +35,8 @@ namespace Networking.Transport.Channels
                     return;
                 }
 
-                packet.Buffer.Write(_localSequenceNumber, offset: 1);
                 _sequenceNumberToPendingPacket.Add(_localSequenceNumber++, PendingPacket.Get(packet, reliableChannel: this));
             }
-
-            _connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool);
         }
 
         // Executed on: Receive thread
