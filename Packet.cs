@@ -87,6 +87,16 @@ namespace Networking.Transport
             return packet;
         }
 
+        internal static Packet Copy(Packet packet)
+        {
+            var packetCopy = Get();
+            Array.Copy(packet.Buffer, packetCopy.Buffer, length: packet.Writer.WritePosition);
+
+            packetCopy.Writer.WritePosition = packet.Writer.WritePosition;
+            packetCopy.Reader.ReadPosition = packet.Reader.ReadPosition;
+            return packetCopy;
+        }
+
         public static Packet Get()
         {
             lock (PacketPool)

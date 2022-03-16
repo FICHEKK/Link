@@ -36,25 +36,7 @@ namespace Networking.Transport.Channels
                 _sequenceNumberToPendingPacket.Add(_localSequenceNumber++, PendingPacket.Get(packet, reliableChannel: this));
             }
 
-            _connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool: false);
-        }
-
-        // Executed on: Worker thread
-        public void ResendPacket(Packet packet)
-        {
-            _connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool: false);
-
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
-            Log.Info($"Re-sent packet {sequenceNumber}.");
-        }
-
-        // Executed on: Worker thread
-        public void HandleLostPacket(Packet packet)
-        {
-            _connection.Timeout();
-
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
-            Log.Info($"Connection timed-out: Packet {sequenceNumber} exceeded maximum resend attempts.");
+            _connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool);
         }
 
         // Executed on: Receive thread
@@ -132,6 +114,24 @@ namespace Networking.Transport.Channels
                 pendingPacket.Acknowledge();
                 _sequenceNumberToPendingPacket.Remove(seq);
             }
+        }
+
+        // Executed on: Worker thread
+        public void ResendPacket(Packet packet)
+        {
+            _connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool: false);
+
+            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
+            Log.Info($"Re-sent packet {sequenceNumber}.");
+        }
+
+        // Executed on: Worker thread
+        public void HandleLostPacket(Packet packet)
+        {
+            _connection.Timeout();
+
+            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
+            Log.Info($"Connection timed-out: Packet {sequenceNumber} exceeded maximum resend attempts.");
         }
 
         private struct ReceivedPacket

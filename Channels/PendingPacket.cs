@@ -43,8 +43,11 @@ namespace Networking.Transport.Channels
 
         public static PendingPacket Get(Packet packet, IReliableChannel reliableChannel)
         {
+            // It is crucial to make a copy of provided packet for multiple reasons:
+            // 1. If same packet is sent to multiple end-points, it would get returned multiple times.
+            // 2. We can immediately return original packet to pool as usual, making logic consistent.
             var pendingPacket = Get();
-            pendingPacket._packet = packet;
+            pendingPacket._packet = Packet.Copy(packet);
             pendingPacket._reliableChannel = reliableChannel;
             pendingPacket._resendAttempts = 0;
             pendingPacket._backoff = 1;
