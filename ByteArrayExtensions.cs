@@ -1,3 +1,5 @@
+using System;
+
 namespace Networking.Transport
 {
     /// <summary>
@@ -13,16 +15,19 @@ namespace Networking.Transport
             }
         }
 
-        public static unsafe void WriteArray<T>(this byte[] bytes, T[] array, int offset) where T : unmanaged
+        public static void WriteArray<T>(this byte[] bytes, T[] array, int offset) where T : unmanaged
         {
             bytes.Write(array.Length, offset);
-            offset += sizeof(int);
+            bytes.WriteSpan(new ReadOnlySpan<T>(array), offset + sizeof(int));
+        }
 
+        public static unsafe void WriteSpan<T>(this byte[] bytes, ReadOnlySpan<T> span, int offset) where T : unmanaged
+        {
             fixed (byte* pointer = &bytes[offset])
             {
                 var typedPointer = (T*) pointer;
 
-                foreach (var value in array)
+                foreach (var value in span)
                 {
                     *typedPointer = value;
                     typedPointer++;

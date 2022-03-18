@@ -32,6 +32,14 @@ namespace Networking.Transport
             Position += bytesToWrite;
         }
 
+        public unsafe void WriteSpan<T>(ReadOnlySpan<T> span) where T : unmanaged
+        {
+            var bytesToWrite = span.Length * sizeof(T);
+            EnsureBufferSize(requiredBufferSize: Position + bytesToWrite);
+            _packet.Buffer.WriteSpan(span, Position);
+            Position += bytesToWrite;
+        }
+
         private void EnsureBufferSize(int requiredBufferSize)
         {
             var currentBuffer = _packet.Buffer;
