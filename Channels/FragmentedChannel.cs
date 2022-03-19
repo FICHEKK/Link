@@ -40,7 +40,7 @@ namespace Networking.Transport.Channels
         internal override void Send(Packet packet, bool returnPacketToPool = true)
         {
             var dataByteCount = packet.Writer.Position - HeaderSize;
-            var fragmentCount = CalculateFragmentCount(dataByteCount);
+            var fragmentCount = dataByteCount / BytesPerFragment + (dataByteCount % BytesPerFragment != 0 ? 1 : 0);
 
             if (fragmentCount > MaxFragmentCount)
             {
@@ -66,19 +66,6 @@ namespace Networking.Transport.Channels
 
                 _sendSequenceNumber++;
             }
-        }
-
-        private static int CalculateFragmentCount(int byteCount)
-        {
-            var fragmentCount = byteCount / BytesPerFragment;
-
-            if (fragmentCount * BytesPerFragment != byteCount)
-            {
-                // Last fragment that is not full.
-                fragmentCount++;
-            }
-
-            return fragmentCount;
         }
 
         internal override void Receive(byte[] datagram, int bytesReceived)
