@@ -16,6 +16,14 @@ namespace Networking.Transport
         public const int MaxSize = EthernetMtu - MaxIpHeaderSize - UdpHeaderSize;
 
         /// <summary>
+        /// Maximum allowed packet size of a pooled packet. Trying to return a packet with bigger
+        /// buffer to the pool is going to result in packet being rejected by the pool. This is needed
+        /// as a measure to prevent allocating too much memory, which would happen if there we too many
+        /// big packets stored in the pool.
+        /// </summary>
+        private const int MaxSizeInPool = ushort.MaxValue - UdpHeaderSize;
+
+        /// <summary>
         /// Maximum number of data bytes that can be transferred in a single Ethernet frame.
         /// </summary>
         private const int EthernetMtu = 1500;
@@ -52,6 +60,7 @@ namespace Networking.Transport
             DeliveryHeaderSizes[(int) Delivery.Unreliable] = 1;
             DeliveryHeaderSizes[(int) Delivery.Sequenced] = 3;
             DeliveryHeaderSizes[(int) Delivery.Reliable] = 3;
+            DeliveryHeaderSizes[(int) Delivery.Fragmented] = 5;
         }
 
         public byte[] Buffer { get; set; }
@@ -85,7 +94,7 @@ namespace Networking.Transport
 
             var headerSize = DeliveryHeaderSizes[datagram[0] >> 4];
             packet.Reader.Position = headerSize;
-            packet.Writer.Position = headerSize;
+            packet.Writer.Position = bytesReceived;
             return packet;
         }
 
@@ -131,6 +140,12 @@ namespace Networking.Transport
                 if (IsInPool)
                 {
                     Log.Error("Attempt was made to return a packet that is already in pool.");
+                    return;
+                }
+
+                if (Buffer.Length > MaxSizeInPool)
+                {
+                    Log.Info($"Big packet ({Buffer.Length} bytes) was not returned to the pool to preserve memory.");
                     return;
                 }
 

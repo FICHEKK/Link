@@ -81,7 +81,8 @@ namespace Networking.Transport
             {
                 new UnreliableChannel(connection: this),
                 new SequencedChannel(connection: this),
-                new ReliableChannel(connection: this)
+                new ReliableChannel(connection: this),
+                new FragmentedChannel(connection: this)
             };
 
             _pingTimer = new Timer(_ => SendPing());

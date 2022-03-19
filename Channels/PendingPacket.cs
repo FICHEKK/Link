@@ -13,7 +13,7 @@ namespace Networking.Transport.Channels
         /// <summary>
         /// Minimum possible time duration before resending the packet, in milliseconds.
         /// </summary>
-        private const int MinResendDelay = 1;
+        private const int MinResendDelay = 10;
 
         /// <summary>
         /// Maximum number of resend attempts before deeming the packet as lost.
