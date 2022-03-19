@@ -35,6 +35,23 @@ namespace Networking.Transport
             }
         }
 
+        /// <summary>
+        /// Writes variable-length encoded integer (also known as "var-int") which uses
+        /// significantly less memory for smaller values (which is very often the case).
+        /// </summary>
+        public static void WriteVarInt(this byte[] bytes, int value, int offset)
+        {
+            var v = (uint) value;
+
+            while (v >= 0x80)
+            {
+                bytes[offset++] = (byte) (v | 0x80);
+                v >>= 7;
+            }
+
+            bytes[offset] = (byte) v;
+        }
+
         public static unsafe T Read<T>(this byte[] bytes, int offset) where T : unmanaged
         {
             fixed (byte* pointer = &bytes[offset])
@@ -62,6 +79,26 @@ namespace Networking.Transport
             }
 
             return array;
+        }
+
+        /// <summary>
+        /// Reads variable-length encoded integer that was written with <see cref="WriteVarInt"/>.
+        /// </summary>
+        public static int ReadVarInt(this byte[] bytes, int offset)
+        {
+            var value = 0;
+            var shift = 0;
+
+            do
+            {
+                if (shift == 5 * 7)
+                    throw new InvalidOperationException("Variable length encoded value has invalid format (requires more than 5 bytes).");
+
+                value |= (bytes[offset] & 0x7F) << shift;
+                shift += 7;
+            } while ((bytes[offset++] & 0x80) != 0);
+
+            return value;
         }
     }
 }
