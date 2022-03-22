@@ -21,26 +21,20 @@ namespace Networking.Transport.Channels
             _connection = connection;
 
         // Executed on: Main thread
-        internal override void Send(Packet packet, bool returnPacketToPool = true)
+        protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool)
         {
             packet.Buffer.Write(_localSequenceNumber, offset: 1);
-            if (!_connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool)) return;
+            if (!_connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool)) return (0, 0);
 
             lock (_sequenceNumberToPendingPacket)
             {
-                if (_sequenceNumberToPendingPacket.ContainsKey(_localSequenceNumber))
-                {
-                    _connection.Timeout();
-                    Log.Error($"Connection was forcefully timed-out: Pending packet with sequence number {_localSequenceNumber} already exists.");
-                    return;
-                }
-
                 _sequenceNumberToPendingPacket.Add(_localSequenceNumber++, PendingPacket.Get(packet, reliableChannel: this));
+                return (1, packet.Writer.Position);
             }
         }
 
         // Executed on: Receive thread
-        internal override void Receive(byte[] datagram, int bytesReceived)
+        protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: 1);
             UpdateRemoteSequenceNumber(sequenceNumber);

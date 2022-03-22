@@ -6,14 +6,54 @@ namespace Networking.Transport.Channels
     public abstract class Channel
     {
         /// <summary>
+        /// Total number of packets sent through this channel.
+        /// </summary>
+        public long PacketsSent { get; private set; }
+
+        /// <summary>
+        /// Total number of bytes sent through this channel.
+        /// </summary>
+        public long BytesSent { get; private set; }
+
+        /// <summary>
+        /// Total number of packets received on this channel.
+        /// </summary>
+        public long PacketsReceived { get; private set; }
+
+        /// <summary>
+        /// Total number of bytes received on this channel.
+        /// </summary>
+        public long BytesReceived { get; private set; }
+
+        /// <summary>
         /// Writes header information and sends given packet to the remote end-point.
         /// </summary>
-        internal abstract void Send(Packet packet, bool returnPacketToPool = true);
+        internal void Send(Packet packet, bool returnPacketToPool = true)
+        {
+            var (packetsSent, bytesSent) = ExecuteSend(packet, returnPacketToPool);
+            PacketsSent += packetsSent;
+            BytesSent += bytesSent;
+        }
+
+        /// <summary>
+        /// Executes logic required to send the given packet.
+        /// </summary>
+        protected abstract (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool);
 
         /// <summary>
         /// Reads header information and attempts to convert incoming bytes to packet instance(s).
         /// </summary>
-        internal abstract void Receive(byte[] datagram, int bytesReceived);
+        internal void Receive(byte[] datagram, int bytesReceived)
+        {
+            PacketsReceived++;
+            BytesReceived += bytesReceived;
+            ExecuteReceive(datagram, bytesReceived);
+        }
+
+        /// <summary>
+        /// Executes logic of receiving the incoming datagram.
+        /// </summary>
+        protected abstract void ExecuteReceive(byte[] datagram, int bytesReceived);
 
         /// <summary>
         /// Receives and processes acknowledgement packet. This method should be implemented by reliable channels,

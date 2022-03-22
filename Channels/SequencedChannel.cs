@@ -9,13 +9,13 @@ namespace Networking.Transport.Channels
         public SequencedChannel(Connection connection) =>
             _connection = connection;
 
-        internal override void Send(Packet packet, bool returnPacketToPool = true)
+        protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool)
         {
             packet.Buffer.Write(++_localSequenceNumber, offset: 1);
-            _connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool);
+            return _connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool) ? (1, packet.Writer.Position) : (0, 0);
         }
 
-        internal override void Receive(byte[] datagram, int bytesReceived)
+        protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: 1);
             if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber)) return;

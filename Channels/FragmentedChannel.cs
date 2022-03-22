@@ -44,7 +44,7 @@ namespace Networking.Transport.Channels
             _connection = connection;
 
         // Executed on: Main thread
-        internal override void Send(Packet packet, bool returnPacketToPool = true)
+        protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool)
         {
             var dataByteCount = packet.Writer.Position - HeaderSize;
             var fragmentCount = dataByteCount / BytesPerFragment + (dataByteCount % BytesPerFragment != 0 ? 1 : 0);
@@ -53,7 +53,8 @@ namespace Networking.Transport.Channels
             {
                 Log.Error($"Packet is too large (consists of {fragmentCount} fragments, while maximum is {MaxFragmentCount} fragments).");
                 if (returnPacketToPool) packet.Return();
-                return;
+
+                return (0, 0);
             }
 
             lock (_pendingPackets)
@@ -74,11 +75,13 @@ namespace Networking.Transport.Channels
 
                 _localSequenceNumber++;
                 if (returnPacketToPool) packet.Return();
+
+                return (fragmentCount, dataByteCount + HeaderSize * fragmentCount);
             }
         }
 
         // Executed on: Receive thread
-        internal override void Receive(byte[] datagram, int bytesReceived)
+        protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: 1);
             var fragmentNumber = datagram.Read<ushort>(offset: 3);
