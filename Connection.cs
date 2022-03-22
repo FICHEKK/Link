@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Threading;
@@ -52,6 +53,11 @@ namespace Networking.Transport
         public EndPoint RemoteEndPoint { get; }
 
         /// <summary>
+        /// Returns a read-only list of registered channels.
+        /// </summary>
+        public IReadOnlyList<Channel> Channels => _channels;
+
+        /// <summary>
         /// If <c>true</c>, connection has been fully established.
         /// If <c>false</c>, connection is in process of connecting.
         /// </summary>
@@ -79,10 +85,10 @@ namespace Networking.Transport
         {
             _channels = new Channel[]
             {
-                new UnreliableChannel(connection: this),
-                new SequencedChannel(connection: this),
-                new ReliableChannel(connection: this),
-                new FragmentedChannel(connection: this)
+                new UnreliableChannel(connection: this) {Name = nameof(Delivery.Unreliable)},
+                new SequencedChannel(connection: this) {Name = nameof(Delivery.Sequenced)},
+                new ReliableChannel(connection: this) {Name = nameof(Delivery.Reliable)},
+                new FragmentedChannel(connection: this) {Name = nameof(Delivery.Fragmented)},
             };
 
             _pingTimer = new Timer(_ => SendPing());

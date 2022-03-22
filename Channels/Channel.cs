@@ -6,6 +6,11 @@ namespace Networking.Transport.Channels
     public abstract class Channel
     {
         /// <summary>
+        /// Name associated with this channel.
+        /// </summary>
+        public string Name { get; set; }
+
+        /// <summary>
         /// Total number of packets sent through this channel.
         /// </summary>
         public long PacketsSent { get; private set; }
@@ -71,5 +76,11 @@ namespace Networking.Transport.Channels
         /// <param name="s2">Second sequence number.</param>
         protected static bool IsFirstSequenceNumberGreater(ushort s1, ushort s2) =>
             s1 > s2 && s1 - s2 <= ushort.MaxValue / 2 || s1 < s2 && s2 - s1 > ushort.MaxValue / 2;
+
+        /// <summary>
+        /// Returns statistics of this channel written in textual form.
+        /// </summary>
+        public override string ToString() =>
+            $"{Name} | Sent: {PacketsSent}, {BytesSent} | Received: {PacketsReceived}, {BytesReceived}";
     }
 }
