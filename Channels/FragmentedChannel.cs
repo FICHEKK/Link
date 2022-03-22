@@ -25,11 +25,17 @@ namespace Networking.Transport.Channels
         /// </summary>
         private const int LastFragmentBitmask = 1 << 15;
 
+        /// <summary>
+        /// Size of the buffer that stores incoming packets.
+        /// </summary>
+        private const int ReceiveBufferSize = ushort.MaxValue + 1;
+
         private readonly Dictionary<(ushort sequenceNumber, ushort fragmentNumber), PendingPacket> _pendingPackets = new();
-        private readonly Dictionary<ushort, FragmentedPacket> _fragmentedPackets = new();
+        private readonly FragmentedPacket[] _fragmentedPackets = new FragmentedPacket[ReceiveBufferSize];
         private readonly Connection _connection;
 
-        private ushort _sendSequenceNumber;
+        private ushort _localSequenceNumber;
+        private ushort _remoteSequenceNumber;
         private ushort _receiveSequenceNumber;
 
         public double RoundTripTime => _connection.RoundTripTime;
@@ -37,6 +43,7 @@ namespace Networking.Transport.Channels
         public FragmentedChannel(Connection connection) =>
             _connection = connection;
 
+        // Executed on: Main thread
         internal override void Send(Packet packet, bool returnPacketToPool = true)
         {
             var dataByteCount = packet.Writer.Position - HeaderSize;
@@ -46,6 +53,7 @@ namespace Networking.Transport.Channels
             {
                 Log.Error($"Packet is too large (consists of {fragmentCount} fragments, while maximum is {MaxFragmentCount} fragments).");
                 if (returnPacketToPool) packet.Return();
+                return;
             }
 
             lock (_pendingPackets)
@@ -56,40 +64,64 @@ namespace Networking.Transport.Channels
                     var fragmentNumber = i < fragmentCount - 1 ? (ushort) i : (ushort) (i | LastFragmentBitmask);
                     var fragmentLength = i < fragmentCount - 1 ? BytesPerFragment : dataByteCount - i * BytesPerFragment;
 
-                    fragment.Writer.Write(_sendSequenceNumber);
+                    fragment.Writer.Write(_localSequenceNumber);
                     fragment.Writer.Write(fragmentNumber);
                     fragment.Writer.WriteSpan(new ReadOnlySpan<byte>(packet.Buffer, start: HeaderSize + i * BytesPerFragment, fragmentLength));
 
-                    _pendingPackets.Add((_sendSequenceNumber, fragmentNumber), PendingPacket.Get(fragment, reliableChannel: this));
+                    _pendingPackets.Add((_localSequenceNumber, fragmentNumber), PendingPacket.Get(fragment, reliableChannel: this));
                     _connection.Node.Send(fragment, _connection.RemoteEndPoint);
                 }
 
-                _sendSequenceNumber++;
+                _localSequenceNumber++;
+                if (returnPacketToPool) packet.Return();
             }
         }
 
+        // Executed on: Receive thread
         internal override void Receive(byte[] datagram, int bytesReceived)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: 1);
             var fragmentNumber = datagram.Read<ushort>(offset: 3);
+            UpdateRemoteSequenceNumber(sequenceNumber);
             SendAcknowledgement(sequenceNumber, fragmentNumber);
 
-            if (!_fragmentedPackets.TryGetValue(sequenceNumber, out var fragmentedPacket))
+            var fragmentedPacket = _fragmentedPackets[sequenceNumber];
+
+            if (fragmentedPacket is null)
             {
                 fragmentedPacket = new FragmentedPacket();
-                _fragmentedPackets.Add(sequenceNumber, fragmentedPacket);
+                _fragmentedPackets[sequenceNumber] = fragmentedPacket;
             }
 
-            fragmentedPacket.AddFragment(Packet.From(datagram, bytesReceived));
+            if (!fragmentedPacket.AddFragment(Packet.From(datagram, bytesReceived)))
+            {
+                // TODO - Increment number of duplicate packets.
+                return;
+            }
 
             while (true)
             {
-                if (!_fragmentedPackets.TryGetValue(_receiveSequenceNumber, out var nextFragmentedPacket)) break;
-                if (!nextFragmentedPacket.IsReassembled) break;
+                var nextFragmentedPacket = _fragmentedPackets[_receiveSequenceNumber];
+                if (nextFragmentedPacket is null || !nextFragmentedPacket.IsReassembled) break;
 
                 _connection.Node.EnqueuePendingPacket(nextFragmentedPacket.ReassembledPacket, _connection.RemoteEndPoint);
                 _receiveSequenceNumber++;
             }
+        }
+
+        // Executed on: Receive thread
+        private void UpdateRemoteSequenceNumber(ushort sequenceNumber)
+        {
+            if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber)) return;
+
+            var sequenceWithWrap = sequenceNumber > _remoteSequenceNumber
+                ? sequenceNumber
+                : sequenceNumber + ReceiveBufferSize;
+
+            for (var i = _remoteSequenceNumber + 1; i <= sequenceWithWrap; i++)
+                _fragmentedPackets[i % ReceiveBufferSize] = null;
+
+            _remoteSequenceNumber = sequenceNumber;
         }
 
         // Executed on: Receive thread
@@ -146,12 +178,15 @@ namespace Networking.Transport.Channels
             private ushort _lastFragmentNumber;
             private int _totalFragmentCount;
 
-            public void AddFragment(Packet fragment)
+            public bool AddFragment(Packet fragment)
             {
-                if (IsReassembled) return;
-
                 var fragmentNumber = fragment.Buffer.Read<ushort>(offset: 3);
-                if (_fragments.ContainsKey(fragmentNumber)) return;
+
+                if (_fragments.ContainsKey(fragmentNumber))
+                {
+                    fragment.Return();
+                    return false;
+                }
 
                 if ((fragmentNumber & LastFragmentBitmask) != 0)
                 {
@@ -161,13 +196,14 @@ namespace Networking.Transport.Channels
                     if (_totalFragmentCount == 1)
                     {
                         ReassembledPacket = fragment;
-                        return;
+                        return true;
                     }
                 }
 
                 _fragments.Add(fragmentNumber, fragment);
-
                 if (_fragments.Count == _totalFragmentCount) Reassemble();
+
+                return true;
             }
 
             private void Reassemble()
