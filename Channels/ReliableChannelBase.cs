@@ -30,6 +30,21 @@ namespace Networking.Transport.Channels
         public double RoundTripTime => Connection.RoundTripTime;
 
         /// <summary>
+        /// Returns packet loss percentage (value from 0 to 1) that occured on this channel.
+        /// </summary>
+        public double PacketLoss => PacketsResent > 0 ? (double) PacketsResent / (PacketsSent + PacketsResent) : 0;
+
+        /// <summary>
+        /// Total number of packets resent through this channel.
+        /// </summary>
+        public long PacketsResent { get; private set; }
+
+        /// <summary>
+        /// Total number of bytes resent through this channel.
+        /// </summary>
+        public long BytesResent { get; private set; }
+
+        /// <summary>
         /// Connection that is using this channel.
         /// </summary>
         protected readonly Connection Connection;
@@ -47,6 +62,9 @@ namespace Networking.Transport.Channels
         {
             Connection.Node.Send(packet, Connection.RemoteEndPoint, returnPacketToPool: false);
             Log.Info($"Re-sent packet {ExtractPacketInfo(packet)}.");
+
+            PacketsResent++;
+            BytesResent += packet.Writer.Position;
         }
 
         /// <summary>
@@ -63,5 +81,8 @@ namespace Networking.Transport.Channels
         /// Returns information stored inside the given packet.
         /// </summary>
         protected abstract string ExtractPacketInfo(Packet packet);
+
+        /// <inheritdoc cref="Channel.ToString"/>
+        public override string ToString() => base.ToString() + $" | Resent: {PacketsResent}, {BytesResent} | Packet-loss: {PacketLoss:F3}";
     }
 }
