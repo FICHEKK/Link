@@ -174,10 +174,10 @@ namespace Networking.Transport.Nodes
         /// </summary>
         internal void EnqueuePendingPacket(Packet packet, EndPoint senderEndPoint)
         {
-            lock (_pendingPackets)
-            {
-                _pendingPackets.Enqueue((packet, senderEndPoint));
-            }
+            if (packet is null) throw new ArgumentNullException(nameof(packet));
+            if (senderEndPoint is null) throw new ArgumentNullException(nameof(senderEndPoint));
+
+            lock (_pendingPackets) _pendingPackets.Enqueue((packet, senderEndPoint));
         }
 
         /// <summary>

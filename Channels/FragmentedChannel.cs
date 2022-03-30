@@ -32,12 +32,13 @@ namespace Networking.Transport.Channels
 
         private readonly Dictionary<(ushort sequenceNumber, ushort fragmentNumber), PendingPacket> _pendingPackets = new();
         private readonly FragmentedPacket[] _fragmentedPackets = new FragmentedPacket[ReceiveBufferSize];
+        private readonly bool _isOrdered;
 
         private ushort _localSequenceNumber;
         private ushort _remoteSequenceNumber;
         private ushort _receiveSequenceNumber;
 
-        public FragmentedChannel(Connection connection) : base(connection) { }
+        public FragmentedChannel(Connection connection, bool isOrdered) : base(connection) => _isOrdered = isOrdered;
 
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool)
         {
@@ -96,6 +97,14 @@ namespace Networking.Transport.Channels
                 return;
             }
 
+            if (!_isOrdered)
+            {
+                if (!fragmentedPacket.IsReassembled) return;
+
+                Connection.Node.EnqueuePendingPacket(fragmentedPacket.ReassembledPacket, Connection.RemoteEndPoint);
+                return;
+            }
+
             while (true)
             {
                 var nextFragmentedPacket = _fragmentedPackets[_receiveSequenceNumber];
@@ -122,7 +131,7 @@ namespace Networking.Transport.Channels
 
         private void SendAcknowledgement(ushort sequenceNumber, ushort fragmentNumber)
         {
-            var packet = Packet.Get(HeaderType.Acknowledgement, Delivery.Fragmented);
+            var packet = Packet.Get(HeaderType.Acknowledgement, _isOrdered ? Delivery.Fragmented : Delivery.FragmentedUnordered);
             packet.Writer.Write(sequenceNumber);
             packet.Writer.Write(fragmentNumber);
             Connection.Node.Send(packet, Connection.RemoteEndPoint);

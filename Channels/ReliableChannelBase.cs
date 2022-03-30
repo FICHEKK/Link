@@ -14,7 +14,7 @@ namespace Networking.Transport.Channels
         /// <summary>
         /// Minimum possible time duration before resending the packet, in milliseconds.
         /// </summary>
-        public int MinResendDelay { get; set; } = 10;
+        public int MinResendDelay { get; set; } = 100;
 
         /// <summary>
         /// Time between each consecutive resend is going to get increased by this factor.

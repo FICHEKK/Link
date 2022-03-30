@@ -22,12 +22,29 @@ namespace Networking.Transport
         Sequenced,
 
         /// <summary>
+        /// Each packet is guaranteed to be delivered, won't be duplicated, but can arrive out of order.
+        /// <br/><br/>
+        /// This is an expensive delivery method as every packet needs to be acknowledged by the receiving end-point.
+        /// Any data that requires reliability but not order should use this delivery method.
+        /// </summary>
+        ReliableUnordered,
+
+        /// <summary>
         /// Each packet is guaranteed to be delivered, won't be duplicated and will arrive in order.
         /// <br/><br/>
         /// This is an expensive delivery method as every packet needs to be acknowledged by the receiving end-point.
         /// Any data that must be delivered reliably should use this delivery method (example: chat messages).
         /// </summary>
         Reliable,
+
+        /// <summary>
+        /// Each packet can be of arbitrary size, is guaranteed to be delivered, won't be duplicated, but can arrive out of order.
+        /// <br/><br/>
+        /// This is an expensive delivery method as every fragment of every packet needs to be acknowledged by the receiving
+        /// end-point. Any data that requires reliability but not order and can potentially exceed maximum allowed packet size
+        /// should use this delivery method.
+        /// </summary>
+        FragmentedUnordered,
 
         /// <summary>
         /// Each packet can be of arbitrary size, is guaranteed to be delivered, won't be duplicated and will arrive in order.

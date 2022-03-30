@@ -59,7 +59,9 @@ namespace Networking.Transport
         {
             DeliveryHeaderSizes[(int) Delivery.Unreliable] = 1;
             DeliveryHeaderSizes[(int) Delivery.Sequenced] = 3;
+            DeliveryHeaderSizes[(int) Delivery.ReliableUnordered] = 3;
             DeliveryHeaderSizes[(int) Delivery.Reliable] = 3;
+            DeliveryHeaderSizes[(int) Delivery.FragmentedUnordered] = 5;
             DeliveryHeaderSizes[(int) Delivery.Fragmented] = 5;
         }
 

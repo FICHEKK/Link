@@ -9,12 +9,13 @@ namespace Networking.Transport.Channels
 
         private readonly Dictionary<ushort, PendingPacket> _pendingPackets = new();
         private readonly Packet[] _receivedPackets = new Packet[ReceiveBufferSize];
+        private readonly bool _isOrdered;
 
         private ushort _localSequenceNumber;
         private ushort _remoteSequenceNumber;
         private ushort _receiveSequenceNumber;
 
-        public ReliableChannel(Connection connection) : base(connection) { }
+        public ReliableChannel(Connection connection, bool isOrdered) : base(connection) => _isOrdered = isOrdered;
 
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool)
         {
@@ -36,6 +37,12 @@ namespace Networking.Transport.Channels
 
             if (_receivedPackets[sequenceNumber] is not null) return;
             _receivedPackets[sequenceNumber] = Packet.From(datagram, bytesReceived);
+
+            if (!_isOrdered)
+            {
+                Connection.Node.EnqueuePendingPacket(_receivedPackets[sequenceNumber], Connection.RemoteEndPoint);
+                return;
+            }
 
             while (_receivedPackets[_receiveSequenceNumber] is not null)
             {
@@ -68,7 +75,7 @@ namespace Networking.Transport.Channels
                 if (wasReceived) acknowledgeBitField |= 1 << i;
             }
 
-            var packet = Packet.Get(HeaderType.Acknowledgement, Delivery.Reliable);
+            var packet = Packet.Get(HeaderType.Acknowledgement, _isOrdered ? Delivery.Reliable : Delivery.ReliableUnordered);
             packet.Writer.Write(sequenceNumber);
             packet.Writer.Write(acknowledgeBitField);
             Connection.Node.Send(packet, Connection.RemoteEndPoint);

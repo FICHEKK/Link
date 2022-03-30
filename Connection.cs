@@ -79,17 +79,16 @@ namespace Networking.Transport
         private ushort _pingId;
         private readonly Timer _pingTimer;
         private readonly Stopwatch _pingStopwatch = new();
-        private readonly Channel[] _channels;
+        private readonly Channel[] _channels = new Channel[Enum.GetValues(typeof(Delivery)).Length];
 
         internal Connection(Node node, EndPoint remoteEndPoint, bool isConnected)
         {
-            _channels = new Channel[]
-            {
-                new UnreliableChannel(connection: this) {Name = nameof(Delivery.Unreliable)},
-                new SequencedChannel(connection: this) {Name = nameof(Delivery.Sequenced)},
-                new ReliableChannel(connection: this) {Name = nameof(Delivery.Reliable)},
-                new FragmentedChannel(connection: this) {Name = nameof(Delivery.Fragmented)},
-            };
+            _channels[(int) Delivery.Unreliable] = new UnreliableChannel(connection: this) {Name = nameof(Delivery.Unreliable)};
+            _channels[(int) Delivery.Sequenced] = new SequencedChannel(connection: this) {Name = nameof(Delivery.Sequenced)};
+            _channels[(int) Delivery.ReliableUnordered] = new ReliableChannel(connection: this, isOrdered: false) {Name = nameof(Delivery.ReliableUnordered)};
+            _channels[(int) Delivery.Reliable] = new ReliableChannel(connection: this, isOrdered: true) {Name = nameof(Delivery.Reliable)};
+            _channels[(int) Delivery.FragmentedUnordered] = new FragmentedChannel(connection: this, isOrdered: false) {Name = nameof(Delivery.FragmentedUnordered)};
+            _channels[(int) Delivery.Fragmented] = new FragmentedChannel(connection: this, isOrdered: true) {Name = nameof(Delivery.Fragmented)};
 
             _pingTimer = new Timer(_ => SendPing());
             _lastPingResponseTime = DateTime.UtcNow;
