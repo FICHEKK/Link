@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Networking.Transport.Channels
 {
-    public class FragmentedChannel : ReliableChannelBase
+    public class ReliableFragmentChannel : ReliableChannel
     {
         /// <summary>
         /// Maximum number of fragments a packet can consist of.
@@ -38,7 +38,7 @@ namespace Networking.Transport.Channels
         private ushort _remoteSequenceNumber;
         private ushort _receiveSequenceNumber;
 
-        public FragmentedChannel(Connection connection, bool isOrdered) : base(connection) => _isOrdered = isOrdered;
+        public ReliableFragmentChannel(Connection connection, bool isOrdered) : base(connection) => _isOrdered = isOrdered;
 
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool)
         {

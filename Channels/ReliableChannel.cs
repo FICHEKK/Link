@@ -1,115 +1,88 @@
-using System.Collections.Generic;
-
 namespace Networking.Transport.Channels
 {
-    public class ReliableChannel : ReliableChannelBase
+    /// <summary>
+    /// Represents a channel that keeps resending packets until they are either
+    /// acknowledged or deemed lost as a result of bad network conditions.
+    /// </summary>
+    public abstract class ReliableChannel : Channel
     {
-        private const int ReceiveBufferSize = ushort.MaxValue + 1;
-        private const int BitsInAckBitField = sizeof(int) * 8;
+        /// <summary>
+        /// Maximum number of resend attempts before deeming the packet as lost.
+        /// </summary>
+        public int MaxResendAttempts { get; set; } = 15;
 
-        private readonly Dictionary<ushort, PendingPacket> _pendingPackets = new();
-        private readonly Packet[] _receivedPackets = new Packet[ReceiveBufferSize];
-        private readonly bool _isOrdered;
+        /// <summary>
+        /// Minimum possible time duration before resending the packet, in milliseconds.
+        /// </summary>
+        public int MinResendDelay { get; set; } = 100;
 
-        private ushort _localSequenceNumber;
-        private ushort _remoteSequenceNumber;
-        private ushort _receiveSequenceNumber;
+        /// <summary>
+        /// Time between each consecutive resend is going to get increased by this factor.
+        /// Sometimes connection can have a sudden burst of packet loss and trying to
+        /// rapidly resend packets is not going to ensure it gets thorough. Waiting for
+        /// more and more time gives connection time to stabilize itself.
+        /// </summary>
+        public double BackoffFactor { get; set; } = 1.2;
 
-        public ReliableChannel(Connection connection, bool isOrdered) : base(connection) => _isOrdered = isOrdered;
+        /// <summary>
+        /// Returns the most recently calculated round-trip time, in milliseconds.
+        /// </summary>
+        public double RoundTripTime => Connection.RoundTripTime;
 
-        protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool)
+        /// <summary>
+        /// Returns packet loss percentage (value from 0 to 1) that occured on this channel.
+        /// </summary>
+        public double PacketLoss => PacketsResent > 0 ? (double) PacketsResent / (PacketsSent + PacketsResent) : 0;
+
+        /// <summary>
+        /// Total number of packets resent through this channel.
+        /// </summary>
+        public long PacketsResent { get; private set; }
+
+        /// <summary>
+        /// Total number of bytes resent through this channel.
+        /// </summary>
+        public long BytesResent { get; private set; }
+
+        /// <summary>
+        /// Connection that is using this channel.
+        /// </summary>
+        protected readonly Connection Connection;
+
+        /// <summary>
+        /// Constructs a new reliable channel for the given connection.
+        /// </summary>
+        protected ReliableChannel(Connection connection) => Connection = connection;
+
+        /// <summary>
+        /// Retries sending packet as acknowledgement wasn't received in time.
+        /// </summary>
+        /// <param name="packet">Packet being resent.</param>
+        public void ResendPacket(Packet packet)
         {
-            packet.Buffer.Write(_localSequenceNumber, offset: 1);
-            if (!Connection.Node.Send(packet, Connection.RemoteEndPoint, returnPacketToPool)) return (0, 0);
+            Connection.Node.Send(packet, Connection.RemoteEndPoint, returnPacketToPool: false);
+            Log.Info($"Re-sent packet {ExtractPacketInfo(packet)}.");
 
-            lock (_pendingPackets)
-            {
-                _pendingPackets.Add(_localSequenceNumber++, PendingPacket.Get(packet, reliableChannel: this));
-                return (1, packet.Writer.Position);
-            }
+            PacketsResent++;
+            BytesResent += packet.Writer.Position;
         }
 
-        protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
+        /// <summary>
+        /// Handles the case of packet exceeding maximum resend attempts.
+        /// </summary>
+        /// <param name="packet">Packet that was lost.</param>
+        public void HandleLostPacket(Packet packet)
         {
-            var sequenceNumber = datagram.Read<ushort>(offset: 1);
-            UpdateRemoteSequenceNumber(sequenceNumber);
-            SendAcknowledgement(sequenceNumber);
-
-            if (_receivedPackets[sequenceNumber] is not null) return;
-            _receivedPackets[sequenceNumber] = Packet.From(datagram, bytesReceived);
-
-            if (!_isOrdered)
-            {
-                Connection.Node.EnqueuePendingPacket(_receivedPackets[sequenceNumber], Connection.RemoteEndPoint);
-                return;
-            }
-
-            while (_receivedPackets[_receiveSequenceNumber] is not null)
-            {
-                Connection.Node.EnqueuePendingPacket(_receivedPackets[_receiveSequenceNumber], Connection.RemoteEndPoint);
-                _receiveSequenceNumber++;
-            }
+            Connection.Timeout();
+            Log.Info($"Connection timed-out: Packet {ExtractPacketInfo(packet)} exceeded maximum resend attempts of {MaxResendAttempts}.");
         }
 
-        private void UpdateRemoteSequenceNumber(ushort sequenceNumber)
-        {
-            if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber)) return;
+        /// <summary>
+        /// Returns information stored inside the given packet.
+        /// </summary>
+        protected abstract string ExtractPacketInfo(Packet packet);
 
-            var sequenceWithWrap = sequenceNumber > _remoteSequenceNumber
-                ? sequenceNumber
-                : sequenceNumber + ReceiveBufferSize;
-
-            for (var i = _remoteSequenceNumber + 1; i <= sequenceWithWrap; i++)
-                _receivedPackets[i % ReceiveBufferSize] = null;
-
-            _remoteSequenceNumber = sequenceNumber;
-        }
-
-        private void SendAcknowledgement(ushort sequenceNumber)
-        {
-            var acknowledgeBitField = 0;
-
-            for (var i = 0; i < BitsInAckBitField; i++)
-            {
-                var wasReceived = _receivedPackets[(ushort) (sequenceNumber - i - 1)] is not null;
-                if (wasReceived) acknowledgeBitField |= 1 << i;
-            }
-
-            var packet = Packet.Get(HeaderType.Acknowledgement, _isOrdered ? Delivery.Reliable : Delivery.ReliableUnordered);
-            packet.Writer.Write(sequenceNumber);
-            packet.Writer.Write(acknowledgeBitField);
-            Connection.Node.Send(packet, Connection.RemoteEndPoint);
-        }
-
-        internal override void ReceiveAcknowledgement(byte[] datagram)
-        {
-            var sequenceNumber = datagram.Read<ushort>(offset: 1);
-            var acknowledgeBitField = datagram.Read<int>(offset: 3);
-
-            lock (_pendingPackets)
-            {
-                AcknowledgePendingPacket(sequenceNumber);
-
-                for (var i = 0; i < BitsInAckBitField; i++)
-                {
-                    var isAcknowledged = (acknowledgeBitField & (1 << i)) != 0;
-                    if (isAcknowledged) AcknowledgePendingPacket((ushort) (sequenceNumber - i - 1));
-                }
-            }
-
-            void AcknowledgePendingPacket(ushort seq)
-            {
-                if (!_pendingPackets.TryGetValue(seq, out var pendingPacket)) return;
-
-                pendingPacket.Acknowledge();
-                _pendingPackets.Remove(seq);
-            }
-        }
-
-        protected override string ExtractPacketInfo(Packet packet)
-        {
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
-            return $"[sequence: {sequenceNumber}]";
-        }
+        /// <inheritdoc cref="Channel.ToString"/>
+        public override string ToString() => base.ToString() + $" | Resent: {PacketsResent}, {BytesResent} | Packet-loss: {PacketLoss:F3}";
     }
 }

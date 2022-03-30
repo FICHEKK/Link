@@ -19,11 +19,11 @@ namespace Networking.Transport.Channels
         private readonly object _lock = new();
 
         private Packet _packet;
-        private ReliableChannelBase _reliableChannel;
+        private ReliableChannel _reliableChannel;
         private int _resendAttempts;
         private double _backoff;
 
-        public static PendingPacket Get(Packet packet, ReliableChannelBase reliableChannel)
+        public static PendingPacket Get(Packet packet, ReliableChannel reliableChannel)
         {
             // It is crucial to make a copy of provided packet for multiple reasons:
             // 1. If same packet is sent to multiple end-points, it would get returned multiple times.
