@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Networking.Transport.Channels
 {
-    public class FragmentedChannel : Channel, IReliableChannel
+    public class FragmentedChannel : ReliableChannelBase
     {
         /// <summary>
         /// Maximum number of fragments a packet can consist of.
@@ -32,18 +32,13 @@ namespace Networking.Transport.Channels
 
         private readonly Dictionary<(ushort sequenceNumber, ushort fragmentNumber), PendingPacket> _pendingPackets = new();
         private readonly FragmentedPacket[] _fragmentedPackets = new FragmentedPacket[ReceiveBufferSize];
-        private readonly Connection _connection;
 
         private ushort _localSequenceNumber;
         private ushort _remoteSequenceNumber;
         private ushort _receiveSequenceNumber;
 
-        public double RoundTripTime => _connection.RoundTripTime;
+        public FragmentedChannel(Connection connection) : base(connection) { }
 
-        public FragmentedChannel(Connection connection) =>
-            _connection = connection;
-
-        // Executed on: Main thread
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool)
         {
             var dataByteCount = packet.Writer.Position - HeaderSize;
@@ -70,7 +65,7 @@ namespace Networking.Transport.Channels
                     fragment.Writer.WriteSpan(new ReadOnlySpan<byte>(packet.Buffer, start: HeaderSize + i * BytesPerFragment, fragmentLength));
 
                     _pendingPackets.Add((_localSequenceNumber, fragmentNumber), PendingPacket.Get(fragment, reliableChannel: this));
-                    _connection.Node.Send(fragment, _connection.RemoteEndPoint);
+                    Connection.Node.Send(fragment, Connection.RemoteEndPoint);
                 }
 
                 _localSequenceNumber++;
@@ -80,7 +75,6 @@ namespace Networking.Transport.Channels
             }
         }
 
-        // Executed on: Receive thread
         protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: 1);
@@ -107,12 +101,11 @@ namespace Networking.Transport.Channels
                 var nextFragmentedPacket = _fragmentedPackets[_receiveSequenceNumber];
                 if (nextFragmentedPacket is null || !nextFragmentedPacket.IsReassembled) break;
 
-                _connection.Node.EnqueuePendingPacket(nextFragmentedPacket.ReassembledPacket, _connection.RemoteEndPoint);
+                Connection.Node.EnqueuePendingPacket(nextFragmentedPacket.ReassembledPacket, Connection.RemoteEndPoint);
                 _receiveSequenceNumber++;
             }
         }
 
-        // Executed on: Receive thread
         private void UpdateRemoteSequenceNumber(ushort sequenceNumber)
         {
             if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber)) return;
@@ -127,16 +120,14 @@ namespace Networking.Transport.Channels
             _remoteSequenceNumber = sequenceNumber;
         }
 
-        // Executed on: Receive thread
         private void SendAcknowledgement(ushort sequenceNumber, ushort fragmentNumber)
         {
             var packet = Packet.Get(HeaderType.Acknowledgement, Delivery.Fragmented);
             packet.Writer.Write(sequenceNumber);
             packet.Writer.Write(fragmentNumber);
-            _connection.Node.Send(packet, _connection.RemoteEndPoint);
+            Connection.Node.Send(packet, Connection.RemoteEndPoint);
         }
 
-        // Executed on: Receive thread
         internal override void ReceiveAcknowledgement(byte[] datagram)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: 1);
@@ -152,24 +143,11 @@ namespace Networking.Transport.Channels
             }
         }
 
-        // Executed on: Worker thread
-        public void ResendPacket(Packet packet)
+        protected override string ExtractPacketInfo(Packet packet)
         {
-            _connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool: false);
-
             var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
             var fragmentNumber = packet.Buffer.Read<ushort>(offset: 3);
-            Log.Info($"Re-sent packet [sequence: {sequenceNumber}, fragment: {fragmentNumber}].");
-        }
-
-        // Executed on: Worker thread
-        public void HandleLostPacket(Packet packet)
-        {
-            _connection.Timeout();
-
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
-            var fragmentNumber = packet.Buffer.Read<ushort>(offset: 3);
-            Log.Info($"Connection timed-out: Packet [sequence: {sequenceNumber}, fragment: {fragmentNumber}] exceeded maximum resend attempts.");
+            return $"[sequence: {sequenceNumber}, fragment: {fragmentNumber}]";
         }
 
         private class FragmentedPacket

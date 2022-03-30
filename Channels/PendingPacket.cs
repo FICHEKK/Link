@@ -11,24 +11,6 @@ namespace Networking.Transport.Channels
     public class PendingPacket
     {
         /// <summary>
-        /// Minimum possible time duration before resending the packet, in milliseconds.
-        /// </summary>
-        private const int MinResendDelay = 10;
-
-        /// <summary>
-        /// Maximum number of resend attempts before deeming the packet as lost.
-        /// </summary>
-        private const int MaxResendAttempts = 15;
-
-        /// <summary>
-        /// Time between each consecutive resend is going to get increased by this factor.
-        /// Sometimes connection can have a sudden burst of packet loss and trying to
-        /// rapidly resend packets is not going to ensure it gets thorough. Waiting for
-        /// more and more time gives connection time to stabilize itself.
-        /// </summary>
-        private const double BackoffFactor = 1.2;
-
-        /// <summary>
         /// Collection of reusable pending packet instances used to avoid frequent memory allocations.
         /// </summary>
         private static readonly Queue<PendingPacket> PendingPacketPool = new();
@@ -37,11 +19,11 @@ namespace Networking.Transport.Channels
         private readonly object _lock = new();
 
         private Packet _packet;
-        private IReliableChannel _reliableChannel;
+        private ReliableChannelBase _reliableChannel;
         private int _resendAttempts;
         private double _backoff;
 
-        public static PendingPacket Get(Packet packet, IReliableChannel reliableChannel)
+        public static PendingPacket Get(Packet packet, ReliableChannelBase reliableChannel)
         {
             // It is crucial to make a copy of provided packet for multiple reasons:
             // 1. If same packet is sent to multiple end-points, it would get returned multiple times.
@@ -76,7 +58,7 @@ namespace Networking.Transport.Channels
                 // Other thread has already acknowledged this packet.
                 if (_packet is null) return;
 
-                if (_resendAttempts < MaxResendAttempts)
+                if (_resendAttempts < _reliableChannel.MaxResendAttempts)
                 {
                     _reliableChannel.ResendPacket(_packet);
                     _resendAttempts++;
@@ -93,10 +75,10 @@ namespace Networking.Transport.Channels
         private void ScheduleResend()
         {
             var resendDelayDuration = (int) (2 * _reliableChannel.RoundTripTime * _backoff);
-            _backoff *= BackoffFactor;
+            _backoff *= _reliableChannel.BackoffFactor;
 
-            if (resendDelayDuration < MinResendDelay)
-                resendDelayDuration = MinResendDelay;
+            if (resendDelayDuration < _reliableChannel.MinResendDelay)
+                resendDelayDuration = _reliableChannel.MinResendDelay;
 
             _resendTimer.Change(dueTime: resendDelayDuration, period: Timeout.Infinite);
         }

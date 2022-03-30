@@ -2,95 +2,84 @@ using System.Collections.Generic;
 
 namespace Networking.Transport.Channels
 {
-    public class ReliableChannel : Channel, IReliableChannel
+    public class ReliableChannel : ReliableChannelBase
     {
-        private const int BufferSize = ushort.MaxValue + 1;
+        private const int ReceiveBufferSize = ushort.MaxValue + 1;
         private const int BitsInAckBitField = sizeof(int) * 8;
 
-        private readonly Connection _connection;
-        private readonly Dictionary<ushort, PendingPacket> _sequenceNumberToPendingPacket = new();
-        private readonly ReceivedPacket[] _receivedPackets = new ReceivedPacket[BufferSize];
+        private readonly Dictionary<ushort, PendingPacket> _pendingPackets = new();
+        private readonly Packet[] _receivedPackets = new Packet[ReceiveBufferSize];
 
         private ushort _localSequenceNumber;
         private ushort _remoteSequenceNumber;
-        private ushort _nextReceiveSequenceNumber;
+        private ushort _receiveSequenceNumber;
 
-        public double RoundTripTime => _connection.RoundTripTime;
+        public ReliableChannel(Connection connection) : base(connection) { }
 
-        public ReliableChannel(Connection connection) =>
-            _connection = connection;
-
-        // Executed on: Main thread
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool)
         {
             packet.Buffer.Write(_localSequenceNumber, offset: 1);
-            if (!_connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool)) return (0, 0);
+            if (!Connection.Node.Send(packet, Connection.RemoteEndPoint, returnPacketToPool)) return (0, 0);
 
-            lock (_sequenceNumberToPendingPacket)
+            lock (_pendingPackets)
             {
-                _sequenceNumberToPendingPacket.Add(_localSequenceNumber++, PendingPacket.Get(packet, reliableChannel: this));
+                _pendingPackets.Add(_localSequenceNumber++, PendingPacket.Get(packet, reliableChannel: this));
                 return (1, packet.Writer.Position);
             }
         }
 
-        // Executed on: Receive thread
         protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: 1);
             UpdateRemoteSequenceNumber(sequenceNumber);
             SendAcknowledgement(sequenceNumber);
 
-            var alreadyReceived = _receivedPackets[sequenceNumber].IsReceived;
-            if (alreadyReceived) return;
+            if (_receivedPackets[sequenceNumber] is not null) return;
+            _receivedPackets[sequenceNumber] = Packet.From(datagram, bytesReceived);
 
-            _receivedPackets[sequenceNumber].Packet = Packet.From(datagram, bytesReceived);
-
-            while (_receivedPackets[_nextReceiveSequenceNumber].IsReceived)
+            while (_receivedPackets[_receiveSequenceNumber] is not null)
             {
-                _connection.Node.EnqueuePendingPacket(_receivedPackets[_nextReceiveSequenceNumber].Packet, _connection.RemoteEndPoint);
-                _nextReceiveSequenceNumber++;
+                Connection.Node.EnqueuePendingPacket(_receivedPackets[_receiveSequenceNumber], Connection.RemoteEndPoint);
+                _receiveSequenceNumber++;
             }
         }
 
-        // Executed on: Receive thread
         private void UpdateRemoteSequenceNumber(ushort sequenceNumber)
         {
             if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber)) return;
 
             var sequenceWithWrap = sequenceNumber > _remoteSequenceNumber
                 ? sequenceNumber
-                : sequenceNumber + BufferSize;
+                : sequenceNumber + ReceiveBufferSize;
 
             for (var i = _remoteSequenceNumber + 1; i <= sequenceWithWrap; i++)
-                _receivedPackets[i % BufferSize].Packet = null;
+                _receivedPackets[i % ReceiveBufferSize] = null;
 
             _remoteSequenceNumber = sequenceNumber;
         }
 
-        // Executed on: Receive thread
         private void SendAcknowledgement(ushort sequenceNumber)
         {
             var acknowledgeBitField = 0;
 
             for (var i = 0; i < BitsInAckBitField; i++)
             {
-                var wasReceived = _receivedPackets[(ushort) (sequenceNumber - i - 1)].IsReceived;
+                var wasReceived = _receivedPackets[(ushort) (sequenceNumber - i - 1)] is not null;
                 if (wasReceived) acknowledgeBitField |= 1 << i;
             }
 
             var packet = Packet.Get(HeaderType.Acknowledgement, Delivery.Reliable);
             packet.Writer.Write(sequenceNumber);
             packet.Writer.Write(acknowledgeBitField);
-            _connection.Node.Send(packet, _connection.RemoteEndPoint);
+            Connection.Node.Send(packet, Connection.RemoteEndPoint);
         }
 
-        // Executed on: Receive thread
         internal override void ReceiveAcknowledgement(byte[] datagram)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: 1);
             var acknowledgeBitField = datagram.Read<int>(offset: 3);
 
-            lock (_sequenceNumberToPendingPacket)
+            lock (_pendingPackets)
             {
                 AcknowledgePendingPacket(sequenceNumber);
 
@@ -103,35 +92,17 @@ namespace Networking.Transport.Channels
 
             void AcknowledgePendingPacket(ushort seq)
             {
-                if (!_sequenceNumberToPendingPacket.TryGetValue(seq, out var pendingPacket)) return;
+                if (!_pendingPackets.TryGetValue(seq, out var pendingPacket)) return;
 
                 pendingPacket.Acknowledge();
-                _sequenceNumberToPendingPacket.Remove(seq);
+                _pendingPackets.Remove(seq);
             }
         }
 
-        // Executed on: Worker thread
-        public void ResendPacket(Packet packet)
+        protected override string ExtractPacketInfo(Packet packet)
         {
-            _connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool: false);
-
             var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
-            Log.Info($"Re-sent packet {sequenceNumber}.");
-        }
-
-        // Executed on: Worker thread
-        public void HandleLostPacket(Packet packet)
-        {
-            _connection.Timeout();
-
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
-            Log.Info($"Connection timed-out: Packet {sequenceNumber} exceeded maximum resend attempts.");
-        }
-
-        private struct ReceivedPacket
-        {
-            public bool IsReceived => Packet is not null;
-            public Packet Packet;
+            return $"[sequence: {sequenceNumber}]";
         }
     }
 }
