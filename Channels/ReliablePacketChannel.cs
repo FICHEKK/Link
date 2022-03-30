@@ -35,7 +35,13 @@ namespace Networking.Transport.Channels
             UpdateRemoteSequenceNumber(sequenceNumber);
             SendAcknowledgement(sequenceNumber);
 
-            if (_receivedPackets[sequenceNumber] is not null) return;
+            if (_receivedPackets[sequenceNumber] is not null)
+            {
+                PacketsDuplicated++;
+                BytesDuplicated += bytesReceived;
+                return;
+            }
+
             _receivedPackets[sequenceNumber] = Packet.From(datagram, bytesReceived);
 
             if (!_isOrdered)

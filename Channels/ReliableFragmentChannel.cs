@@ -93,7 +93,8 @@ namespace Networking.Transport.Channels
 
             if (!fragmentedPacket.AddFragment(Packet.From(datagram, bytesReceived)))
             {
-                // TODO - Increment number of duplicate packets.
+                PacketsDuplicated++;
+                BytesDuplicated += bytesReceived;
                 return;
             }
 

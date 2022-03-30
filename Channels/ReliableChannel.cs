@@ -45,6 +45,16 @@ namespace Networking.Transport.Channels
         public long BytesResent { get; private set; }
 
         /// <summary>
+        /// Total number of duplicate packets received on this channel.
+        /// </summary>
+        public long PacketsDuplicated { get; protected set; }
+
+        /// <summary>
+        /// Total number of duplicate bytes received on this channel.
+        /// </summary>
+        public long BytesDuplicated { get; protected set; }
+
+        /// <summary>
         /// Connection that is using this channel.
         /// </summary>
         protected readonly Connection Connection;
@@ -83,6 +93,7 @@ namespace Networking.Transport.Channels
         protected abstract string ExtractPacketInfo(Packet packet);
 
         /// <inheritdoc cref="Channel.ToString"/>
-        public override string ToString() => base.ToString() + $" | Resent: {PacketsResent}, {BytesResent} | Packet-loss: {PacketLoss:F3}";
+        public override string ToString() =>
+            base.ToString() + $" | Duplicated: {PacketsDuplicated}, {BytesDuplicated} | Resent: {PacketsResent}, {BytesResent} | Packet-loss: {PacketLoss:F3}";
     }
 }
