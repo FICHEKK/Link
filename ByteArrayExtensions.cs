@@ -7,6 +7,9 @@ namespace Networking.Transport
     /// </summary>
     public static class ByteArrayExtensions
     {
+        /// <summary>
+        /// Writes a single value to the specified position in this byte array.
+        /// </summary>
         public static unsafe void Write<T>(this byte[] bytes, T value, int offset) where T : unmanaged
         {
             fixed (byte* pointer = &bytes[offset])
@@ -15,12 +18,19 @@ namespace Networking.Transport
             }
         }
 
+        /// <summary>
+        /// Writes an array of values to the specified position in this byte array.
+        /// </summary>
+        /// <remarks>Array length will be written before writing array values.</remarks>
         public static void WriteArray<T>(this byte[] bytes, T[] array, int offset) where T : unmanaged
         {
             bytes.Write(array.Length, offset);
             bytes.WriteSpan(new ReadOnlySpan<T>(array), offset + sizeof(int));
         }
 
+        /// <summary>
+        /// Writes a span of values to the specified position in this byte array.
+        /// </summary>
         public static unsafe void WriteSpan<T>(this byte[] bytes, ReadOnlySpan<T> span, int offset) where T : unmanaged
         {
             fixed (byte* pointer = &bytes[offset])
@@ -52,6 +62,9 @@ namespace Networking.Transport
             bytes[offset] = (byte) v;
         }
 
+        /// <summary>
+        /// Reads a single value from the specified position in this byte array.
+        /// </summary>
         public static unsafe T Read<T>(this byte[] bytes, int offset) where T : unmanaged
         {
             fixed (byte* pointer = &bytes[offset])
@@ -60,6 +73,9 @@ namespace Networking.Transport
             }
         }
 
+        /// <summary>
+        /// Reads an array of values from the specified position in this byte array.
+        /// </summary>
         public static unsafe T[] ReadArray<T>(this byte[] bytes, int offset) where T : unmanaged
         {
             var length = bytes.Read<int>(offset);
