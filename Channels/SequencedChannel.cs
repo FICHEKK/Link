@@ -6,6 +6,9 @@ namespace Networking.Transport.Channels
         private ushort _localSequenceNumber;
         private ushort _remoteSequenceNumber;
 
+        public long PacketsReceivedOutOfOrder { get; private set; }
+        public long BytesReceivedOutOfOrder { get; private set; }
+
         public SequencedChannel(Connection connection) =>
             _connection = connection;
 
@@ -18,13 +21,23 @@ namespace Networking.Transport.Channels
         protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: 1);
-            if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber)) return;
 
-            _remoteSequenceNumber = sequenceNumber;
-            _connection.Node.EnqueuePendingPacket(Packet.From(datagram, bytesReceived), _connection.RemoteEndPoint);
+            if (IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber))
+            {
+                _remoteSequenceNumber = sequenceNumber;
+                _connection.Node.EnqueuePendingPacket(Packet.From(datagram, bytesReceived), _connection.RemoteEndPoint);
+            }
+            else
+            {
+                PacketsReceivedOutOfOrder++;
+                BytesReceivedOutOfOrder += bytesReceived;
+            }
         }
 
         internal override void ReceiveAcknowledgement(byte[] datagram) =>
             Log.Warning($"Acknowledgement packet received on '{nameof(SequencedChannel)}'.");
+
+        public override string ToString() =>
+            base.ToString() + $" | Received out-of-order: {PacketsReceivedOutOfOrder}, {BytesReceivedOutOfOrder}";
     }
 }
