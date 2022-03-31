@@ -1,11 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Net;
-using System.Threading;
 using Networking.Transport.Channels;
 using Networking.Transport.Nodes;
-using static System.Threading.Timeout;
 
 namespace Networking.Transport
 {
@@ -15,33 +12,6 @@ namespace Networking.Transport
     /// </summary>
     public class Connection
     {
-        /// <summary>
-        /// Duration between two consecutive ping packets, in milliseconds.
-        /// </summary>
-        private const int PingPeriod = 1000;
-
-        /// <summary>
-        /// If valid ping response is not received for this duration of time
-        /// (in milliseconds), connection is going to time-out.
-        /// </summary>
-        private const int PingTimeout = 10_000;
-
-        /// <summary>
-        /// Factor used to apply exponential smoothing in order to calculate
-        /// the value of <see cref="SmoothRoundTripTime"/>.
-        /// </summary>
-        private const double RttSmoothingFactor = 0.618;
-
-        /// <summary>
-        /// Returns round-trip time with applied exponential smoothing.
-        /// </summary>
-        public double SmoothRoundTripTime { get; private set; }
-
-        /// <summary>
-        /// Returns the most recently calculated round-trip time, in milliseconds.
-        /// </summary>
-        public double RoundTripTime { get; private set; }
-
         /// <summary>
         /// Underlying node that this connection belongs to.
         /// </summary>
@@ -58,6 +28,16 @@ namespace Networking.Transport
         public IReadOnlyList<Channel> Channels => _channels;
 
         /// <summary>
+        /// Returns round-trip time with applied exponential smoothing.
+        /// </summary>
+        public double SmoothRoundTripTime => _pingMeasurer.SmoothRoundTripTime;
+
+        /// <summary>
+        /// Returns the most recently calculated round-trip time, in milliseconds.
+        /// </summary>
+        public double RoundTripTime => _pingMeasurer.RoundTripTime;
+
+        /// <summary>
         /// If <c>true</c>, connection has been fully established.
         /// If <c>false</c>, connection is in process of connecting.
         /// </summary>
@@ -67,19 +47,21 @@ namespace Networking.Transport
             internal set
             {
                 _isConnected = value;
-                var dueTime = _isConnected ? 0 : Infinite;
-                var period = _isConnected ? PingPeriod : Infinite;
-                _pingTimer.Change(dueTime, period);
+
+                if (_isConnected)
+                {
+                    _pingMeasurer.StartMeasuring();
+                }
+                else
+                {
+                    _pingMeasurer.StopMeasuring();
+                }
             }
         }
 
-        private bool _isConnected;
-        private DateTime _lastPingResponseTime;
-
-        private ushort _pingId;
-        private readonly Timer _pingTimer;
-        private readonly Stopwatch _pingStopwatch = new();
         private readonly Channel[] _channels = new Channel[Enum.GetValues(typeof(Delivery)).Length];
+        private readonly PingMeasurer _pingMeasurer;
+        private bool _isConnected;
 
         internal Connection(Node node, EndPoint remoteEndPoint, bool isConnected)
         {
@@ -90,8 +72,7 @@ namespace Networking.Transport
             _channels[(int) Delivery.FragmentedUnordered] = new ReliableFragmentChannel(connection: this, isOrdered: false) {Name = nameof(Delivery.FragmentedUnordered)};
             _channels[(int) Delivery.Fragmented] = new ReliableFragmentChannel(connection: this, isOrdered: true) {Name = nameof(Delivery.Fragmented)};
 
-            _pingTimer = new Timer(_ => SendPing());
-            _lastPingResponseTime = DateTime.UtcNow;
+            _pingMeasurer = new PingMeasurer(connection: this);
 
             Node = node;
             RemoteEndPoint = remoteEndPoint;
@@ -119,46 +100,18 @@ namespace Networking.Transport
             return _channels[channelId];
         }
 
-        private void SendPing()
-        {
-            if ((DateTime.UtcNow - _lastPingResponseTime).TotalMilliseconds > PingTimeout)
-            {
-                Timeout();
-                Log.Info($"Connection timed-out: Ping response was not received in over {PingTimeout} ms.");
-                return;
-            }
+        internal void ReceivePing(byte[] datagram) =>
+            _pingMeasurer.ReceivePing(datagram);
 
-            var pingPacket = Packet.Get(HeaderType.Ping);
-            pingPacket.Writer.Write(++_pingId);
-            Node.Send(pingPacket, RemoteEndPoint);
-
-            _pingStopwatch.Restart();
-        }
-
-        internal void ReceivePing(byte[] datagram)
-        {
-            var pongPacket = Packet.Get(HeaderType.Pong);
-            pongPacket.Writer.Write(datagram.Read<ushort>(offset: 1));
-            Node.Send(pongPacket, RemoteEndPoint);
-        }
-
-        internal void ReceivePong(byte[] datagram)
-        {
-            var pongId = datagram.Read<ushort>(offset: 1);
-            if (pongId != _pingId) return;
-
-            RoundTripTime = _pingStopwatch.Elapsed.TotalMilliseconds;
-            SmoothRoundTripTime = RttSmoothingFactor * RoundTripTime + (1 - RttSmoothingFactor) * SmoothRoundTripTime;
-
-            _lastPingResponseTime = DateTime.UtcNow;
-        }
+        internal void ReceivePong(byte[] datagram) =>
+            _pingMeasurer.ReceivePong(datagram);
 
         internal void Close(bool sendDisconnectPacket)
         {
             if (sendDisconnectPacket)
                 Node.Send(Packet.Get(HeaderType.Disconnect), RemoteEndPoint);
 
-            _pingTimer.Dispose();
+            _pingMeasurer.Dispose();
         }
 
         /// <summary>
