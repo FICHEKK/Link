@@ -12,10 +12,10 @@ namespace Networking.Transport.Channels
         public SequencedChannel(Connection connection) =>
             _connection = connection;
 
-        protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool)
+        protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet)
         {
             packet.Buffer.Write(++_localSequenceNumber, offset: 1);
-            return _connection.Node.Send(packet, _connection.RemoteEndPoint, returnPacketToPool) ? (1, packet.Writer.Position) : (0, 0);
+            return _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.Writer.Position) : (0, 0);
         }
 
         protected override void ExecuteReceive(byte[] datagram, int bytesReceived)

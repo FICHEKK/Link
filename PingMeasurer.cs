@@ -71,6 +71,8 @@ namespace Networking.Transport
             var pingPacket = Packet.Get(HeaderType.Ping);
             pingPacket.Writer.Write(++_lastSentPingId);
             _connection.Node.Send(pingPacket, _connection.RemoteEndPoint);
+            pingPacket.Return();
+
             _rttStopwatch.Restart();
         }
 
@@ -79,6 +81,7 @@ namespace Networking.Transport
             var pongPacket = Packet.Get(HeaderType.Pong);
             pongPacket.Writer.Write(datagram.Read<ushort>(offset: 1));
             _connection.Node.Send(pongPacket, _connection.RemoteEndPoint);
+            pongPacket.Return();
         }
 
         internal void ReceivePong(byte[] datagram)

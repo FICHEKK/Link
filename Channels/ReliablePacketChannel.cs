@@ -17,10 +17,10 @@ namespace Networking.Transport.Channels
 
         public ReliablePacketChannel(Connection connection, bool isOrdered) : base(connection) => _isOrdered = isOrdered;
 
-        protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool)
+        protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet)
         {
             packet.Buffer.Write(_localSequenceNumber, offset: 1);
-            if (!Connection.Node.Send(packet, Connection.RemoteEndPoint, returnPacketToPool)) return (0, 0);
+            if (!Connection.Node.Send(packet, Connection.RemoteEndPoint)) return (0, 0);
 
             lock (_pendingPackets)
             {
@@ -85,6 +85,7 @@ namespace Networking.Transport.Channels
             packet.Writer.Write(sequenceNumber);
             packet.Writer.Write(acknowledgeBitField);
             Connection.Node.Send(packet, Connection.RemoteEndPoint);
+            packet.Return();
         }
 
         internal override void ReceiveAcknowledgement(byte[] datagram)

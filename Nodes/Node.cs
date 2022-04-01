@@ -138,24 +138,17 @@ namespace Networking.Transport.Nodes
         /// </summary>
         /// <param name="packet">Packet being sent.</param>
         /// <param name="receiverEndPoint">Where to send the packet to.</param>
-        /// <param name="returnPacketToPool">Whether given packet should be returned to pool.</param>
         /// <returns><c>true</c> if packet was successfully sent, <c>false</c> otherwise.</returns>
-        public bool Send(Packet packet, EndPoint receiverEndPoint, bool returnPacketToPool = true)
+        public bool Send(Packet packet, EndPoint receiverEndPoint)
         {
-            var packetSize = packet.Writer.Position;
-            var isInRange = packetSize <= Packet.MaxSize;
-
-            if (isInRange)
+            if (packet.Writer.Position > Packet.MaxSize)
             {
-                _socket.SendTo(packet.Buffer, offset: 0, packetSize, SocketFlags.None, receiverEndPoint);
-            }
-            else
-            {
-                Log.Error($"Packet exceeded maximum size of {Packet.MaxSize} bytes (has {packetSize} bytes).");
+                Log.Error($"Packet exceeded maximum size of {Packet.MaxSize} bytes (has {packet.Writer.Position} bytes).");
+                return false;
             }
 
-            if (returnPacketToPool) packet.Return();
-            return isInRange;
+            _socket.SendTo(packet.Buffer, offset: 0, packet.Writer.Position, SocketFlags.None, receiverEndPoint);
+            return true;
         }
 
         /// <summary>

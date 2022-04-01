@@ -70,7 +70,7 @@ namespace Networking.Transport.Channels
         /// <param name="packet">Packet being resent.</param>
         public void ResendPacket(Packet packet)
         {
-            Connection.Node.Send(packet, Connection.RemoteEndPoint, returnPacketToPool: false);
+            Connection.Node.Send(packet, Connection.RemoteEndPoint);
             Log.Info($"Re-sent packet {ExtractPacketInfo(packet)}.");
 
             PacketsResent++;

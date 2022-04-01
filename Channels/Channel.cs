@@ -33,9 +33,9 @@ namespace Networking.Transport.Channels
         /// <summary>
         /// Writes header information and sends given packet to the remote end-point.
         /// </summary>
-        internal void Send(Packet packet, bool returnPacketToPool = true)
+        internal void Send(Packet packet)
         {
-            var (packetsSent, bytesSent) = ExecuteSend(packet, returnPacketToPool);
+            var (packetsSent, bytesSent) = ExecuteSend(packet);
             PacketsSent += packetsSent;
             BytesSent += bytesSent;
         }
@@ -43,7 +43,7 @@ namespace Networking.Transport.Channels
         /// <summary>
         /// Executes logic required to send the given packet.
         /// </summary>
-        protected abstract (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool);
+        protected abstract (int packetsSent, int bytesSent) ExecuteSend(Packet packet);
 
         /// <summary>
         /// Reads header information and attempts to convert incoming bytes to packet instance(s).

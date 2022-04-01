@@ -78,11 +78,13 @@ namespace Networking.Transport
             RemoteEndPoint = remoteEndPoint;
             IsConnected = isConnected;
 
-            Node.Send(Packet.Get(isConnected ? HeaderType.ConnectApproved : HeaderType.Connect), RemoteEndPoint);
+            var connectPacket = Packet.Get(isConnected ? HeaderType.ConnectApproved : HeaderType.Connect);
+            Node.Send(connectPacket, RemoteEndPoint);
+            connectPacket.Return();
         }
 
-        public void Send(Packet packet, bool returnPacketToPool = true) =>
-            GetChannel(packet.Buffer[0]).Send(packet, returnPacketToPool);
+        public void Send(Packet packet) =>
+            GetChannel(packet.Buffer[0]).Send(packet);
 
         internal void ReceiveData(byte[] datagram, int bytesReceived) =>
             GetChannel(datagram[0]).Receive(datagram, bytesReceived);
@@ -109,7 +111,11 @@ namespace Networking.Transport
         internal void Close(bool sendDisconnectPacket)
         {
             if (sendDisconnectPacket)
-                Node.Send(Packet.Get(HeaderType.Disconnect), RemoteEndPoint);
+            {
+                var disconnectPacket = Packet.Get(HeaderType.Disconnect);
+                Node.Send(disconnectPacket, RemoteEndPoint);
+                disconnectPacket.Return();
+            }
 
             _pingMeasurer.Dispose();
         }

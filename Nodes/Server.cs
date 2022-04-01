@@ -109,7 +109,9 @@ namespace Networking.Transport.Nodes
             // This client is already connected, but might have not received the approval.
             if (_connections.ContainsKey(senderEndPoint))
             {
-                Send(Packet.Get(HeaderType.ConnectApproved), senderEndPoint);
+                var approvalPacket = Packet.Get(HeaderType.ConnectApproved);
+                Send(approvalPacket, senderEndPoint);
+                approvalPacket.Return();
                 return;
             }
 
@@ -191,7 +193,7 @@ namespace Networking.Transport.Nodes
         public void Broadcast(Packet packet)
         {
             foreach (var connection in _connections.Values)
-                connection.Send(packet, returnPacketToPool: false);
+                connection.Send(packet);
 
             packet.Return();
         }

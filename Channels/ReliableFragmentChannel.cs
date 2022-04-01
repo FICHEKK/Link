@@ -40,7 +40,7 @@ namespace Networking.Transport.Channels
 
         public ReliableFragmentChannel(Connection connection, bool isOrdered) : base(connection) => _isOrdered = isOrdered;
 
-        protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet, bool returnPacketToPool)
+        protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet)
         {
             var dataByteCount = packet.Writer.Position - HeaderSize;
             var fragmentCount = dataByteCount / BytesPerFragment + (dataByteCount % BytesPerFragment != 0 ? 1 : 0);
@@ -48,8 +48,6 @@ namespace Networking.Transport.Channels
             if (fragmentCount > MaxFragmentCount)
             {
                 Log.Error($"Packet is too large (consists of {fragmentCount} fragments, while maximum is {MaxFragmentCount} fragments).");
-                if (returnPacketToPool) packet.Return();
-
                 return (0, 0);
             }
 
@@ -67,11 +65,11 @@ namespace Networking.Transport.Channels
 
                     _pendingPackets.Add((_localSequenceNumber, fragmentNumber), PendingPacket.Get(fragment, reliableChannel: this));
                     Connection.Node.Send(fragment, Connection.RemoteEndPoint);
+
+                    fragment.Return();
                 }
 
                 _localSequenceNumber++;
-                if (returnPacketToPool) packet.Return();
-
                 return (fragmentCount, dataByteCount + HeaderSize * fragmentCount);
             }
         }
@@ -136,6 +134,7 @@ namespace Networking.Transport.Channels
             packet.Writer.Write(sequenceNumber);
             packet.Writer.Write(fragmentNumber);
             Connection.Node.Send(packet, Connection.RemoteEndPoint);
+            packet.Return();
         }
 
         internal override void ReceiveAcknowledgement(byte[] datagram)

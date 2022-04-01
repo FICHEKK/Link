@@ -108,7 +108,9 @@ namespace Networking.Transport.Nodes
         public void Send(Packet packet)
         {
             if (!IsConnected) throw new InvalidOperationException("Cannot send packet as client is not connected to the server.");
+
             Connection.Send(packet);
+            packet.Return();
         }
 
         /// <summary>
