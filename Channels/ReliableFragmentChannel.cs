@@ -13,12 +13,17 @@ namespace Networking.Transport.Channels
         /// <summary>
         /// Defines how many data bytes can be stored in a single fragment.
         /// </summary>
-        private const int BytesPerFragment = Packet.MaxSize - HeaderSize;
+        private const int BytesPerFragment = Packet.MaxSize - HeaderSize - FooterSize;
 
         /// <summary>
-        /// Consists of header type (1 byte), sequence number (2 bytes) and fragment number (2 bytes).
+        /// Consists of header type (1 byte).
         /// </summary>
-        private const int HeaderSize = 5;
+        private const int HeaderSize = 1;
+
+        /// <summary>
+        /// Consists of sequence number (2 bytes) and fragment number (2 bytes).
+        /// </summary>
+        private const int FooterSize = 4;
 
         /// <summary>
         /// When the most significant bit is set, it marks that fragment as the last fragment.
@@ -55,13 +60,13 @@ namespace Networking.Transport.Channels
             {
                 for (var i = 0; i < fragmentCount; i++)
                 {
-                    var fragment = Packet.Get(HeaderType.Data, Delivery.Fragmented);
+                    var fragment = Packet.Get(HeaderType.Data, _isOrdered ? Delivery.Fragmented : Delivery.FragmentedUnordered);
                     var fragmentNumber = i < fragmentCount - 1 ? (ushort) i : (ushort) (i | LastFragmentBitmask);
                     var fragmentLength = i < fragmentCount - 1 ? BytesPerFragment : dataByteCount - i * BytesPerFragment;
 
+                    fragment.Writer.WriteSpan(new ReadOnlySpan<byte>(packet.Buffer, start: HeaderSize + i * BytesPerFragment, fragmentLength));
                     fragment.Writer.Write(_localSequenceNumber);
                     fragment.Writer.Write(fragmentNumber);
-                    fragment.Writer.WriteSpan(new ReadOnlySpan<byte>(packet.Buffer, start: HeaderSize + i * BytesPerFragment, fragmentLength));
 
                     _pendingPackets.Add((_localSequenceNumber, fragmentNumber), PendingPacket.Get(fragment, reliableChannel: this));
                     Connection.Node.Send(fragment, Connection.RemoteEndPoint);
@@ -70,14 +75,14 @@ namespace Networking.Transport.Channels
                 }
 
                 _localSequenceNumber++;
-                return (fragmentCount, dataByteCount + HeaderSize * fragmentCount);
+                return (fragmentCount, dataByteCount + (HeaderSize + FooterSize) * fragmentCount);
             }
         }
 
         protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
         {
-            var sequenceNumber = datagram.Read<ushort>(offset: 1);
-            var fragmentNumber = datagram.Read<ushort>(offset: 3);
+            var sequenceNumber = datagram.Read<ushort>(offset: bytesReceived - FooterSize);
+            var fragmentNumber = datagram.Read<ushort>(offset: bytesReceived - FooterSize + sizeof(ushort));
             UpdateRemoteSequenceNumber(sequenceNumber);
             SendAcknowledgement(sequenceNumber, fragmentNumber);
 
@@ -89,7 +94,7 @@ namespace Networking.Transport.Channels
                 _fragmentedPackets[sequenceNumber] = fragmentedPacket;
             }
 
-            if (!fragmentedPacket.AddFragment(Packet.From(datagram, bytesReceived)))
+            if (!fragmentedPacket.AddFragment(fragmentNumber, Packet.From(datagram, bytesReceived)))
             {
                 PacketsDuplicated++;
                 BytesDuplicated += bytesReceived;
@@ -154,8 +159,8 @@ namespace Networking.Transport.Channels
 
         protected override string ExtractPacketInfo(Packet packet)
         {
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
-            var fragmentNumber = packet.Buffer.Read<ushort>(offset: 3);
+            var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Writer.Position - FooterSize);
+            var fragmentNumber = packet.Buffer.Read<ushort>(offset: packet.Writer.Position - FooterSize + sizeof(ushort));
             return $"[sequence: {sequenceNumber}, fragment: {fragmentNumber}]";
         }
 
@@ -168,10 +173,8 @@ namespace Networking.Transport.Channels
             private ushort _lastFragmentNumber;
             private int _totalFragmentCount;
 
-            public bool AddFragment(Packet fragment)
+            public bool AddFragment(ushort fragmentNumber, Packet fragment)
             {
-                var fragmentNumber = fragment.Buffer.Read<ushort>(offset: 3);
-
                 if (_fragments.ContainsKey(fragmentNumber))
                 {
                     fragment.Return();
@@ -199,7 +202,7 @@ namespace Networking.Transport.Channels
             private void Reassemble()
             {
                 var fullFragmentByteCount = (_totalFragmentCount - 1) * BytesPerFragment;
-                var lastFragmentByteCount = _fragments[_lastFragmentNumber].Writer.Position - HeaderSize;
+                var lastFragmentByteCount = _fragments[_lastFragmentNumber].Writer.Position - HeaderSize - FooterSize;
 
                 ReassembledPacket = Packet.Get();
                 ReassembledPacket.Buffer = new byte[fullFragmentByteCount + lastFragmentByteCount];

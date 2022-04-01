@@ -50,21 +50,6 @@ namespace Networking.Transport
         /// </summary>
         public static int TotalAllocationCount { get; private set; }
 
-        /// <summary>
-        /// Defines how many bytes are needed to store header information for each delivery type.
-        /// </summary>
-        private static readonly int[] DeliveryHeaderSizes = new int[Enum.GetValues(typeof(Delivery)).Length];
-
-        static Packet()
-        {
-            DeliveryHeaderSizes[(int) Delivery.Unreliable] = 1;
-            DeliveryHeaderSizes[(int) Delivery.Sequenced] = 3;
-            DeliveryHeaderSizes[(int) Delivery.ReliableUnordered] = 3;
-            DeliveryHeaderSizes[(int) Delivery.Reliable] = 3;
-            DeliveryHeaderSizes[(int) Delivery.FragmentedUnordered] = 5;
-            DeliveryHeaderSizes[(int) Delivery.Fragmented] = 5;
-        }
-
         public byte[] Buffer { get; set; }
         public PacketWriter Writer { get; }
         public PacketReader Reader { get; }
@@ -73,9 +58,6 @@ namespace Networking.Transport
         public static Packet Get(ushort id, Delivery delivery = Delivery.Unreliable)
         {
             var packet = Get(HeaderType.Data, delivery);
-            var headerSize = DeliveryHeaderSizes[(int) delivery];
-            packet.Reader.Position = headerSize;
-            packet.Writer.Position = headerSize;
             packet.Writer.Write(id);
             return packet;
         }
@@ -94,9 +76,8 @@ namespace Networking.Transport
             var packet = Get();
             Array.Copy(datagram, packet.Buffer, bytesReceived);
 
-            var headerSize = DeliveryHeaderSizes[datagram[0] >> 4];
-            packet.Reader.Position = headerSize;
             packet.Writer.Position = bytesReceived;
+            packet.Reader.Position = 1;
             return packet;
         }
 

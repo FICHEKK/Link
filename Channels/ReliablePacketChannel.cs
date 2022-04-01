@@ -19,7 +19,7 @@ namespace Networking.Transport.Channels
 
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet)
         {
-            packet.Buffer.Write(_localSequenceNumber, offset: 1);
+            packet.Writer.Write(_localSequenceNumber);
             if (!Connection.Node.Send(packet, Connection.RemoteEndPoint)) return (0, 0);
 
             lock (_pendingPackets)
@@ -31,7 +31,7 @@ namespace Networking.Transport.Channels
 
         protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
         {
-            var sequenceNumber = datagram.Read<ushort>(offset: 1);
+            var sequenceNumber = datagram.Read<ushort>(offset: bytesReceived - sizeof(ushort));
             UpdateRemoteSequenceNumber(sequenceNumber);
             SendAcknowledgement(sequenceNumber);
 
@@ -115,7 +115,7 @@ namespace Networking.Transport.Channels
 
         protected override string ExtractPacketInfo(Packet packet)
         {
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: 1);
+            var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Writer.Position - sizeof(ushort));
             return $"[sequence: {sequenceNumber}]";
         }
     }

@@ -3,7 +3,7 @@ namespace Networking.Transport
     /// <summary>
     /// Defines the way data should be delivered to the remote destination.
     /// </summary>
-    public enum Delivery
+    public enum Delivery : byte
     {
         /// <summary>
         /// Fire and forget delivery method; packets might be lost on the way, can be duplicated and can arrive out of order.
