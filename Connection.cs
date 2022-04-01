@@ -84,23 +84,16 @@ namespace Networking.Transport
         }
 
         public void Send(Packet packet) =>
-            GetChannel(packet.Buffer[0]).Send(packet);
+            GetChannel(packet.Buffer[1]).Send(packet);
 
         internal void ReceiveData(byte[] datagram, int bytesReceived) =>
-            GetChannel(datagram[0]).Receive(datagram, bytesReceived);
+            GetChannel(datagram[1]).Receive(datagram, bytesReceived);
 
         internal void ReceiveAcknowledgement(byte[] datagram) =>
-            GetChannel(datagram[0]).ReceiveAcknowledgement(datagram);
+            GetChannel(datagram[1]).ReceiveAcknowledgement(datagram);
 
-        private Channel GetChannel(byte header)
-        {
-            var channelId = header >> 4;
-
-            if (channelId >= _channels.Length)
-                throw new ArgumentException($"Channel with ID {channelId} does not exist.");
-
-            return _channels[channelId];
-        }
+        private Channel GetChannel(byte channelId) =>
+            channelId < _channels.Length ? _channels[channelId] : throw new ArgumentException($"Channel with ID {channelId} does not exist.");
 
         internal void ReceivePing(byte[] datagram) =>
             _pingMeasurer.ReceivePing(datagram);

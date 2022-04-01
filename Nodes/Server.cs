@@ -59,7 +59,7 @@ namespace Networking.Transport.Nodes
 
         protected override void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
-            switch ((HeaderType) (datagram[0] & 0x0F))
+            switch ((HeaderType) datagram[0])
             {
                 case HeaderType.Data:
                     HandleDataPacket(datagram, bytesReceived, senderEndPoint);

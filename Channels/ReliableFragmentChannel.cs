@@ -16,11 +16,6 @@ namespace Networking.Transport.Channels
         private const int BytesPerFragment = Packet.MaxSize - HeaderSize - FooterSize;
 
         /// <summary>
-        /// Consists of header type (1 byte).
-        /// </summary>
-        private const int HeaderSize = 1;
-
-        /// <summary>
         /// Consists of sequence number (2 bytes) and fragment number (2 bytes).
         /// </summary>
         private const int FooterSize = 4;
@@ -60,10 +55,11 @@ namespace Networking.Transport.Channels
             {
                 for (var i = 0; i < fragmentCount; i++)
                 {
-                    var fragment = Packet.Get(HeaderType.Data, _isOrdered ? Delivery.Fragmented : Delivery.FragmentedUnordered);
                     var fragmentNumber = i < fragmentCount - 1 ? (ushort) i : (ushort) (i | LastFragmentBitmask);
                     var fragmentLength = i < fragmentCount - 1 ? BytesPerFragment : dataByteCount - i * BytesPerFragment;
+                    var fragment = Packet.Get(HeaderType.Data);
 
+                    fragment.Writer.Write(packet.Buffer[1]);
                     fragment.Writer.WriteSpan(new ReadOnlySpan<byte>(packet.Buffer, start: HeaderSize + i * BytesPerFragment, fragmentLength));
                     fragment.Writer.Write(_localSequenceNumber);
                     fragment.Writer.Write(fragmentNumber);
@@ -84,7 +80,7 @@ namespace Networking.Transport.Channels
             var sequenceNumber = datagram.Read<ushort>(offset: bytesReceived - FooterSize);
             var fragmentNumber = datagram.Read<ushort>(offset: bytesReceived - FooterSize + sizeof(ushort));
             UpdateRemoteSequenceNumber(sequenceNumber);
-            SendAcknowledgement(sequenceNumber, fragmentNumber);
+            SendAcknowledgement(channelId: datagram[1], sequenceNumber, fragmentNumber);
 
             var fragmentedPacket = _fragmentedPackets[sequenceNumber];
 
@@ -94,7 +90,7 @@ namespace Networking.Transport.Channels
                 _fragmentedPackets[sequenceNumber] = fragmentedPacket;
             }
 
-            if (!fragmentedPacket.AddFragment(fragmentNumber, Packet.From(datagram, bytesReceived)))
+            if (!fragmentedPacket.AddFragment(fragmentNumber, CreatePacket(datagram, bytesReceived)))
             {
                 PacketsDuplicated++;
                 BytesDuplicated += bytesReceived;
@@ -133,9 +129,10 @@ namespace Networking.Transport.Channels
             _remoteSequenceNumber = sequenceNumber;
         }
 
-        private void SendAcknowledgement(ushort sequenceNumber, ushort fragmentNumber)
+        private void SendAcknowledgement(byte channelId, ushort sequenceNumber, ushort fragmentNumber)
         {
-            var packet = Packet.Get(HeaderType.Acknowledgement, _isOrdered ? Delivery.Fragmented : Delivery.FragmentedUnordered);
+            var packet = Packet.Get(HeaderType.Acknowledgement);
+            packet.Writer.Write(channelId);
             packet.Writer.Write(sequenceNumber);
             packet.Writer.Write(fragmentNumber);
             Connection.Node.Send(packet, Connection.RemoteEndPoint);
@@ -144,8 +141,8 @@ namespace Networking.Transport.Channels
 
         internal override void ReceiveAcknowledgement(byte[] datagram)
         {
-            var sequenceNumber = datagram.Read<ushort>(offset: 1);
-            var fragmentNumber = datagram.Read<ushort>(offset: 3);
+            var sequenceNumber = datagram.Read<ushort>(offset: HeaderSize);
+            var fragmentNumber = datagram.Read<ushort>(offset: HeaderSize + sizeof(ushort));
 
             lock (_pendingPackets)
             {

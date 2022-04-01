@@ -57,26 +57,17 @@ namespace Networking.Transport
 
         public static Packet Get(ushort id, Delivery delivery = Delivery.Unreliable)
         {
-            var packet = Get(HeaderType.Data, delivery);
+            var packet = Get(HeaderType.Data);
+            packet.Writer.Write((byte) delivery);
             packet.Writer.Write(id);
+            packet.Reader.Position = 2;
             return packet;
         }
 
-        internal static Packet Get(HeaderType headerType, Delivery delivery = Delivery.Unreliable)
+        internal static Packet Get(HeaderType headerType)
         {
             var packet = Get();
-            var header = (int) headerType | (int) delivery << 4;
-            packet.Writer.Write((byte) header);
-            packet.Reader.Position = 1;
-            return packet;
-        }
-
-        internal static Packet From(byte[] datagram, int bytesReceived)
-        {
-            var packet = Get();
-            Array.Copy(datagram, packet.Buffer, bytesReceived);
-
-            packet.Writer.Position = bytesReceived;
+            packet.Writer.Write((byte) headerType);
             packet.Reader.Position = 1;
             return packet;
         }

@@ -1,3 +1,5 @@
+using System;
+
 namespace Networking.Transport.Channels
 {
     /// <summary>
@@ -5,6 +7,12 @@ namespace Networking.Transport.Channels
     /// </summary>
     public abstract class Channel
     {
+        /// <summary>
+        /// Every packet that goes through any channel has the same header
+        /// which consists of header type (1 byte) and channel ID (1 byte).
+        /// </summary>
+        protected const int HeaderSize = 2;
+
         /// <summary>
         /// Name associated with this channel.
         /// </summary>
@@ -67,6 +75,12 @@ namespace Networking.Transport.Channels
         internal abstract void ReceiveAcknowledgement(byte[] datagram);
 
         /// <summary>
+        /// Returns statistics of this channel written in textual form.
+        /// </summary>
+        public override string ToString() =>
+            $"{Name} | Sent: {PacketsSent}, {BytesSent} | Received: {PacketsReceived}, {BytesReceived}";
+
+        /// <summary>
         /// Returns true if first sequence number is greater than the second. This method
         /// takes into account sequence number overflow, meaning that comparing maximum
         /// sequence number and zero will properly deduce that zero is a greater sequence
@@ -78,9 +92,16 @@ namespace Networking.Transport.Channels
             s1 > s2 && s1 - s2 <= ushort.MaxValue / 2 || s1 < s2 && s2 - s1 > ushort.MaxValue / 2;
 
         /// <summary>
-        /// Returns statistics of this channel written in textual form.
+        /// Creates <see cref="Packet"/> instance from the given datagram bytes.
         /// </summary>
-        public override string ToString() =>
-            $"{Name} | Sent: {PacketsSent}, {BytesSent} | Received: {PacketsReceived}, {BytesReceived}";
+        protected static Packet CreatePacket(byte[] datagram, int bytesReceived)
+        {
+            var packet = Packet.Get();
+            Array.Copy(datagram, packet.Buffer, bytesReceived);
+
+            packet.Writer.Position = bytesReceived;
+            packet.Reader.Position = HeaderSize;
+            return packet;
+        }
     }
 }

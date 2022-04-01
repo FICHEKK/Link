@@ -33,7 +33,7 @@ namespace Networking.Transport.Channels
         {
             var sequenceNumber = datagram.Read<ushort>(offset: bytesReceived - sizeof(ushort));
             UpdateRemoteSequenceNumber(sequenceNumber);
-            SendAcknowledgement(sequenceNumber);
+            SendAcknowledgement(channelId: datagram[1], sequenceNumber);
 
             if (_receivedPackets[sequenceNumber] is not null)
             {
@@ -42,7 +42,7 @@ namespace Networking.Transport.Channels
                 return;
             }
 
-            _receivedPackets[sequenceNumber] = Packet.From(datagram, bytesReceived);
+            _receivedPackets[sequenceNumber] = CreatePacket(datagram, bytesReceived);
 
             if (!_isOrdered)
             {
@@ -71,7 +71,7 @@ namespace Networking.Transport.Channels
             _remoteSequenceNumber = sequenceNumber;
         }
 
-        private void SendAcknowledgement(ushort sequenceNumber)
+        private void SendAcknowledgement(byte channelId, ushort sequenceNumber)
         {
             var acknowledgeBitField = 0;
 
@@ -81,7 +81,8 @@ namespace Networking.Transport.Channels
                 if (wasReceived) acknowledgeBitField |= 1 << i;
             }
 
-            var packet = Packet.Get(HeaderType.Acknowledgement, _isOrdered ? Delivery.Reliable : Delivery.ReliableUnordered);
+            var packet = Packet.Get(HeaderType.Acknowledgement);
+            packet.Writer.Write(channelId);
             packet.Writer.Write(sequenceNumber);
             packet.Writer.Write(acknowledgeBitField);
             Connection.Node.Send(packet, Connection.RemoteEndPoint);
@@ -90,8 +91,8 @@ namespace Networking.Transport.Channels
 
         internal override void ReceiveAcknowledgement(byte[] datagram)
         {
-            var sequenceNumber = datagram.Read<ushort>(offset: 1);
-            var acknowledgeBitField = datagram.Read<int>(offset: 3);
+            var sequenceNumber = datagram.Read<ushort>(offset: HeaderSize);
+            var acknowledgeBitField = datagram.Read<int>(offset: HeaderSize + sizeof(ushort));
 
             lock (_pendingPackets)
             {

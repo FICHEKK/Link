@@ -65,7 +65,7 @@ namespace Networking.Transport.Nodes
                 return;
             }
 
-            switch ((HeaderType) (datagram[0] & 0x0F))
+            switch ((HeaderType) datagram[0])
             {
                 case HeaderType.Data:
                     Connection.ReceiveData(datagram, bytesReceived);

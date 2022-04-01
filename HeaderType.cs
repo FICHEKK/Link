@@ -4,9 +4,6 @@ namespace Networking.Transport
     /// Defines how packet should be handled on the receiving side.
     /// Header is always inserted as the first byte in the packet.
     /// </summary>
-    /// <remarks>
-    /// Header type uses only 4 least-significant bits, so its value must not exceed 15.
-    /// </remarks>
     internal enum HeaderType : byte
     {
         /// <summary>

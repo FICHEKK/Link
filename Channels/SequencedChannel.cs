@@ -25,7 +25,7 @@ namespace Networking.Transport.Channels
             if (IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber))
             {
                 _remoteSequenceNumber = sequenceNumber;
-                _connection.Node.EnqueuePendingPacket(Packet.From(datagram, bytesReceived), _connection.RemoteEndPoint);
+                _connection.Node.EnqueuePendingPacket(CreatePacket(datagram, bytesReceived), _connection.RemoteEndPoint);
             }
             else
             {
