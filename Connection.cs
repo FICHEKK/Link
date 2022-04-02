@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Threading.Tasks;
 using Networking.Transport.Channels;
 using Networking.Transport.Nodes;
 
@@ -25,7 +26,7 @@ namespace Networking.Transport
         /// <summary>
         /// Returns a read-only list of registered channels.
         /// </summary>
-        public IReadOnlyList<Channel> Channels => _channels;
+        public IEnumerable<Channel> Channels => _channels;
 
         /// <summary>
         /// Returns round-trip time with applied exponential smoothing.
@@ -38,32 +39,25 @@ namespace Networking.Transport
         public double RoundTripTime => _pingMeasurer.RoundTripTime;
 
         /// <summary>
-        /// If <c>true</c>, connection has been fully established.
-        /// If <c>false</c>, connection is in process of connecting.
+        /// Returns current state of this connection.
         /// </summary>
-        public bool IsConnected
-        {
-            get => _isConnected;
-            internal set
-            {
-                _isConnected = value;
-
-                if (_isConnected)
-                {
-                    _pingMeasurer.StartMeasuring();
-                }
-                else
-                {
-                    _pingMeasurer.StopMeasuring();
-                }
-            }
-        }
+        public State CurrentState { get; private set; }
 
         private readonly Channel[] _channels = new Channel[Enum.GetValues(typeof(Delivery)).Length];
         private readonly PingMeasurer _pingMeasurer;
         private bool _isConnected;
 
-        internal Connection(Node node, EndPoint remoteEndPoint, bool isConnected)
+        internal Connection(Node node, EndPoint remoteEndPoint)
+        {
+            InitializeChannels();
+            _pingMeasurer = new PingMeasurer(connection: this);
+
+            Node = node;
+            RemoteEndPoint = remoteEndPoint;
+            CurrentState = State.Disconnected;
+        }
+
+        private void InitializeChannels()
         {
             _channels[(int) Delivery.Unreliable] = new UnreliableChannel(connection: this) {Name = nameof(Delivery.Unreliable)};
             _channels[(int) Delivery.Sequenced] = new SequencedChannel(connection: this) {Name = nameof(Delivery.Sequenced)};
@@ -71,16 +65,44 @@ namespace Networking.Transport
             _channels[(int) Delivery.Reliable] = new ReliablePacketChannel(connection: this, isOrdered: true) {Name = nameof(Delivery.Reliable)};
             _channels[(int) Delivery.FragmentedUnordered] = new ReliableFragmentChannel(connection: this, isOrdered: false) {Name = nameof(Delivery.FragmentedUnordered)};
             _channels[(int) Delivery.Fragmented] = new ReliableFragmentChannel(connection: this, isOrdered: true) {Name = nameof(Delivery.Fragmented)};
+        }
 
-            _pingMeasurer = new PingMeasurer(connection: this);
+        internal async void Establish(int maxAttempts, int delayBetweenAttempts)
+        {
+            if (maxAttempts <= 0) throw new ArgumentException($"'{nameof(maxAttempts)}' must be a positive value.");
+            if (delayBetweenAttempts <= 0) throw new ArgumentException($"'{nameof(delayBetweenAttempts)}' must be a positive value.");
 
-            Node = node;
-            RemoteEndPoint = remoteEndPoint;
-            IsConnected = isConnected;
+            for (var attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                var connectPacket = Packet.Get(HeaderType.Connect);
+                Node.Send(connectPacket, RemoteEndPoint);
+                connectPacket.Return();
 
-            var connectPacket = Packet.Get(isConnected ? HeaderType.ConnectApproved : HeaderType.Connect);
-            Node.Send(connectPacket, RemoteEndPoint);
-            connectPacket.Return();
+                Log.Info($"Connecting to {RemoteEndPoint} - attempt {attempt}.");
+                CurrentState = State.Connecting;
+
+                await Task.Delay(delayBetweenAttempts);
+                if (CurrentState != State.Connecting) return;
+            }
+
+            Node.Timeout(connection: this);
+            Log.Info($"Connection timed-out: could not connect to {RemoteEndPoint} (exceeded maximum connect attempts of {maxAttempts}).");
+        }
+
+        internal void ReceiveConnect()
+        {
+            var connectApprovedPacket = Packet.Get(HeaderType.ConnectApproved);
+            Node.Send(connectApprovedPacket, RemoteEndPoint);
+            connectApprovedPacket.Return();
+
+            _pingMeasurer.StartMeasuring();
+            CurrentState = State.Connected;
+        }
+
+        internal void ReceiveConnectApproved()
+        {
+            _pingMeasurer.StartMeasuring();
+            CurrentState = State.Connected;
         }
 
         public void Send(Packet packet) =>
@@ -111,6 +133,7 @@ namespace Networking.Transport
             }
 
             _pingMeasurer.Dispose();
+            CurrentState = State.Disconnected;
         }
 
         /// <summary>
@@ -119,5 +142,15 @@ namespace Networking.Transport
         /// of time, or an external component detected faulty connection.
         /// </summary>
         internal void Timeout() => Node.Timeout(connection: this);
+
+        /// <summary>
+        /// Enumeration of all the possible states a connection can be found in.
+        /// </summary>
+        public enum State
+        {
+            Disconnected,
+            Connecting,
+            Connected,
+        }
     }
 }

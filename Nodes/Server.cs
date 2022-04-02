@@ -96,11 +96,9 @@ namespace Networking.Transport.Nodes
         private void HandleConnectPacket(EndPoint senderEndPoint)
         {
             // Client is already connected, but might have not received the approval.
-            if (_connections.ContainsKey(senderEndPoint))
+            if (_connections.TryGetValue(senderEndPoint, out var connection))
             {
-                var approvalPacket = Packet.Get(HeaderType.ConnectApproved);
-                Send(approvalPacket, senderEndPoint);
-                approvalPacket.Return();
+                connection.ReceiveConnect();
                 return;
             }
 
@@ -108,7 +106,9 @@ namespace Networking.Transport.Nodes
             if (ConnectionCount >= MaxConnectionCount) return;
 
             // Else accept a new client connection.
-            var connection = new Connection(node: this, remoteEndPoint: senderEndPoint, isConnected: true);
+            connection = new Connection(node: this, remoteEndPoint: senderEndPoint);
+            connection.ReceiveConnect();
+
             _connections.Add(senderEndPoint, connection);
             ExecuteOnMainThread(() => OnClientConnected?.Invoke(connection));
         }

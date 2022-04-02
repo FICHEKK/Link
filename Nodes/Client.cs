@@ -27,12 +27,12 @@ namespace Networking.Transport.Nodes
         /// <summary>
         /// Returns <c>true</c> if this client is currently attempting to connect to the server.
         /// </summary>
-        public bool IsConnecting => Connection is not null && !Connection.IsConnected;
+        public bool IsConnecting => Connection is not null && Connection.CurrentState == Connection.State.Connecting;
 
         /// <summary>
         /// Returns <c>true</c> if this client is currently connected to the server.
         /// </summary>
-        public bool IsConnected => Connection is not null && Connection.IsConnected;
+        public bool IsConnected => Connection is not null && Connection.CurrentState == Connection.State.Connected;
 
         /// <summary>
         /// Connection to the server.
@@ -44,10 +44,13 @@ namespace Networking.Transport.Nodes
         /// </summary>
         /// <param name="ipAddress">Server IP address.</param>
         /// <param name="port">Server port.</param>
-        public void Connect(string ipAddress, int port)
+        /// <param name="maxAttempts">Maximum number of connect attempts before considering server as unreachable.</param>
+        /// <param name="delayBetweenAttempts">Delay between consecutive connect attempts, in milliseconds.</param>
+        public void Connect(string ipAddress, int port, int maxAttempts = 5, int delayBetweenAttempts = 1000)
         {
             StartListening(port: 0);
-            Connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port), isConnected: false);
+            Connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port));
+            Connection.Establish(maxAttempts, delayBetweenAttempts);
             OnConnectingToServer?.Invoke();
         }
 
@@ -84,7 +87,7 @@ namespace Networking.Transport.Nodes
                     return;
 
                 case HeaderType.ConnectApproved:
-                    Connection.IsConnected = true;
+                    Connection.ReceiveConnectApproved();
                     ExecuteOnMainThread(() => OnConnectedToServer?.Invoke());
                     return;
 
