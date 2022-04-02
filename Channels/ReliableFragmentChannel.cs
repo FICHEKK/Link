@@ -45,12 +45,37 @@ namespace Networking.Transport.Channels
             var dataByteCount = packet.Writer.Position - HeaderSize;
             var fragmentCount = dataByteCount / BytesPerFragment + (dataByteCount % BytesPerFragment != 0 ? 1 : 0);
 
+            if (fragmentCount == 0)
+            {
+                Log.Error($"Attempted to send a packet with 0 data bytes on channel '{Name}'.");
+                return (0, 0);
+            }
+
             if (fragmentCount > MaxFragmentCount)
             {
                 Log.Error($"Packet is too large (consists of {fragmentCount} fragments, while maximum is {MaxFragmentCount} fragments).");
                 return (0, 0);
             }
 
+            return fragmentCount == 1 ? SendSingleFragmentPacket(packet) : SendMultiFragmentPacket(packet, fragmentCount, dataByteCount);
+        }
+
+        private (int packetsSent, int bytesSent) SendSingleFragmentPacket(Packet packet)
+        {
+            packet.Writer.Write(_localSequenceNumber);
+            packet.Writer.Write((ushort) LastFragmentBitmask);
+
+            lock (_pendingPackets)
+            {
+                _pendingPackets.Add((_localSequenceNumber++, LastFragmentBitmask), PendingPacket.Get(packet, reliableChannel: this));
+                Connection.Node.Send(packet, Connection.RemoteEndPoint);
+
+                return (1, packet.Writer.Position);
+            }
+        }
+
+        private (int packetsSent, int bytesSent) SendMultiFragmentPacket(Packet packet, int fragmentCount, int dataByteCount)
+        {
             lock (_pendingPackets)
             {
                 for (var i = 0; i < fragmentCount; i++)
