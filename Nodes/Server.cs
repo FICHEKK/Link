@@ -59,22 +59,24 @@ namespace Networking.Transport.Nodes
 
         protected override void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
-            switch ((HeaderType) datagram[0])
+            var headerType = (HeaderType) datagram[0];
+
+            switch (headerType)
             {
                 case HeaderType.Data:
-                    HandleDataPacket(datagram, bytesReceived, senderEndPoint);
+                    TryGetConnection(senderEndPoint, headerType)?.ReceiveData(datagram, bytesReceived);
                     return;
                 
                 case HeaderType.Acknowledgement:
-                    HandleAcknowledgementPacket(datagram, senderEndPoint);
+                    TryGetConnection(senderEndPoint, headerType)?.ReceiveAcknowledgement(datagram);
                     return;
 
                 case HeaderType.Ping:
-                    HandlePingPacket(datagram, senderEndPoint);
+                    TryGetConnection(senderEndPoint, headerType)?.ReceivePing(datagram);
                     return;
 
                 case HeaderType.Pong:
-                    HandlePongPacket(datagram, senderEndPoint);
+                    TryGetConnection(senderEndPoint, headerType)?.ReceivePong(datagram);
                     return;
 
                 case HeaderType.Connect:
@@ -86,27 +88,14 @@ namespace Networking.Transport.Nodes
                     return;
 
                 default:
-                    Log.Warning($"Server received invalid packet header {datagram[0]:D} from {senderEndPoint}.");
+                    Log.Warning($"Server received invalid packet header {datagram[0]} from {senderEndPoint}.");
                     return;
             }
         }
 
-        internal override void Timeout(Connection connection)
-        {
-            var clientEndPoint = connection.RemoteEndPoint;
-            if (!_connections.Remove(clientEndPoint)) return;
-
-            Log.Info($"Client from {clientEndPoint} timed-out.");
-
-            connection.Close(sendDisconnectPacket: false);
-            ExecuteOnMainThread(() => OnClientDisconnected?.Invoke(connection));
-        }
-
         private void HandleConnectPacket(EndPoint senderEndPoint)
         {
-            Log.Info($"Client from {senderEndPoint} is trying to connect...");
-
-            // This client is already connected, but might have not received the approval.
+            // Client is already connected, but might have not received the approval.
             if (_connections.ContainsKey(senderEndPoint))
             {
                 var approvalPacket = Packet.Get(HeaderType.ConnectApproved);
@@ -115,74 +104,39 @@ namespace Networking.Transport.Nodes
                 return;
             }
 
-            // If server is not full, we accept new connection. Otherwise, ignore the sender.
-            if (ConnectionCount < MaxConnectionCount)
-            {
-                var connection = new Connection(node: this, remoteEndPoint: senderEndPoint, isConnected: true);
-                _connections.Add(senderEndPoint, connection);
-                ExecuteOnMainThread(() => OnClientConnected?.Invoke(connection));
-            }
-        }
+            // If server is full, ignore the sender.
+            if (ConnectionCount >= MaxConnectionCount) return;
 
-        private void HandleDataPacket(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
-        {
-            if (_connections.TryGetValue(senderEndPoint, out var connection))
-            {
-                connection.ReceiveData(datagram, bytesReceived);
-                return;
-            }
-
-            Log.Warning($"Received data packet from a non-connected client at {senderEndPoint}.");
-        }
-
-        private void HandleAcknowledgementPacket(byte[] datagram, EndPoint senderEndPoint)
-        {
-            if (_connections.TryGetValue(senderEndPoint, out var connection))
-            {
-                connection.ReceiveAcknowledgement(datagram);
-                return;
-            }
-
-            Log.Warning($"Received acknowledgement packet from a non-connected client at {senderEndPoint}.");
-        }
-
-        private void HandlePingPacket(byte[] datagram, EndPoint senderEndPoint)
-        {
-            if (_connections.TryGetValue(senderEndPoint, out var connection))
-            {
-                connection.ReceivePing(datagram);
-            }
-            else
-            {
-                Log.Warning($"Received ping packet from a non-connected client at {senderEndPoint}.");
-            }
-        }
-
-        private void HandlePongPacket(byte[] datagram, EndPoint senderEndPoint)
-        {
-            if (_connections.TryGetValue(senderEndPoint, out var connection))
-            {
-                connection.ReceivePong(datagram);
-            }
-            else
-            {
-                Log.Warning($"Received pong packet from a non-connected client at {senderEndPoint}.");
-            }
+            // Else accept a new client connection.
+            var connection = new Connection(node: this, remoteEndPoint: senderEndPoint, isConnected: true);
+            _connections.Add(senderEndPoint, connection);
+            ExecuteOnMainThread(() => OnClientConnected?.Invoke(connection));
         }
 
         private void HandleDisconnectPacket(EndPoint senderEndPoint)
         {
-            if (!_connections.ContainsKey(senderEndPoint))
-            {
-                Log.Warning($"Could not disconnect client from {senderEndPoint} as client was not connected.");
-                return;
-            }
+            var connection = TryGetConnection(senderEndPoint, HeaderType.Disconnect);
+            if (connection is null) return;
 
-            Log.Info($"Client from {senderEndPoint} requested disconnect...");
-
-            var connection = _connections[senderEndPoint];
             connection.Close(sendDisconnectPacket: false);
             _connections.Remove(senderEndPoint);
+            ExecuteOnMainThread(() => OnClientDisconnected?.Invoke(connection));
+        }
+
+        private Connection TryGetConnection(EndPoint senderEndPoint, HeaderType headerType)
+        {
+            if (_connections.TryGetValue(senderEndPoint, out var connection)) return connection;
+
+            Log.Warning($"Received '{headerType}' packet from a non-connected client at {senderEndPoint}.");
+            return null;
+        }
+
+        internal override void Timeout(Connection connection)
+        {
+            if (!_connections.Remove(connection.RemoteEndPoint)) return;
+
+            Log.Info($"Client from {connection.RemoteEndPoint} timed-out.");
+            connection.Close(sendDisconnectPacket: false);
             ExecuteOnMainThread(() => OnClientDisconnected?.Invoke(connection));
         }
 
