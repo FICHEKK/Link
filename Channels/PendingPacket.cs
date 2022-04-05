@@ -74,13 +74,14 @@ namespace Networking.Transport.Channels
 
         private void ScheduleResend()
         {
-            var resendDelayDuration = (int) (2 * _reliableChannel.RoundTripTime * _backoff);
+            var baseDelay = _reliableChannel.Connection.SmoothRoundTripTime + 4 * _reliableChannel.Connection.RoundTripTimeDeviation;
+            var resendDelay = (int) (baseDelay * _backoff);
             _backoff *= _reliableChannel.BackoffFactor;
 
-            if (resendDelayDuration < _reliableChannel.MinResendDelay)
-                resendDelayDuration = _reliableChannel.MinResendDelay;
+            if (resendDelay < _reliableChannel.MinResendDelay)
+                resendDelay = _reliableChannel.MinResendDelay;
 
-            _resendTimer.Change(dueTime: resendDelayDuration, period: Timeout.Infinite);
+            _resendTimer.Change(dueTime: resendDelay, period: Timeout.Infinite);
         }
 
         public void Acknowledge()

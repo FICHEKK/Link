@@ -25,11 +25,6 @@ namespace Networking.Transport.Channels
         public double BackoffFactor { get; set; } = 1.2;
 
         /// <summary>
-        /// Returns the most recently calculated round-trip time, in milliseconds.
-        /// </summary>
-        public double RoundTripTime => Connection.RoundTripTime;
-
-        /// <summary>
         /// Returns packet loss percentage (value from 0 to 1) that occured on this channel.
         /// </summary>
         public double PacketLoss => PacketsResent > 0 ? (double) PacketsResent / (PacketsSent + PacketsResent) : 0;
@@ -57,7 +52,7 @@ namespace Networking.Transport.Channels
         /// <summary>
         /// Connection that is using this channel.
         /// </summary>
-        protected readonly Connection Connection;
+        public Connection Connection { get; }
 
         /// <summary>
         /// Constructs a new reliable channel for the given connection.

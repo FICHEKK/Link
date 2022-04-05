@@ -19,12 +19,18 @@ namespace Networking.Transport
         /// </summary>
         public double RoundTripTime { get; private set; }
 
+        /// <summary>
+        /// Returns deviation of the round-trip time.
+        /// </summary>
+        public double RoundTripTimeDeviation { get; private set; }
+
         private readonly Connection _connection;
         private readonly Stopwatch _rttStopwatch;
         private readonly Timer _sendPingTimer;
         private readonly int _periodDuration;
         private readonly int _timeoutDuration;
         private readonly double _smoothingFactor;
+        private readonly double _deviationFactor;
 
         private ushort _lastSentPingId;
         private ushort _lastReceivedPingId;
@@ -36,8 +42,9 @@ namespace Networking.Transport
         /// <param name="connection">Connection for which ping should be measured.</param>
         /// <param name="periodDuration">Duration between two consecutive ping packets, in milliseconds.</param>
         /// <param name="timeoutDuration">If ping response is not received for this duration (in milliseconds), connection is going to get timed-out.</param>
-        /// <param name="smoothingFactor">Factor used to apply exponential smoothing in order to calculate the value of <see cref="SmoothRoundTripTime"/>.</param>
-        public PingMeasurer(Connection connection, int periodDuration = 1000, int timeoutDuration = 10_000, double smoothingFactor = 0.618)
+        /// <param name="smoothingFactor">Weight used for calculating the value of <see cref="SmoothRoundTripTime"/>.</param>
+        /// <param name="deviationFactor">Weight used for calculating the value of <see cref="RoundTripTimeDeviation"/>.</param>
+        public PingMeasurer(Connection connection, int periodDuration = 1000, int timeoutDuration = 10_000, double smoothingFactor = 0.125, double deviationFactor = 0.25)
         {
             _connection = connection;
             _rttStopwatch = new Stopwatch();
@@ -46,6 +53,7 @@ namespace Networking.Transport
             _periodDuration = periodDuration;
             _timeoutDuration = timeoutDuration;
             _smoothingFactor = smoothingFactor;
+            _deviationFactor = deviationFactor;
         }
 
         public void StartMeasuring()
@@ -93,7 +101,8 @@ namespace Networking.Transport
             _lastPingResponseTime = DateTime.UtcNow;
 
             RoundTripTime = (_lastSentPingId - _lastReceivedPingId) * _periodDuration + _rttStopwatch.Elapsed.TotalMilliseconds;
-            SmoothRoundTripTime = _smoothingFactor * RoundTripTime + (1 - _smoothingFactor) * SmoothRoundTripTime;
+            SmoothRoundTripTime = (1 - _smoothingFactor) * SmoothRoundTripTime + _smoothingFactor * RoundTripTime;
+            RoundTripTimeDeviation = (1 - _deviationFactor) * RoundTripTimeDeviation + _deviationFactor * Math.Abs(RoundTripTime - SmoothRoundTripTime);
         }
 
         public void Dispose() => _sendPingTimer.Dispose();

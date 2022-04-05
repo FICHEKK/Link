@@ -28,15 +28,14 @@ namespace Networking.Transport
         /// </summary>
         public IEnumerable<Channel> Channels => _channels;
 
-        /// <summary>
-        /// Returns round-trip time with applied exponential smoothing.
-        /// </summary>
+        /// <inheritdoc cref="PingMeasurer.SmoothRoundTripTime"/>
         public double SmoothRoundTripTime => _pingMeasurer.SmoothRoundTripTime;
 
-        /// <summary>
-        /// Returns the most recently calculated round-trip time, in milliseconds.
-        /// </summary>
+        /// <inheritdoc cref="PingMeasurer.RoundTripTime"/>
         public double RoundTripTime => _pingMeasurer.RoundTripTime;
+
+        /// <inheritdoc cref="PingMeasurer.RoundTripTimeDeviation"/>
+        public double RoundTripTimeDeviation => _pingMeasurer.RoundTripTimeDeviation;
 
         /// <summary>
         /// Returns current state of this connection.
