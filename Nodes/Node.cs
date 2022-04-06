@@ -35,7 +35,7 @@ namespace Networking.Transport.Nodes
 
         private readonly Dictionary<ushort, Action<PacketReader, EndPoint>> _packetIdToPacketHandler = new();
         private readonly Queue<(Packet packet, EndPoint senderEndPoint)> _pendingPackets = new();
-        private readonly Queue<Action> _mainThreadActions = new();
+        private readonly Queue<Action> _pendingActions = new();
         private readonly byte[] _receiveBuffer = new byte[Packet.MaxSize];
         private Socket _socket;
 
@@ -163,7 +163,7 @@ namespace Networking.Transport.Nodes
         }
 
         /// <summary>
-        /// Enqueues a packet that will be handled in the next update loop.
+        /// Enqueues a packet that will be handled on the next <see cref="Tick"/> method call.
         /// </summary>
         internal void EnqueuePendingPacket(Packet packet, EndPoint senderEndPoint)
         {
@@ -174,9 +174,25 @@ namespace Networking.Transport.Nodes
         }
 
         /// <summary>
-        /// Handles all of the packets that have been enqueued since last time this method was called.
+        /// Enqueues an action that will be executed on the next <see cref="Tick"/> method call.
         /// </summary>
-        public void HandlePendingPackets()
+        protected void EnqueuePendingAction(Action action)
+        {
+            if (action is null) throw new ArgumentNullException(nameof(action));
+
+            lock (_pendingActions) _pendingActions.Enqueue(action);
+        }
+
+        /// <summary>
+        /// Handles all of the packets and actions that have been enqueued since last time this method was called.
+        /// </summary>
+        public void Tick()
+        {
+            HandlePendingPackets();
+            HandlePendingActions();
+        }
+
+        private void HandlePendingPackets()
         {
             lock (_pendingPackets)
             {
@@ -196,12 +212,15 @@ namespace Networking.Transport.Nodes
                     packet.Return();
                 }
             }
+        }
 
-            lock (_mainThreadActions)
+        private void HandlePendingActions()
+        {
+            lock (_pendingActions)
             {
-                while (_mainThreadActions.Count > 0)
+                while (_pendingActions.Count > 0)
                 {
-                    _mainThreadActions.Dequeue()();
+                    _pendingActions.Dequeue()();
                 }
             }
         }
@@ -217,17 +236,5 @@ namespace Networking.Transport.Nodes
         /// </summary>
         public bool TryGetPacketHandler(ushort packedId, out Action<PacketReader, EndPoint> packetHandler) =>
             _packetIdToPacketHandler.TryGetValue(packedId, out packetHandler);
-
-        /// <summary>
-        /// Enqueues an action that will be executed on the main thread.
-        /// </summary>
-        /// <param name="action">Action to be executed on the main thread.</param>
-        protected void ExecuteOnMainThread(Action action)
-        {
-            lock (_mainThreadActions)
-            {
-                _mainThreadActions.Enqueue(action);
-            }
-        }
     }
 }

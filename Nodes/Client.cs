@@ -12,17 +12,17 @@ namespace Networking.Transport.Nodes
         /// <summary>
         /// Invoked each time client starts the process of establishing connection with the server.
         /// </summary>
-        public event Action OnConnectingToServer;
+        public event Action Connecting;
 
         /// <summary>
         /// Invoked each time client successfully connects to the server.
         /// </summary>
-        public event Action OnConnectedToServer;
+        public event Action Connected;
 
         /// <summary>
         /// Invoked each time client disconnects from the server.
         /// </summary>
-        public event Action OnDisconnectedFromServer;
+        public event Action Disconnected;
 
         /// <summary>
         /// Returns <c>true</c> if this client is currently attempting to connect to the server.
@@ -51,7 +51,7 @@ namespace Networking.Transport.Nodes
             StartListening(port: 0);
             Connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port));
             Connection.Establish(maxAttempts, delayBetweenAttempts);
-            OnConnectingToServer?.Invoke();
+            Connecting?.Invoke();
         }
 
         protected override void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
@@ -88,7 +88,7 @@ namespace Networking.Transport.Nodes
 
                 case HeaderType.ConnectApproved:
                     Connection.ReceiveConnectApproved();
-                    ExecuteOnMainThread(() => OnConnectedToServer?.Invoke());
+                    EnqueuePendingAction(() => Connected?.Invoke());
                     return;
 
                 case HeaderType.Disconnect:
@@ -96,7 +96,7 @@ namespace Networking.Transport.Nodes
                     return;
 
                 default:
-                    Log.Warning($"Client received invalid packet header {datagram[0]:D} from server.");
+                    Log.Warning($"Client received invalid packet header {datagram[0]} from server.");
                     return;
             }
         }
@@ -125,7 +125,7 @@ namespace Networking.Transport.Nodes
             {
                 Connection.Close(sendDisconnectPacket);
                 Connection = null;
-                ExecuteOnMainThread(() => OnDisconnectedFromServer?.Invoke());
+                EnqueuePendingAction(() => Disconnected?.Invoke());
             }
 
             StopListening();

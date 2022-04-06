@@ -13,22 +13,22 @@ namespace Networking.Transport.Nodes
         /// <summary>
         /// Invoked each time server starts and begins listening for client connections.
         /// </summary>
-        public event Action OnStarted;
+        public event Action Started;
 
         /// <summary>
         /// Invoked each time a new client connects to the server.
         /// </summary>
-        public event Action<Connection> OnClientConnected;
+        public event Action<Connection> ClientConnected;
 
         /// <summary>
         /// Invoked each time an already connected client disconnects from the server.
         /// </summary>
-        public event Action<Connection> OnClientDisconnected;
+        public event Action<Connection> ClientDisconnected;
 
         /// <summary>
         /// Invoked each time server stops and no longer listens for client connections.
         /// </summary>
-        public event Action OnStopped;
+        public event Action Stopped;
 
         /// <summary>
         /// Returns current number of client connections.
@@ -52,9 +52,9 @@ namespace Networking.Transport.Nodes
         /// <param name="maxClientCount">Maximum number of clients allowed.</param>
         public void Start(int port, int maxClientCount)
         {
-            StartListening(port);
             MaxConnectionCount = maxClientCount;
-            OnStarted?.Invoke();
+            StartListening(port);
+            Started?.Invoke();
         }
 
         protected override void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
@@ -110,7 +110,7 @@ namespace Networking.Transport.Nodes
             connection.ReceiveConnect();
 
             _connections.Add(senderEndPoint, connection);
-            ExecuteOnMainThread(() => OnClientConnected?.Invoke(connection));
+            EnqueuePendingAction(() => ClientConnected?.Invoke(connection));
         }
 
         private void HandleDisconnectPacket(EndPoint senderEndPoint)
@@ -120,7 +120,7 @@ namespace Networking.Transport.Nodes
 
             connection.Close(sendDisconnectPacket: false);
             _connections.Remove(senderEndPoint);
-            ExecuteOnMainThread(() => OnClientDisconnected?.Invoke(connection));
+            EnqueuePendingAction(() => ClientDisconnected?.Invoke(connection));
         }
 
         private Connection TryGetConnection(EndPoint senderEndPoint, HeaderType headerType)
@@ -137,7 +137,7 @@ namespace Networking.Transport.Nodes
 
             Log.Info($"Client from {connection.RemoteEndPoint} timed-out.");
             connection.Close(sendDisconnectPacket: false);
-            ExecuteOnMainThread(() => OnClientDisconnected?.Invoke(connection));
+            EnqueuePendingAction(() => ClientDisconnected?.Invoke(connection));
         }
 
         /// <summary>
@@ -163,7 +163,7 @@ namespace Networking.Transport.Nodes
 
             StopListening();
             _connections.Clear();
-            OnStopped?.Invoke();
+            Stopped?.Invoke();
         }
     }
 }
