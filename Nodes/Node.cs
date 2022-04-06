@@ -12,7 +12,19 @@ namespace Networking.Transport.Nodes
     /// </summary>
     public abstract class Node
     {
+        /// <summary>
+        /// Default socket send and receive buffer size.
+        /// </summary>
+        private const int DefaultBufferSize = 1024 * 1024;
+
+        /// <summary>
+        /// Cached end-point instance used for <see cref="Socket.ReceiveFrom(byte[],ref System.Net.EndPoint)"/> calls.
+        /// </summary>
         private static readonly EndPoint AnyEndPoint = new IPEndPoint(IPAddress.Any, 0);
+
+        /// <summary>
+        /// Random instance used for network simulation purposes.
+        /// </summary>
         private static readonly Random Random = new();
 
         /// <summary>
@@ -28,16 +40,60 @@ namespace Networking.Transport.Nodes
         /// <summary>
         /// Returns true if this node is currently listening for incoming packets.
         /// </summary>
-        public bool IsListening => _socket != null;
+        public bool IsListening => _socket is not null;
 
-        /// <inheritdoc cref="Transport.SimulationSettings"/>
-        public SimulationSettings SimulationSettings { get; } = new();
+        /// <summary>
+        /// Defines the size of socket's internal send buffer.
+        /// </summary>
+        /// <remarks>Value must be non-negative, otherwise exception will be thrown on socket set-up.</remarks>
+        public int SendBufferSize { get; set; } = DefaultBufferSize;
+
+        /// <summary>
+        /// Defines the size of socket's internal receive buffer.
+        /// </summary>
+        /// <remarks>Value must be non-negative, otherwise exception will be thrown on socket set-up.</remarks>
+        public int ReceiveBufferSize { get; set; } = DefaultBufferSize;
+
+        /// <summary>
+        /// Defines the probability of a packet being lost.
+        /// This property should only be used only for testing purposes.
+        /// </summary>
+        /// <remarks>Value must be in range from 0 to 1.</remarks>
+        public float PacketLoss
+        {
+            get => _packetLoss;
+            set => _packetLoss = value is >= 0 and <= 1 ? value : throw new ArgumentOutOfRangeException(nameof(PacketLoss));
+        }
+
+        /// <summary>
+        /// Minimum additional delay (in ms) before processing received packet.
+        /// </summary>
+        /// <remarks>Value must be non-negative and less or equal to <see cref="MaxLatency"/>.</remarks>
+        public int MinLatency
+        {
+            get => _minLatency;
+            set => _minLatency = value >= 0 && value <= _maxLatency ? value : throw new ArgumentOutOfRangeException(nameof(MinLatency));
+        }
+
+        /// <summary>
+        /// Maximum additional delay (in ms) before processing received packet.
+        /// </summary>
+        /// <remarks>Value must be non-negative and greater or equal to <see cref="MinLatency"/>.</remarks>
+        public int MaxLatency
+        {
+            get => _maxLatency;
+            set => _maxLatency = value >= 0 && value >= _minLatency ? value : throw new ArgumentOutOfRangeException(nameof(MaxLatency));
+        }
 
         private readonly Dictionary<ushort, Action<PacketReader, EndPoint>> _packetIdToPacketHandler = new();
         private readonly Queue<(Packet packet, EndPoint senderEndPoint)> _pendingPackets = new();
         private readonly Queue<Action> _pendingActions = new();
         private readonly byte[] _receiveBuffer = new byte[Packet.MaxSize];
+
         private Socket _socket;
+        private float _packetLoss;
+        private int _minLatency;
+        private int _maxLatency;
 
         /// <summary>
         /// Starts listening for incoming packets.
@@ -48,6 +104,8 @@ namespace Networking.Transport.Nodes
             if (IsListening) throw new InvalidOperationException("Could not start listening as node is already listening.");
 
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            _socket.SendBufferSize = SendBufferSize;
+            _socket.ReceiveBufferSize = ReceiveBufferSize;
             _socket.Bind(new IPEndPoint(IPAddress.Any, port));
 
             new Thread(Listen)
@@ -100,9 +158,9 @@ namespace Networking.Transport.Nodes
 
         private async void ReceiveAsync(int bytesReceived, EndPoint senderEndPoint)
         {
-            if (SimulationSettings.PacketLoss > 0 && Random.NextDouble() < SimulationSettings.PacketLoss) return;
+            if (PacketLoss > 0 && Random.NextDouble() < PacketLoss) return;
 
-            if (SimulationSettings.MaxLatency == 0)
+            if (MaxLatency == 0)
             {
                 Receive(_receiveBuffer, bytesReceived, senderEndPoint);
             }
@@ -113,7 +171,7 @@ namespace Networking.Transport.Nodes
                 var receiveBufferCopy = new byte[bytesReceived];
                 Array.Copy(_receiveBuffer, receiveBufferCopy, bytesReceived);
 
-                await Task.Delay(Random.Next(SimulationSettings.MinLatency, SimulationSettings.MaxLatency + 1));
+                await Task.Delay(Random.Next(MinLatency, MaxLatency + 1));
                 Receive(receiveBufferCopy, bytesReceived, senderEndPoint);
             }
         }
