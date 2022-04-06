@@ -11,9 +11,9 @@ namespace Networking.Transport.Channels
         private const int MaxFragmentCount = ushort.MaxValue >> 1;
 
         /// <summary>
-        /// Defines how many data bytes can be stored in a single fragment.
+        /// Defines how many data-bytes can be stored in a single fragment.
         /// </summary>
-        private const int BytesPerFragment = Packet.MaxSize - HeaderSize - FooterSize;
+        private const int BodySize = Packet.MaxSize - HeaderSize - FooterSize;
 
         /// <summary>
         /// Consists of sequence number (2 bytes) and fragment number (2 bytes).
@@ -43,7 +43,7 @@ namespace Networking.Transport.Channels
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet)
         {
             var dataByteCount = packet.Writer.Position - HeaderSize;
-            var fragmentCount = dataByteCount / BytesPerFragment + (dataByteCount % BytesPerFragment != 0 ? 1 : 0);
+            var fragmentCount = dataByteCount / BodySize + (dataByteCount % BodySize != 0 ? 1 : 0);
 
             if (fragmentCount == 0)
             {
@@ -81,11 +81,11 @@ namespace Networking.Transport.Channels
                 for (var i = 0; i < fragmentCount; i++)
                 {
                     var fragmentNumber = i < fragmentCount - 1 ? (ushort) i : (ushort) (i | LastFragmentBitmask);
-                    var fragmentLength = i < fragmentCount - 1 ? BytesPerFragment : dataByteCount - i * BytesPerFragment;
+                    var fragmentLength = i < fragmentCount - 1 ? BodySize : dataByteCount - i * BodySize;
                     var fragment = Packet.Get(HeaderType.Data);
 
                     fragment.Writer.Write(packet.Buffer[1]);
-                    fragment.Writer.WriteSpan(new ReadOnlySpan<byte>(packet.Buffer, start: HeaderSize + i * BytesPerFragment, fragmentLength));
+                    fragment.Writer.WriteSpan(new ReadOnlySpan<byte>(packet.Buffer, start: HeaderSize + i * BodySize, fragmentLength));
                     fragment.Writer.Write(_localSequenceNumber);
                     fragment.Writer.Write(fragmentNumber);
 
@@ -111,11 +111,11 @@ namespace Networking.Transport.Channels
 
             if (fragmentedPacket is null)
             {
-                fragmentedPacket = new FragmentedPacket();
+                fragmentedPacket = new FragmentedPacket(HeaderSize, BodySize, FooterSize);
                 _fragmentedPackets[sequenceNumber] = fragmentedPacket;
             }
 
-            if (!fragmentedPacket.AddFragment(fragmentNumber, CreatePacket(datagram, bytesReceived)))
+            if (!fragmentedPacket.Add(CreatePacket(datagram, bytesReceived), fragmentNumber & ~LastFragmentBitmask, (fragmentNumber & LastFragmentBitmask) != 0))
             {
                 PacketsDuplicated++;
                 BytesDuplicated += bytesReceived;
@@ -124,7 +124,7 @@ namespace Networking.Transport.Channels
 
             if (!_isOrdered)
             {
-                if (!fragmentedPacket.IsReassembled) return;
+                if (fragmentedPacket.ReassembledPacket is null) return;
 
                 Connection.Node.EnqueuePendingPacket(fragmentedPacket.ReassembledPacket, Connection.RemoteEndPoint);
                 return;
@@ -133,7 +133,7 @@ namespace Networking.Transport.Channels
             while (true)
             {
                 var nextFragmentedPacket = _fragmentedPackets[_receiveSequenceNumber];
-                if (nextFragmentedPacket is null || !nextFragmentedPacket.IsReassembled) break;
+                if (nextFragmentedPacket?.ReassembledPacket is null) break;
 
                 Connection.Node.EnqueuePendingPacket(nextFragmentedPacket.ReassembledPacket, Connection.RemoteEndPoint);
                 _receiveSequenceNumber++;
@@ -184,61 +184,6 @@ namespace Networking.Transport.Channels
             var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Writer.Position - FooterSize);
             var fragmentNumber = packet.Buffer.Read<ushort>(offset: packet.Writer.Position - FooterSize + sizeof(ushort));
             return $"[sequence: {sequenceNumber}, fragment: {fragmentNumber}]";
-        }
-
-        private class FragmentedPacket
-        {
-            public bool IsReassembled => ReassembledPacket is not null;
-            public Packet ReassembledPacket { get; private set; }
-
-            private readonly Dictionary<ushort, Packet> _fragments = new();
-            private ushort _lastFragmentNumber;
-            private int _totalFragmentCount;
-
-            public bool AddFragment(ushort fragmentNumber, Packet fragment)
-            {
-                if (_fragments.ContainsKey(fragmentNumber))
-                {
-                    fragment.Return();
-                    return false;
-                }
-
-                if ((fragmentNumber & LastFragmentBitmask) != 0)
-                {
-                    _lastFragmentNumber = fragmentNumber;
-                    _totalFragmentCount = (fragmentNumber & ~LastFragmentBitmask) + 1;
-
-                    if (_totalFragmentCount == 1)
-                    {
-                        ReassembledPacket = fragment;
-                        return true;
-                    }
-                }
-
-                _fragments.Add(fragmentNumber, fragment);
-                if (_fragments.Count == _totalFragmentCount) Reassemble();
-
-                return true;
-            }
-
-            private void Reassemble()
-            {
-                var fullFragmentByteCount = (_totalFragmentCount - 1) * BytesPerFragment;
-                var lastFragmentByteCount = _fragments[_lastFragmentNumber].Writer.Position - HeaderSize - FooterSize;
-
-                ReassembledPacket = Packet.Get();
-                ReassembledPacket.Buffer = new byte[fullFragmentByteCount + lastFragmentByteCount];
-
-                // Copy data from all of the full fragments.
-                for (var i = 0; i < _totalFragmentCount - 1; i++)
-                    Array.Copy(_fragments[(ushort) i].Buffer, HeaderSize, ReassembledPacket.Buffer, i * BytesPerFragment, BytesPerFragment);
-
-                // Copy data from the last fragment.
-                Array.Copy(_fragments[_lastFragmentNumber].Buffer, HeaderSize, ReassembledPacket.Buffer, (_totalFragmentCount - 1) * BytesPerFragment, lastFragmentByteCount);
-
-                // Once we have a reassembled packet, we no longer need fragments.
-                foreach (var fragment in _fragments.Values) fragment.Return();
-            }
         }
     }
 }
