@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Networking.Transport.Channels;
 using Networking.Transport.Nodes;
@@ -28,14 +30,40 @@ namespace Networking.Transport
         /// </summary>
         public IEnumerable<Channel> Channels => _channels;
 
-        /// <inheritdoc cref="PingMeasurer.SmoothRoundTripTime"/>
-        public double SmoothRoundTripTime => _pingMeasurer.SmoothRoundTripTime;
+        /// <summary>
+        /// Duration between two consecutive ping packets, in milliseconds.
+        /// </summary>
+        public int PeriodDuration { get; set; } = 1000;
 
-        /// <inheritdoc cref="PingMeasurer.RoundTripTime"/>
-        public double RoundTripTime => _pingMeasurer.RoundTripTime;
+        /// <summary>
+        /// If ping response is not received for this duration (in milliseconds), connection is going to timeout.
+        /// </summary>
+        public int TimeoutDuration { get; set; } = 10_000;
 
-        /// <inheritdoc cref="PingMeasurer.RoundTripTimeDeviation"/>
-        public double RoundTripTimeDeviation => _pingMeasurer.RoundTripTimeDeviation;
+        /// <summary>
+        /// Weight used for calculating the value of <see cref="SmoothRoundTripTime"/>.
+        /// </summary>
+        public double SmoothingFactor { get; set; } = 0.125;
+
+        /// <summary>
+        /// Weight used for calculating the value of <see cref="RoundTripTimeDeviation"/>.
+        /// </summary>
+        public double DeviationFactor { get; set; } = 0.25;
+
+        /// <summary>
+        /// Returns round-trip time with applied exponential smoothing.
+        /// </summary>
+        public double SmoothRoundTripTime { get; private set; }
+
+        /// <summary>
+        /// Returns the most recently calculated round-trip time, in milliseconds.
+        /// </summary>
+        public double RoundTripTime { get; private set; }
+
+        /// <summary>
+        /// Returns deviation of the round-trip time.
+        /// </summary>
+        public double RoundTripTimeDeviation { get; private set; }
 
         /// <summary>
         /// Returns current state of this connection.
@@ -43,13 +71,18 @@ namespace Networking.Transport
         public State CurrentState { get; private set; }
 
         private readonly Channel[] _channels = new Channel[Enum.GetValues(typeof(Delivery)).Length];
-        private readonly PingMeasurer _pingMeasurer;
-        private bool _isConnected;
+        private readonly Stopwatch _rttStopwatch;
+        private readonly Timer _sendPingTimer;
+
+        private uint _lastPingRequestId;
+        private uint _lastPingResponseId;
+        private DateTime _lastPingResponseTime;
 
         internal Connection(Node node, EndPoint remoteEndPoint)
         {
             InitializeChannels();
-            _pingMeasurer = new PingMeasurer(connection: this);
+            _rttStopwatch = new Stopwatch();
+            _sendPingTimer = new Timer(_ => SendPing());
 
             Node = node;
             RemoteEndPoint = remoteEndPoint;
@@ -94,13 +127,13 @@ namespace Networking.Transport
             Node.Send(connectApprovedPacket, RemoteEndPoint);
             connectApprovedPacket.Return();
 
-            _pingMeasurer.StartMeasuring();
-            CurrentState = State.Connected;
+            ReceiveConnectApproved();
         }
 
         internal void ReceiveConnectApproved()
         {
-            _pingMeasurer.StartMeasuring();
+            _lastPingResponseTime = DateTime.UtcNow;
+            _sendPingTimer.Change(dueTime: 0, period: PeriodDuration);
             CurrentState = State.Connected;
         }
 
@@ -116,11 +149,43 @@ namespace Networking.Transport
         private Channel GetChannel(byte channelId) =>
             channelId < _channels.Length ? _channels[channelId] : throw new ArgumentException($"Channel with ID {channelId} does not exist.");
 
-        internal void ReceivePing(byte[] datagram) =>
-            _pingMeasurer.ReceivePing(datagram);
+        private void SendPing()
+        {
+            if ((DateTime.UtcNow - _lastPingResponseTime).TotalMilliseconds > TimeoutDuration)
+            {
+                Log.Info($"Connection timed-out: Valid ping response was not received in over {TimeoutDuration} ms.");
+                Timeout();
+                return;
+            }
 
-        internal void ReceivePong(byte[] datagram) =>
-            _pingMeasurer.ReceivePong(datagram);
+            var pingPacket = Packet.Get(HeaderType.Ping);
+            pingPacket.Writer.Write(++_lastPingRequestId);
+            Node.Send(pingPacket, RemoteEndPoint);
+            pingPacket.Return();
+
+            _rttStopwatch.Restart();
+        }
+
+        internal void ReceivePing(byte[] datagram)
+        {
+            var pongPacket = Packet.Get(HeaderType.Pong);
+            pongPacket.Writer.Write(datagram.Read<uint>(offset: 1));
+            Node.Send(pongPacket, RemoteEndPoint);
+            pongPacket.Return();
+        }
+
+        internal void ReceivePong(byte[] datagram)
+        {
+            var responseId = datagram.Read<uint>(offset: 1);
+            if (responseId <= _lastPingResponseId) return;
+
+            _lastPingResponseId = responseId;
+            _lastPingResponseTime = DateTime.UtcNow;
+
+            RoundTripTime = (_lastPingRequestId - _lastPingResponseId) * PeriodDuration + _rttStopwatch.Elapsed.TotalMilliseconds;
+            SmoothRoundTripTime = (1 - SmoothingFactor) * SmoothRoundTripTime + SmoothingFactor * RoundTripTime;
+            RoundTripTimeDeviation = (1 - DeviationFactor) * RoundTripTimeDeviation + DeviationFactor * Math.Abs(RoundTripTime - SmoothRoundTripTime);
+        }
 
         internal void Close(bool sendDisconnectPacket)
         {
@@ -131,7 +196,7 @@ namespace Networking.Transport
                 disconnectPacket.Return();
             }
 
-            _pingMeasurer.Dispose();
+            _sendPingTimer.Dispose();
             CurrentState = State.Disconnected;
         }
 
