@@ -43,6 +43,7 @@ namespace Networking.Transport.Channels
             }
 
             _receivedPackets[sequenceNumber] = CreatePacket(datagram, bytesReceived);
+            _receivedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
 
             if (!_isOrdered)
             {

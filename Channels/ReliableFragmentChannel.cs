@@ -113,6 +113,7 @@ namespace Networking.Transport.Channels
             {
                 fragmentedPacket = new FragmentedPacket(HeaderSize, BodySize, FooterSize);
                 _fragmentedPackets[sequenceNumber] = fragmentedPacket;
+                _fragmentedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
             }
 
             if (!fragmentedPacket.Add(CreatePacket(datagram, bytesReceived), fragmentNumber & ~LastFragmentBitmask, (fragmentNumber & LastFragmentBitmask) != 0))
