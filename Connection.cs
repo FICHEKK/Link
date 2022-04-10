@@ -4,10 +4,10 @@ using System.Diagnostics;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Networking.Transport.Channels;
-using Networking.Transport.Nodes;
+using Link.Channels;
+using Link.Nodes;
 
-namespace Networking.Transport
+namespace Link
 {
     /// <summary>
     /// Represents a connection between two end-points. It is a higher level class that

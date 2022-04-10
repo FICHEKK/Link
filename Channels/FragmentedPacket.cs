@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Networking.Transport.Channels
+namespace Link.Channels
 {
     /// <summary>
     /// Represents a packet that consists of one or more smaller, limited-sized pieces called <i>fragments</i>.

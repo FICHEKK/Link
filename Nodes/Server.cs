@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 
-namespace Networking.Transport.Nodes
+namespace Link.Nodes
 {
     /// <summary>
     /// Represents a network node that has one to many relationship with clients.

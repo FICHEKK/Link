@@ -1,6 +1,6 @@
 using System;
 
-namespace Networking.Transport
+namespace Link
 {
     /// <summary>
     /// A very simple and customizable logging component.

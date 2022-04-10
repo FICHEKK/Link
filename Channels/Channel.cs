@@ -1,6 +1,6 @@
 using System;
 
-namespace Networking.Transport.Channels
+namespace Link.Channels
 {
     /// <summary>
     /// Defines the way data is sent and received.

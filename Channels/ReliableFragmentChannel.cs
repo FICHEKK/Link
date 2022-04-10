@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Networking.Transport.Channels
+namespace Link.Channels
 {
     public class ReliableFragmentChannel : ReliableChannel
     {

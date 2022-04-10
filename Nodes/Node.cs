@@ -5,7 +5,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Networking.Transport.Nodes
+namespace Link.Nodes
 {
     /// <summary>
     /// Represents a network node - a fundamental building block of any network graph that can send and receive data.

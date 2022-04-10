@@ -1,4 +1,4 @@
-namespace Networking.Transport
+namespace Link
 {
     /// <summary>
     /// Defines the way data should be delivered to the remote destination.

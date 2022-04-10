@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Networking.Transport.Channels
+namespace Link.Channels
 {
     public class ReliablePacketChannel : ReliableChannel
     {

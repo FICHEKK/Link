@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 
-namespace Networking.Transport
+namespace Link
 {
     public class PacketWriter
     {

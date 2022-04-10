@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Networking.Transport
+namespace Link
 {
     public class PacketReader
     {

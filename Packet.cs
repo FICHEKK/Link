@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Networking.Transport
+namespace Link
 {
     /// <summary>
     /// Represents a single message of arbitrary data that can be sent over the network.

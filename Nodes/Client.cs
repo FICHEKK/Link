@@ -1,7 +1,7 @@
 using System;
 using System.Net;
 
-namespace Networking.Transport.Nodes
+namespace Link.Nodes
 {
     /// <summary>
     /// Represents a network node that has one to one relationship with the server.

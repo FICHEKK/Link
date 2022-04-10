@@ -1,4 +1,4 @@
-namespace Networking.Transport.Channels
+namespace Link.Channels
 {
     public class UnreliableChannel : Channel
     {

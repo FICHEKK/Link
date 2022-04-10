@@ -1,6 +1,6 @@
 using System;
 
-namespace Networking.Transport
+namespace Link
 {
     /// <summary>
     /// Component that extends byte array with the ability to read and write primitive values.

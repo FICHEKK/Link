@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Threading;
 
-namespace Networking.Transport.Channels
+namespace Link.Channels
 {
     /// <summary>
     /// Represents a packet that hasn't been acknowledged by the receiver and automatically

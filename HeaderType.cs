@@ -1,4 +1,4 @@
-namespace Networking.Transport
+namespace Link
 {
     /// <summary>
     /// Defines how packet should be handled on the receiving side.

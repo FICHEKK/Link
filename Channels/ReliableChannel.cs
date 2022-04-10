@@ -1,4 +1,4 @@
-namespace Networking.Transport.Channels
+namespace Link.Channels
 {
     /// <summary>
     /// Represents a channel that keeps resending packets until they are either
