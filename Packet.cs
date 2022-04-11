@@ -74,11 +74,31 @@ namespace Link
         /// </summary>
         public static int TotalAllocationCount { get; private set; }
 
+        /// <summary>
+        /// Direct reference to the underlying buffer (defensive copy will <b>not</b> be made).
+        /// </summary>
         public byte[] Buffer { get; set; }
+
+        /// <summary>
+        /// Returns <see cref="PacketWriter"/> that can write data to this packet.
+        /// </summary>
         public PacketWriter Writer { get; }
+
+        /// <summary>
+        /// Returns <see cref="PacketReader"/> that can read data from this packet.
+        /// </summary>
         public PacketReader Reader { get; }
+
+        /// <summary>
+        /// <c>true</c> if reference to this packet currently exists in the pool, <c>false</c> otherwise.
+        /// </summary>
         private bool IsInPool { get; set; }
 
+        /// <summary>
+        /// Returns a packet with defined ID and delivery method.
+        /// </summary>
+        /// <param name="id">Indicates packet type to allow the receiver to successfully decode its contents.</param>
+        /// <param name="delivery">Defines the way this packet should be delivered to the remote destination.</param>
         public static Packet Get(ushort id, Delivery delivery = Delivery.Unreliable)
         {
             var packet = Get(HeaderType.Data);
@@ -106,6 +126,9 @@ namespace Link
             return packetCopy;
         }
 
+        /// <summary>
+        /// Returns an empty packet.
+        /// </summary>
         public static Packet Get()
         {
             lock (PacketPool)
@@ -131,6 +154,10 @@ namespace Link
             Reader = new PacketReader(this);
         }
 
+        /// <summary>
+        /// Returns this packet to the pool unless it is already in the pool
+        /// or its size exceeds <see cref="MaxSizeInPool"/> bytes.
+        /// </summary>
         public void Return()
         {
             lock (PacketPool)
