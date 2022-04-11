@@ -85,7 +85,7 @@ namespace Link.Channels
                     var fragment = Packet.Get(HeaderType.Data);
 
                     fragment.Writer.Write(packet.Buffer[1]);
-                    fragment.Writer.WriteSpan(new ReadOnlySpan<byte>(packet.Buffer, start: HeaderSize + i * BodySize, fragmentLength));
+                    fragment.Writer.WriteSpan<byte>(packet.Buffer.AsSpan(start: HeaderSize + i * BodySize, fragmentLength));
                     fragment.Writer.Write(_localSequenceNumber);
                     fragment.Writer.Write(fragmentNumber);
 
@@ -100,10 +100,10 @@ namespace Link.Channels
             }
         }
 
-        protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
+        protected override void ExecuteReceive(ReadOnlySpan<byte> datagram)
         {
-            var sequenceNumber = datagram.Read<ushort>(offset: bytesReceived - FooterSize);
-            var fragmentNumber = datagram.Read<ushort>(offset: bytesReceived - FooterSize + sizeof(ushort));
+            var sequenceNumber = datagram.Read<ushort>(offset: datagram.Length - FooterSize);
+            var fragmentNumber = datagram.Read<ushort>(offset: datagram.Length - FooterSize + sizeof(ushort));
             UpdateRemoteSequenceNumber(sequenceNumber);
             SendAcknowledgement(channelId: datagram[1], sequenceNumber, fragmentNumber);
 
@@ -116,10 +116,10 @@ namespace Link.Channels
                 _fragmentedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
             }
 
-            if (!fragmentedPacket.Add(CreatePacket(datagram, bytesReceived), fragmentNumber & ~LastFragmentBitmask, (fragmentNumber & LastFragmentBitmask) != 0))
+            if (!fragmentedPacket.Add(CreatePacket(datagram), fragmentNumber & ~LastFragmentBitmask, (fragmentNumber & LastFragmentBitmask) != 0))
             {
                 PacketsDuplicated++;
-                BytesDuplicated += bytesReceived;
+                BytesDuplicated += datagram.Length;
                 return;
             }
 
@@ -165,7 +165,7 @@ namespace Link.Channels
             packet.Return();
         }
 
-        internal override void ReceiveAcknowledgement(byte[] datagram)
+        internal override void ReceiveAcknowledgement(ReadOnlySpan<byte> datagram)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: HeaderSize);
             var fragmentNumber = datagram.Read<ushort>(offset: HeaderSize + sizeof(ushort));
@@ -182,8 +182,8 @@ namespace Link.Channels
 
         protected override string ExtractPacketInfo(Packet packet)
         {
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Writer.Position - FooterSize);
-            var fragmentNumber = packet.Buffer.Read<ushort>(offset: packet.Writer.Position - FooterSize + sizeof(ushort));
+            var sequenceNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.Writer.Position - FooterSize);
+            var fragmentNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.Writer.Position - FooterSize + sizeof(ushort));
             return $"[sequence: {sequenceNumber}, fragment: {fragmentNumber}]";
         }
     }

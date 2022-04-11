@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Link.Channels
@@ -29,20 +30,20 @@ namespace Link.Channels
             }
         }
 
-        protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
+        protected override void ExecuteReceive(ReadOnlySpan<byte> datagram)
         {
-            var sequenceNumber = datagram.Read<ushort>(offset: bytesReceived - sizeof(ushort));
+            var sequenceNumber = datagram.Read<ushort>(offset: datagram.Length - sizeof(ushort));
             UpdateRemoteSequenceNumber(sequenceNumber);
             SendAcknowledgement(channelId: datagram[1], sequenceNumber);
 
             if (_receivedPackets[sequenceNumber] is not null)
             {
                 PacketsDuplicated++;
-                BytesDuplicated += bytesReceived;
+                BytesDuplicated += datagram.Length;
                 return;
             }
 
-            _receivedPackets[sequenceNumber] = CreatePacket(datagram, bytesReceived);
+            _receivedPackets[sequenceNumber] = CreatePacket(datagram);
             _receivedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
 
             if (!_isOrdered)
@@ -90,7 +91,7 @@ namespace Link.Channels
             packet.Return();
         }
 
-        internal override void ReceiveAcknowledgement(byte[] datagram)
+        internal override void ReceiveAcknowledgement(ReadOnlySpan<byte> datagram)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: HeaderSize);
             var acknowledgeBitField = datagram.Read<int>(offset: HeaderSize + sizeof(ushort));
@@ -117,7 +118,7 @@ namespace Link.Channels
 
         protected override string ExtractPacketInfo(Packet packet)
         {
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Writer.Position - sizeof(ushort));
+            var sequenceNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.Writer.Position - sizeof(ushort));
             return $"[sequence: {sequenceNumber}]";
         }
     }

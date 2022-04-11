@@ -1,3 +1,5 @@
+using System;
+
 namespace Link.Channels
 {
     public class SequencedChannel : Channel
@@ -18,23 +20,23 @@ namespace Link.Channels
             return _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.Writer.Position) : (0, 0);
         }
 
-        protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
+        protected override void ExecuteReceive(ReadOnlySpan<byte> datagram)
         {
-            var sequenceNumber = datagram.Read<ushort>(offset: bytesReceived - sizeof(ushort));
+            var sequenceNumber = datagram.Read<ushort>(offset: datagram.Length - sizeof(ushort));
 
             if (IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber))
             {
                 _remoteSequenceNumber = sequenceNumber;
-                _connection.Node.EnqueuePendingPacket(CreatePacket(datagram, bytesReceived), _connection.RemoteEndPoint);
+                _connection.Node.EnqueuePendingPacket(CreatePacket(datagram), _connection.RemoteEndPoint);
             }
             else
             {
                 PacketsReceivedOutOfOrder++;
-                BytesReceivedOutOfOrder += bytesReceived;
+                BytesReceivedOutOfOrder += datagram.Length;
             }
         }
 
-        internal override void ReceiveAcknowledgement(byte[] datagram) =>
+        internal override void ReceiveAcknowledgement(ReadOnlySpan<byte> datagram) =>
             Log.Warning($"Acknowledgement packet received on '{nameof(SequencedChannel)}'.");
 
         public override string ToString() =>

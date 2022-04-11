@@ -57,14 +57,14 @@ namespace Link.Nodes
             Started?.Invoke();
         }
 
-        protected override void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
+        protected override void Receive(ReadOnlySpan<byte> datagram, EndPoint senderEndPoint)
         {
             var headerType = (HeaderType) datagram[0];
 
             switch (headerType)
             {
                 case HeaderType.Data:
-                    TryGetConnection(senderEndPoint, headerType)?.ReceiveData(datagram, bytesReceived);
+                    TryGetConnection(senderEndPoint, headerType)?.ReceiveData(datagram);
                     return;
                 
                 case HeaderType.Acknowledgement:

@@ -162,7 +162,7 @@ namespace Link.Nodes
 
             if (MaxLatency == 0)
             {
-                Receive(_receiveBuffer, bytesReceived, senderEndPoint);
+                Receive(_receiveBuffer.AsSpan(..bytesReceived), senderEndPoint);
             }
             else
             {
@@ -172,18 +172,16 @@ namespace Link.Nodes
                 Array.Copy(_receiveBuffer, receiveBufferCopy, bytesReceived);
 
                 await Task.Delay(Random.Next(MinLatency, MaxLatency + 1));
-                Receive(receiveBufferCopy, bytesReceived, senderEndPoint);
+                Receive(receiveBufferCopy.AsSpan(), senderEndPoint);
             }
         }
 
         /// <summary>
-        /// Processes received bytes and returns packet instance if bytes represent a data packet.
+        /// Processes received datagram and performs specific action based on the datagram contents.
         /// </summary>
-        /// <param name="datagram">Buffer containing bytes being processed.</param>
-        /// <param name="bytesReceived">How many bytes were received.</param>
-        /// <param name="senderEndPoint">Specifies from where bytes came from.</param>
-        /// <returns>Packet instance if bytes represent a data packet, null otherwise.</returns>
-        protected abstract void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint);
+        /// <param name="datagram">Read-only span containing datagram bytes.</param>
+        /// <param name="senderEndPoint">Specifies from where datagram came from.</param>
+        protected abstract void Receive(ReadOnlySpan<byte> datagram, EndPoint senderEndPoint);
 
         /// <summary>
         /// Handles the case of connection getting timed-out.

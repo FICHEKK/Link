@@ -56,23 +56,23 @@ namespace Link.Channels
         /// <summary>
         /// Reads header information and attempts to convert incoming bytes to packet instance(s).
         /// </summary>
-        internal void Receive(byte[] datagram, int bytesReceived)
+        internal void Receive(ReadOnlySpan<byte> datagram)
         {
             PacketsReceived++;
-            BytesReceived += bytesReceived;
-            ExecuteReceive(datagram, bytesReceived);
+            BytesReceived += datagram.Length;
+            ExecuteReceive(datagram);
         }
 
         /// <summary>
         /// Executes logic of receiving the incoming datagram.
         /// </summary>
-        protected abstract void ExecuteReceive(byte[] datagram, int bytesReceived);
+        protected abstract void ExecuteReceive(ReadOnlySpan<byte> datagram);
 
         /// <summary>
         /// Receives and processes acknowledgement packet. This method should be implemented by reliable channels,
         /// but is also useful as a diagnostic tool to write warnings if ack is received on the unreliable channel.
         /// </summary>
-        internal abstract void ReceiveAcknowledgement(byte[] datagram);
+        internal abstract void ReceiveAcknowledgement(ReadOnlySpan<byte> datagram);
 
         /// <summary>
         /// Returns statistics of this channel written in textual form.
@@ -94,12 +94,12 @@ namespace Link.Channels
         /// <summary>
         /// Creates <see cref="Packet"/> instance from the given datagram bytes.
         /// </summary>
-        protected static Packet CreatePacket(byte[] datagram, int bytesReceived)
+        protected static Packet CreatePacket(ReadOnlySpan<byte> datagram)
         {
             var packet = Packet.Get();
-            Array.Copy(datagram, packet.Buffer, bytesReceived);
+            datagram.CopyTo(packet.Buffer);
 
-            packet.Writer.Position = bytesReceived;
+            packet.Writer.Position = datagram.Length;
             packet.Reader.Position = HeaderSize;
             return packet;
         }

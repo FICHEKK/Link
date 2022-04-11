@@ -20,7 +20,7 @@ namespace Link
         {
             var bytesToWrite = sizeof(T);
             EnsureBufferSize(requiredBufferSize: Position + bytesToWrite);
-            _packet.Buffer.Write(value, Position);
+            _packet.Buffer.AsSpan().Write(value, Position);
             Position += bytesToWrite;
         }
 
@@ -28,7 +28,7 @@ namespace Link
         {
             var bytesToWrite = sizeof(int) + array.Length * sizeof(T);
             EnsureBufferSize(requiredBufferSize: Position + bytesToWrite);
-            _packet.Buffer.WriteArray(array, Position);
+            _packet.Buffer.AsSpan().WriteArray(array, Position);
             Position += bytesToWrite;
         }
 
@@ -36,7 +36,7 @@ namespace Link
         {
             var bytesToWrite = span.Length * sizeof(T);
             EnsureBufferSize(requiredBufferSize: Position + bytesToWrite);
-            _packet.Buffer.WriteSpan(span, Position);
+            _packet.Buffer.AsSpan().WriteSpan(span, Position);
             Position += bytesToWrite;
         }
 

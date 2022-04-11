@@ -1,3 +1,5 @@
+using System;
+
 namespace Link.Channels
 {
     public class UnreliableChannel : Channel
@@ -10,10 +12,10 @@ namespace Link.Channels
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet) =>
             _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.Writer.Position) : (0, 0);
 
-        protected override void ExecuteReceive(byte[] datagram, int bytesReceived) =>
-            _connection.Node.EnqueuePendingPacket(CreatePacket(datagram, bytesReceived), _connection.RemoteEndPoint);
+        protected override void ExecuteReceive(ReadOnlySpan<byte> datagram) =>
+            _connection.Node.EnqueuePendingPacket(CreatePacket(datagram), _connection.RemoteEndPoint);
 
-        internal override void ReceiveAcknowledgement(byte[] datagram) =>
+        internal override void ReceiveAcknowledgement(ReadOnlySpan<byte> datagram) =>
             Log.Warning($"Acknowledgement packet received on '{nameof(UnreliableChannel)}'.");
     }
 }

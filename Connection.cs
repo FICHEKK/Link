@@ -140,10 +140,10 @@ namespace Link
         public void Send(Packet packet) =>
             GetChannel(packet.Buffer[1]).Send(packet);
 
-        internal void ReceiveData(byte[] datagram, int bytesReceived) =>
-            GetChannel(datagram[1]).Receive(datagram, bytesReceived);
+        internal void ReceiveData(ReadOnlySpan<byte> datagram) =>
+            GetChannel(datagram[1]).Receive(datagram);
 
-        internal void ReceiveAcknowledgement(byte[] datagram) =>
+        internal void ReceiveAcknowledgement(ReadOnlySpan<byte> datagram) =>
             GetChannel(datagram[1]).ReceiveAcknowledgement(datagram);
 
         private Channel GetChannel(byte channelId) =>
@@ -166,7 +166,7 @@ namespace Link
             _rttStopwatch.Restart();
         }
 
-        internal void ReceivePing(byte[] datagram)
+        internal void ReceivePing(ReadOnlySpan<byte> datagram)
         {
             var pongPacket = Packet.Get(HeaderType.Pong);
             pongPacket.Writer.Write(datagram.Read<uint>(offset: 1));
@@ -174,7 +174,7 @@ namespace Link
             pongPacket.Return();
         }
 
-        internal void ReceivePong(byte[] datagram)
+        internal void ReceivePong(ReadOnlySpan<byte> datagram)
         {
             var responseId = datagram.Read<uint>(offset: 1);
             if (responseId <= _lastPingResponseId) return;

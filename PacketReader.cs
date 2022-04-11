@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 
 namespace Link
@@ -22,14 +23,14 @@ namespace Link
 
         public unsafe T Read<T>() where T : unmanaged
         {
-            var value = _packet.Buffer.Read<T>(Position);
+            var value = new ReadOnlySpan<byte>(_packet.Buffer).Read<T>(Position);
             Position += sizeof(T);
             return value;
         }
 
         public unsafe T[] ReadArray<T>() where T : unmanaged
         {
-            var array = _packet.Buffer.ReadArray<T>(Position);
+            var array = new ReadOnlySpan<byte>(_packet.Buffer).ReadArray<T>(Position);
             Position += sizeof(int) + array.Length * sizeof(T);
             return array;
         }
