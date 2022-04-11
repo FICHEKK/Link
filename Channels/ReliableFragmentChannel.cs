@@ -13,7 +13,7 @@ namespace Link.Channels
         /// <summary>
         /// Defines how many data-bytes can be stored in a single fragment.
         /// </summary>
-        private const int BodySize = Packet.MaxSize - HeaderSize - FooterSize;
+        private static readonly int BodySize = Packet.MaxSize - HeaderSize - FooterSize;
 
         /// <summary>
         /// Consists of sequence number (2 bytes) and fragment number (2 bytes).

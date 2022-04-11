@@ -9,19 +9,35 @@ namespace Link
     public sealed class Packet
     {
         /// <summary>
-        /// Maximum allowed packet size, in bytes. This value is chosen in order to avoid fragmentation
-        /// on the network layer. Any packets that require bigger size must use a fragmented channel
-        /// which will perform fragmentation and reassembly on the application layer.
+        /// Maximum allowed packet size, in bytes. This value must be chosen carefully to avoid
+        /// fragmentation on the network layer. Any packets that require bigger size must use a
+        /// fragmented channel which will perform fragmentation and reassembly on the application
+        /// layer. Defaults to <see cref="DefaultMaxSize"/> bytes.
         /// </summary>
-        public const int MaxSize = EthernetMtu - MaxIpHeaderSize - UdpHeaderSize;
+        /// <remarks>
+        /// This value cannot be set to a value that is lower than <see cref="MinSize"/> bytes.
+        /// </remarks>
+        public static int MaxSize
+        {
+            get => _maxSize;
+            set => _maxSize = value >= MinSize ? value : throw new ArgumentOutOfRangeException(nameof(MaxSize));
+        }
 
         /// <summary>
-        /// Maximum allowed packet size of a pooled packet. Trying to return a packet with bigger
-        /// buffer to the pool is going to result in packet being rejected by the pool. This is needed
-        /// as a measure to prevent allocating too much memory, which would happen if there we too many
-        /// big packets stored in the pool.
+        /// Backing field of <see cref="MaxSize"/> property.
         /// </summary>
-        private const int MaxSizeInPool = ushort.MaxValue - UdpHeaderSize;
+        private static int _maxSize = DefaultMaxSize;
+
+        /// <summary>
+        /// Default maximum packet size. If network layer fragmentation occurs when using
+        /// this buffer size, consider lowering the value stored in <see cref="MaxSize"/>.
+        /// </summary>
+        private const int DefaultMaxSize = EthernetMtu - MaxIpHeaderSize - UdpHeaderSize;
+
+        /// <summary>
+        /// Minimum safe UDP payload size that will not cause fragmentation.
+        /// </summary>
+        private const int MinSize = 576 - MaxIpHeaderSize - UdpHeaderSize;
 
         /// <summary>
         /// Maximum number of data bytes that can be transferred in a single Ethernet frame.
@@ -37,6 +53,14 @@ namespace Link
         /// User Datagram Protocol (UDP) header size, in bytes.
         /// </summary>
         private const int UdpHeaderSize = 8;
+
+        /// <summary>
+        /// Maximum allowed packet size of a pooled packet. Trying to return a packet with bigger
+        /// buffer to the pool is going to result in packet being rejected by the pool. This is needed
+        /// as a measure to prevent allocating too much memory, which would happen if there we too many
+        /// big packets stored in the pool.
+        /// </summary>
+        private const int MaxSizeInPool = ushort.MaxValue;
 
         /// <summary>
         /// Collection of reusable packet instances used to avoid frequent memory allocations.
