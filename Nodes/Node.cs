@@ -284,7 +284,7 @@ namespace Link.Nodes
         /// <summary>
         /// Registers a new packet handler for a packet with specific ID.
         /// </summary>
-        public void RegisterPacketHandler(ushort packetId, Action<PacketReader, EndPoint> packetHandler) =>
+        public void AddPacketHandler(ushort packetId, Action<PacketReader, EndPoint> packetHandler) =>
             _packetIdToPacketHandler.Add(packetId, packetHandler);
 
         /// <summary>
