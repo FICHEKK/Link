@@ -292,5 +292,12 @@ namespace Link.Nodes
         /// </summary>
         public bool TryGetPacketHandler(ushort packedId, out Action<PacketReader, EndPoint> packetHandler) =>
             _packetIdToPacketHandler.TryGetValue(packedId, out packetHandler);
+
+        /// <summary>
+        /// Removes packet handler for specific packet ID.
+        /// </summary>
+        /// <returns><c>true</c> if packet handler has been successfully removed, <c>false</c> otherwise.</returns>
+        public bool RemovePacketHandler(ushort packetId) =>
+            _packetIdToPacketHandler.Remove(packetId);
     }
 }
