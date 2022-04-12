@@ -195,7 +195,7 @@ namespace Link.Nodes
         /// <param name="packet">Packet being sent.</param>
         /// <param name="receiverEndPoint">Where to send the packet to.</param>
         /// <returns><c>true</c> if packet was successfully sent, <c>false</c> otherwise.</returns>
-        public bool Send(Packet packet, EndPoint receiverEndPoint)
+        internal bool Send(Packet packet, EndPoint receiverEndPoint)
         {
             if (packet.Writer.Position > Packet.MaxSize)
             {

@@ -41,6 +41,16 @@ namespace Link.Nodes
         public int MaxConnectionCount { get; private set; }
 
         /// <summary>
+        /// Returns end-points of currently connected clients.
+        /// </summary>
+        public IEnumerable<EndPoint> EndPoints => _connections.Keys;
+
+        /// <summary>
+        /// Returns connections of currently connected clients.
+        /// </summary>
+        public IEnumerable<Connection> Connections => _connections.Values;
+
+        /// <summary>
         /// Connections to all of the clients.
         /// </summary>
         private readonly Dictionary<EndPoint, Connection> _connections = new();
@@ -59,24 +69,22 @@ namespace Link.Nodes
 
         protected override void Receive(ReadOnlySpan<byte> datagram, EndPoint senderEndPoint)
         {
-            var headerType = (HeaderType) datagram[0];
-
-            switch (headerType)
+            switch ((HeaderType) datagram[0])
             {
                 case HeaderType.Data:
-                    TryGetConnection(senderEndPoint, headerType)?.ReceiveData(datagram);
+                    TryGetConnection(senderEndPoint)?.ReceiveData(datagram);
                     return;
-                
+
                 case HeaderType.Acknowledgement:
-                    TryGetConnection(senderEndPoint, headerType)?.ReceiveAcknowledgement(datagram);
+                    TryGetConnection(senderEndPoint)?.ReceiveAcknowledgement(datagram);
                     return;
 
                 case HeaderType.Ping:
-                    TryGetConnection(senderEndPoint, headerType)?.ReceivePing(datagram);
+                    TryGetConnection(senderEndPoint)?.ReceivePing(datagram);
                     return;
 
                 case HeaderType.Pong:
-                    TryGetConnection(senderEndPoint, headerType)?.ReceivePong(datagram);
+                    TryGetConnection(senderEndPoint)?.ReceivePong(datagram);
                     return;
 
                 case HeaderType.Connect:
@@ -115,20 +123,12 @@ namespace Link.Nodes
 
         private void HandleDisconnectPacket(EndPoint senderEndPoint)
         {
-            var connection = TryGetConnection(senderEndPoint, HeaderType.Disconnect);
+            var connection = TryGetConnection(senderEndPoint);
             if (connection is null) return;
 
             connection.Close(sendDisconnectPacket: false);
             _connections.Remove(senderEndPoint);
             EnqueuePendingAction(() => ClientDisconnected?.Invoke(connection));
-        }
-
-        private Connection TryGetConnection(EndPoint senderEndPoint, HeaderType headerType)
-        {
-            if (_connections.TryGetValue(senderEndPoint, out var connection)) return connection;
-
-            Log.Warning($"Received '{headerType}' packet from a non-connected client at {senderEndPoint}.");
-            return null;
         }
 
         internal override void Timeout(Connection connection)
@@ -141,15 +141,42 @@ namespace Link.Nodes
         }
 
         /// <summary>
-        /// Sends given packet to every connected client.
+        /// Sends a given packet to one client.
         /// </summary>
-        /// <param name="packet">Packet being sent.</param>
-        public void Broadcast(Packet packet)
+        public void SendToOne(Packet packet, EndPoint clientEndPoint)
+        {
+            TryGetConnection(clientEndPoint)?.Send(packet);
+            packet.Return();
+        }
+
+        /// <summary>
+        /// Sends a given packet to many clients.
+        /// </summary>
+        public void SendToMany(Packet packet, IEnumerable<EndPoint> clientEndPoints)
+        {
+            foreach (var clientEndPoint in clientEndPoints)
+                TryGetConnection(clientEndPoint)?.Send(packet);
+
+            packet.Return();
+        }
+
+        /// <summary>
+        /// Sends a given packet to all clients.
+        /// </summary>
+        public void SendToAll(Packet packet)
         {
             foreach (var connection in _connections.Values)
                 connection.Send(packet);
 
             packet.Return();
+        }
+
+        private Connection TryGetConnection(EndPoint clientEndPoint)
+        {
+            if (_connections.TryGetValue(clientEndPoint, out var connection)) return connection;
+
+            Log.Warning($"Could not get connection for client end-point {clientEndPoint}.");
+            return null;
         }
 
         /// <summary>
