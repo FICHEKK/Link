@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 
@@ -53,7 +54,7 @@ namespace Link.Nodes
         /// <summary>
         /// Connections to all of the clients.
         /// </summary>
-        private readonly Dictionary<EndPoint, Connection> _connections = new();
+        private readonly ConcurrentDictionary<EndPoint, Connection> _connections = new();
 
         /// <summary>
         /// Starts this server and listens for incoming client connections.
@@ -117,25 +118,21 @@ namespace Link.Nodes
             connection = new Connection(node: this, remoteEndPoint: senderEndPoint);
             connection.ReceiveConnect();
 
-            _connections.Add(senderEndPoint, connection);
+            _connections.TryAdd(senderEndPoint, connection);
             EnqueuePendingAction(() => ClientConnected?.Invoke(connection));
         }
 
-        private void HandleDisconnectPacket(EndPoint senderEndPoint)
+        private void HandleDisconnectPacket(EndPoint senderEndPoint) =>
+            TryDisconnect(senderEndPoint, "disconnected");
+
+        internal override void Timeout(Connection connection) =>
+            TryDisconnect(connection.RemoteEndPoint, "timed-out");
+
+        private void TryDisconnect(EndPoint clientEndPoint, string disconnectMethod)
         {
-            var connection = TryGetConnection(senderEndPoint);
-            if (connection is null) return;
+            if (!_connections.TryRemove(clientEndPoint, out var connection)) return;
 
-            connection.Close(sendDisconnectPacket: false);
-            _connections.Remove(senderEndPoint);
-            EnqueuePendingAction(() => ClientDisconnected?.Invoke(connection));
-        }
-
-        internal override void Timeout(Connection connection)
-        {
-            if (!_connections.Remove(connection.RemoteEndPoint)) return;
-
-            Log.Info($"Client from {connection.RemoteEndPoint} timed-out.");
+            Log.Info($"Client from {clientEndPoint} {disconnectMethod}.");
             connection.Close(sendDisconnectPacket: false);
             EnqueuePendingAction(() => ClientDisconnected?.Invoke(connection));
         }
