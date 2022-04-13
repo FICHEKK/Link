@@ -75,9 +75,22 @@ namespace Link
         public static int TotalAllocationCount { get; private set; }
 
         /// <summary>
+        /// Gets or sets <see cref="byte"/> at the specified index in this packet.
+        /// </summary>
+        public byte this[int index]
+        {
+            get => _buffer[index];
+            set => _buffer[index] = _isInPool ? throw new InvalidOperationException("Cannot modify a packet that is in pool.") : value;
+        }
+
+        /// <summary>
         /// Direct reference to the underlying buffer (defensive copy will <b>not</b> be made).
         /// </summary>
-        public byte[] Buffer { get; set; }
+        internal byte[] Buffer
+        {
+            get => _isInPool ? throw new InvalidOperationException("Cannot get buffer of a packet that is in pool.") : _buffer;
+            set => _buffer = _isInPool ? throw new InvalidOperationException("Cannot set buffer of a packet that is in pool.") : value;
+        }
 
         /// <summary>
         /// Returns <see cref="PacketWriter"/> that can write data to this packet.
@@ -89,10 +102,8 @@ namespace Link
         /// </summary>
         public PacketReader Reader { get; }
 
-        /// <summary>
-        /// <c>true</c> if reference to this packet currently exists in the pool, <c>false</c> otherwise.
-        /// </summary>
-        private bool IsInPool { get; set; }
+        private byte[] _buffer;
+        private bool _isInPool;
 
         /// <summary>
         /// Returns a packet with defined ID and delivery method.
@@ -118,8 +129,10 @@ namespace Link
 
         internal static Packet Copy(Packet packet)
         {
+            // Since packet is provided from the outside source, property
+            // getters need to be used to ensure packet is not in the pool.
             var packetCopy = Get();
-            Array.Copy(packet.Buffer, packetCopy.Buffer, length: packet.Writer.Position);
+            Array.Copy(packet.Buffer, packetCopy._buffer, length: packet.Writer.Position);
 
             packetCopy.Writer.Position = packet.Writer.Position;
             packetCopy.Reader.Position = packet.Reader.Position;
@@ -138,7 +151,7 @@ namespace Link
                     var packet = PacketPool.Dequeue();
                     packet.Writer.Position = 0;
                     packet.Reader.Position = 0;
-                    packet.IsInPool = false;
+                    packet._isInPool = false;
                     return packet;
                 }
             }
@@ -149,7 +162,7 @@ namespace Link
 
         private Packet(int size)
         {
-            Buffer = new byte[size];
+            _buffer = new byte[size];
             Writer = new PacketWriter(this);
             Reader = new PacketReader(this);
         }
@@ -162,20 +175,20 @@ namespace Link
         {
             lock (PacketPool)
             {
-                if (IsInPool)
+                if (_isInPool)
                 {
                     Log.Error("Attempt was made to return a packet that is already in pool.");
                     return;
                 }
 
-                if (Buffer.Length > MaxSizeInPool)
+                if (_buffer.Length > MaxSizeInPool)
                 {
-                    Log.Info($"Big packet ({Buffer.Length} bytes) was not returned to the pool to preserve memory.");
+                    Log.Info($"Big packet ({_buffer.Length} bytes) was not returned to the pool to preserve memory.");
                     return;
                 }
 
                 PacketPool.Enqueue(this);
-                IsInPool = true;
+                _isInPool = true;
             }
         }
     }
