@@ -99,24 +99,27 @@ namespace Link
             _channels[(int) Delivery.Fragmented] = new ReliableFragmentChannel(connection: this, isOrdered: true) {Name = nameof(Delivery.Fragmented)};
         }
 
-        internal async void Establish(int maxAttempts, int delayBetweenAttempts)
+        internal async void Establish(int maxAttempts, int delayBetweenAttempts, byte[] connectData)
         {
             if (maxAttempts <= 0) throw new ArgumentException($"'{nameof(maxAttempts)}' must be a positive value.");
             if (delayBetweenAttempts <= 0) throw new ArgumentException($"'{nameof(delayBetweenAttempts)}' must be a positive value.");
 
+            var connectPacket = Packet.Get(HeaderType.Connect);
+            if (connectData is not null) connectPacket.Writer.WriteSpan<byte>(connectData.AsSpan());
+
             for (var attempt = 0; attempt < maxAttempts; attempt++)
             {
-                var connectPacket = Packet.Get(HeaderType.Connect);
                 Node.Send(connectPacket, RemoteEndPoint);
-                connectPacket.Return();
-
-                Log.Info($"Connecting to {RemoteEndPoint} - attempt {attempt}.");
                 CurrentState = State.Connecting;
 
                 await Task.Delay(delayBetweenAttempts);
-                if (CurrentState != State.Connecting) return;
+                if (CurrentState == State.Connecting) continue;
+
+                connectPacket.Return();
+                return;
             }
 
+            connectPacket.Return();
             Node.Timeout(connection: this);
             Log.Info($"Connection timed-out: could not connect to {RemoteEndPoint} (exceeded maximum connect attempts of {maxAttempts}).");
         }

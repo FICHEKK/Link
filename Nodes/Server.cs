@@ -32,6 +32,16 @@ namespace Link.Nodes
         public event Action Stopped;
 
         /// <summary>
+        /// Represents a method that is responsible for handling incoming connect packet data.
+        /// </summary>
+        public delegate bool ConnectDataHandler(ReadOnlySpan<byte> connectData, EndPoint clientEndPoint);
+
+        /// <summary>
+        /// Validates incoming connection request and decides whether connection should be accepted or not.
+        /// </summary>
+        public ConnectDataHandler ConnectionValidator { get; set; }
+
+        /// <summary>
         /// Returns current number of client connections.
         /// </summary>
         public int ConnectionCount => _connections.Count;
@@ -89,7 +99,7 @@ namespace Link.Nodes
                     return;
 
                 case HeaderType.Connect:
-                    HandleConnectPacket(senderEndPoint);
+                    HandleConnectPacket(datagram[1..], senderEndPoint);
                     return;
 
                 case HeaderType.Disconnect:
@@ -102,7 +112,7 @@ namespace Link.Nodes
             }
         }
 
-        private void HandleConnectPacket(EndPoint senderEndPoint)
+        private void HandleConnectPacket(ReadOnlySpan<byte> connectData, EndPoint senderEndPoint)
         {
             // Client is already connected, but might have not received the approval.
             if (_connections.TryGetValue(senderEndPoint, out var connection))
@@ -111,10 +121,19 @@ namespace Link.Nodes
                 return;
             }
 
-            // If server is full, ignore the sender.
-            if (ConnectionCount >= MaxConnectionCount) return;
+            if (ConnectionCount >= MaxConnectionCount)
+            {
+                Log.Info($"Client connection from {senderEndPoint} was declined as server is full.");
+                return;
+            }
 
-            // Else accept a new client connection.
+            if (ConnectionValidator is not null && !ConnectionValidator(connectData, senderEndPoint))
+            {
+                Log.Info($"Client connection from {senderEndPoint} was declined as it did not pass validation test(s).");
+                return;
+            }
+
+            Log.Info($"Client from {senderEndPoint} connected.");
             connection = new Connection(node: this, remoteEndPoint: senderEndPoint);
             connection.ReceiveConnect();
 
