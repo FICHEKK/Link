@@ -20,13 +20,13 @@ namespace Link.Channels
 
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet)
         {
-            packet.Writer.Write(_localSequenceNumber);
+            packet.Write(_localSequenceNumber);
             if (!Connection.Node.Send(packet, Connection.RemoteEndPoint)) return (0, 0);
 
             lock (_pendingPackets)
             {
                 _pendingPackets.Add(_localSequenceNumber++, PendingPacket.Get(packet, reliableChannel: this));
-                return (1, packet.Writer.Position);
+                return (1, packet.WritePosition);
             }
         }
 
@@ -84,9 +84,9 @@ namespace Link.Channels
             }
 
             var packet = Packet.Get(HeaderType.Acknowledgement);
-            packet.Writer.Write(channelId);
-            packet.Writer.Write(sequenceNumber);
-            packet.Writer.Write(acknowledgeBitField);
+            packet.Write(channelId);
+            packet.Write(sequenceNumber);
+            packet.Write(acknowledgeBitField);
             Connection.Node.Send(packet, Connection.RemoteEndPoint);
             packet.Return();
         }
@@ -118,7 +118,7 @@ namespace Link.Channels
 
         protected override string ExtractPacketInfo(Packet packet)
         {
-            var sequenceNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.Writer.Position - sizeof(ushort));
+            var sequenceNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.WritePosition - sizeof(ushort));
             return $"[sequence: {sequenceNumber}]";
         }
     }

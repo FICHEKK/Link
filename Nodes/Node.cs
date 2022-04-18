@@ -30,7 +30,7 @@ namespace Link.Nodes
         /// <summary>
         /// Returns packet handlers registered for this network node.
         /// </summary>
-        public IReadOnlyDictionary<ushort, Action<PacketReader, EndPoint>> PacketIdToPacketHandler => _packetIdToPacketHandler;
+        public IReadOnlyDictionary<ushort, Action<Packet, EndPoint>> PacketIdToPacketHandler => _packetIdToPacketHandler;
 
         /// <summary>
         /// Returns port on which this node is listening on, or <c>-1</c> if not currently listening.
@@ -85,7 +85,7 @@ namespace Link.Nodes
             set => _maxLatency = value >= 0 && value >= _minLatency ? value : throw new ArgumentOutOfRangeException(nameof(MaxLatency));
         }
 
-        private readonly Dictionary<ushort, Action<PacketReader, EndPoint>> _packetIdToPacketHandler = new();
+        private readonly Dictionary<ushort, Action<Packet, EndPoint>> _packetIdToPacketHandler = new();
         private readonly Queue<(Packet packet, EndPoint senderEndPoint)> _pendingPackets = new();
         private readonly Queue<Action> _pendingActions = new();
         private readonly byte[] _receiveBuffer = new byte[Packet.MaxSize];
@@ -197,13 +197,13 @@ namespace Link.Nodes
         /// <returns><c>true</c> if packet was successfully sent, <c>false</c> otherwise.</returns>
         internal bool Send(Packet packet, EndPoint receiverEndPoint)
         {
-            if (packet.Writer.Position > Packet.MaxSize)
+            if (packet.WritePosition > Packet.MaxSize)
             {
-                Log.Error($"Packet exceeded maximum size of {Packet.MaxSize} bytes (has {packet.Writer.Position} bytes).");
+                Log.Error($"Packet exceeded maximum size of {Packet.MaxSize} bytes (has {packet.WritePosition} bytes).");
                 return false;
             }
 
-            _socket.SendTo(packet.Buffer, offset: 0, packet.Writer.Position, SocketFlags.None, receiverEndPoint);
+            _socket.SendTo(packet.Buffer, offset: 0, packet.WritePosition, SocketFlags.None, receiverEndPoint);
             return true;
         }
 
@@ -255,7 +255,7 @@ namespace Link.Nodes
                 while (_pendingPackets.Count > 0)
                 {
                     var (packet, senderEndPoint) = _pendingPackets.Dequeue();
-                    var packetId = packet.Reader.Read<ushort>();
+                    var packetId = packet.Read<ushort>();
 
                     if (!_packetIdToPacketHandler.TryGetValue(packetId, out var packetHandler))
                     {
@@ -264,7 +264,7 @@ namespace Link.Nodes
                         continue;
                     }
 
-                    packetHandler(packet.Reader, senderEndPoint);
+                    packetHandler(packet, senderEndPoint);
                     packet.Return();
                 }
             }
@@ -284,13 +284,13 @@ namespace Link.Nodes
         /// <summary>
         /// Registers a new packet handler for a packet with specific ID.
         /// </summary>
-        public void AddPacketHandler(ushort packetId, Action<PacketReader, EndPoint> packetHandler) =>
+        public void AddPacketHandler(ushort packetId, Action<Packet, EndPoint> packetHandler) =>
             _packetIdToPacketHandler.Add(packetId, packetHandler);
 
         /// <summary>
         /// Returns true if packet handler for specific ID exists, false otherwise.
         /// </summary>
-        public bool TryGetPacketHandler(ushort packedId, out Action<PacketReader, EndPoint> packetHandler) =>
+        public bool TryGetPacketHandler(ushort packedId, out Action<Packet, EndPoint> packetHandler) =>
             _packetIdToPacketHandler.TryGetValue(packedId, out packetHandler);
 
         /// <summary>

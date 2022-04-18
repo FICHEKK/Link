@@ -10,7 +10,7 @@ namespace Link.Channels
             _connection = connection;
 
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet) =>
-            _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.Writer.Position) : (0, 0);
+            _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.WritePosition) : (0, 0);
 
         protected override void ExecuteReceive(ReadOnlySpan<byte> datagram) =>
             _connection.Node.EnqueuePendingPacket(CreatePacket(datagram), _connection.RemoteEndPoint);

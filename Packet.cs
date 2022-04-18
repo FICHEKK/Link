@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace Link
 {
@@ -75,6 +76,11 @@ namespace Link
         public static int TotalAllocationCount { get; private set; }
 
         /// <summary>
+        /// Encoding used for reading and writing <see cref="string"/> values.
+        /// </summary>
+        private static readonly Encoding Encoding = Encoding.UTF8;
+
+        /// <summary>
         /// Gets or sets <see cref="byte"/> at the specified index in this packet.
         /// </summary>
         public byte this[int index]
@@ -93,14 +99,14 @@ namespace Link
         }
 
         /// <summary>
-        /// Returns <see cref="PacketWriter"/> that can write data to this packet.
+        /// Index at which the next write operation will be performed.
         /// </summary>
-        public PacketWriter Writer { get; }
+        public int WritePosition { get; set; }
 
         /// <summary>
-        /// Returns <see cref="PacketReader"/> that can read data from this packet.
+        /// Index at which the next read operation will be performed.
         /// </summary>
-        public PacketReader Reader { get; }
+        public int ReadPosition { get; set; }
 
         private byte[] _buffer;
         private bool _isInPool;
@@ -113,17 +119,17 @@ namespace Link
         public static Packet Get(ushort id, Delivery delivery = Delivery.Unreliable)
         {
             var packet = Get(HeaderType.Data);
-            packet.Writer.Write((byte) delivery);
-            packet.Writer.Write(id);
-            packet.Reader.Position = 2;
+            packet.Write((byte) delivery);
+            packet.Write(id);
+            packet.ReadPosition = 2;
             return packet;
         }
 
         internal static Packet Get(HeaderType headerType)
         {
             var packet = Get();
-            packet.Writer.Write((byte) headerType);
-            packet.Reader.Position = 1;
+            packet.Write((byte) headerType);
+            packet.ReadPosition = 1;
             return packet;
         }
 
@@ -132,10 +138,10 @@ namespace Link
             // Since packet is provided from the outside source, property
             // getters need to be used to ensure packet is not in the pool.
             var packetCopy = Get();
-            Array.Copy(packet.Buffer, packetCopy._buffer, length: packet.Writer.Position);
+            Array.Copy(packet.Buffer, packetCopy._buffer, length: packet.WritePosition);
 
-            packetCopy.Writer.Position = packet.Writer.Position;
-            packetCopy.Reader.Position = packet.Reader.Position;
+            packetCopy.WritePosition = packet.WritePosition;
+            packetCopy.ReadPosition = packet.ReadPosition;
             return packetCopy;
         }
 
@@ -149,8 +155,8 @@ namespace Link
                 if (PacketPool.Count > 0)
                 {
                     var packet = PacketPool.Dequeue();
-                    packet.Writer.Position = 0;
-                    packet.Reader.Position = 0;
+                    packet.WritePosition = 0;
+                    packet.ReadPosition = 0;
                     packet._isInPool = false;
                     return packet;
                 }
@@ -160,11 +166,66 @@ namespace Link
             return new Packet(MaxSize);
         }
 
-        private Packet(int size)
-        {
+        private Packet(int size) =>
             _buffer = new byte[size];
-            Writer = new PacketWriter(this);
-            Reader = new PacketReader(this);
+
+        public void Write(string value) =>
+            WriteArray(Encoding.GetBytes(value));
+
+        public unsafe void Write<T>(T value) where T : unmanaged
+        {
+            var bytesToWrite = sizeof(T);
+            EnsureBufferSize(requiredBufferSize: WritePosition + bytesToWrite);
+            Buffer.AsSpan().Write(value, WritePosition);
+            WritePosition += bytesToWrite;
+        }
+
+        public unsafe void WriteArray<T>(T[] array) where T : unmanaged
+        {
+            var bytesToWrite = sizeof(int) + array.Length * sizeof(T);
+            EnsureBufferSize(requiredBufferSize: WritePosition + bytesToWrite);
+            Buffer.AsSpan().WriteArray(array, WritePosition);
+            WritePosition += bytesToWrite;
+        }
+
+        public unsafe void WriteSpan<T>(ReadOnlySpan<T> span) where T : unmanaged
+        {
+            var bytesToWrite = span.Length * sizeof(T);
+            EnsureBufferSize(requiredBufferSize: WritePosition + bytesToWrite);
+            Buffer.AsSpan().WriteSpan(span, WritePosition);
+            WritePosition += bytesToWrite;
+        }
+
+        private void EnsureBufferSize(int requiredBufferSize)
+        {
+            var currentBuffer = Buffer;
+            if (currentBuffer.Length >= requiredBufferSize) return;
+
+            var expandedBuffer = new byte[Math.Max(currentBuffer.Length * 2, requiredBufferSize)];
+            Array.Copy(currentBuffer, expandedBuffer, WritePosition);
+            Buffer = expandedBuffer;
+        }
+
+        public string ReadString()
+        {
+            var stringByteCount = Read<int>();
+            var stringValue = Encoding.GetString(Buffer, ReadPosition, stringByteCount);
+            ReadPosition += stringByteCount;
+            return stringValue;
+        }
+
+        public unsafe T Read<T>() where T : unmanaged
+        {
+            var value = new ReadOnlySpan<byte>(Buffer).Read<T>(ReadPosition);
+            ReadPosition += sizeof(T);
+            return value;
+        }
+
+        public unsafe T[] ReadArray<T>() where T : unmanaged
+        {
+            var array = new ReadOnlySpan<byte>(Buffer).ReadArray<T>(ReadPosition);
+            ReadPosition += sizeof(int) + array.Length * sizeof(T);
+            return array;
         }
 
         /// <summary>

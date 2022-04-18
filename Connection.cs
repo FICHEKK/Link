@@ -105,7 +105,7 @@ namespace Link
             if (delayBetweenAttempts <= 0) throw new ArgumentException($"'{nameof(delayBetweenAttempts)}' must be a positive value.");
 
             var connectPacket = Packet.Get(HeaderType.Connect);
-            if (connectData is not null) connectPacket.Writer.WriteSpan<byte>(connectData.AsSpan());
+            if (connectData is not null) connectPacket.WriteSpan<byte>(connectData.AsSpan());
 
             for (var attempt = 0; attempt < maxAttempts; attempt++)
             {
@@ -162,7 +162,7 @@ namespace Link
             }
 
             var pingPacket = Packet.Get(HeaderType.Ping);
-            pingPacket.Writer.Write(++_lastPingRequestId);
+            pingPacket.Write(++_lastPingRequestId);
             Node.Send(pingPacket, RemoteEndPoint);
             pingPacket.Return();
 
@@ -172,7 +172,7 @@ namespace Link
         internal void ReceivePing(ReadOnlySpan<byte> datagram)
         {
             var pongPacket = Packet.Get(HeaderType.Pong);
-            pongPacket.Writer.Write(datagram.Read<uint>(offset: 1));
+            pongPacket.Write(datagram.Read<uint>(offset: 1));
             Node.Send(pongPacket, RemoteEndPoint);
             pongPacket.Return();
         }

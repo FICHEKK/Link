@@ -69,7 +69,7 @@ namespace Link.Channels
             Log.Info($"Re-sent packet {ExtractPacketInfo(packet)}.");
 
             PacketsResent++;
-            BytesResent += packet.Writer.Position;
+            BytesResent += packet.WritePosition;
         }
 
         /// <summary>

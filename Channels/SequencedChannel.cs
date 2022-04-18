@@ -16,8 +16,8 @@ namespace Link.Channels
 
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet)
         {
-            packet.Writer.Write(++_localSequenceNumber);
-            return _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.Writer.Position) : (0, 0);
+            packet.Write(++_localSequenceNumber);
+            return _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.WritePosition) : (0, 0);
         }
 
         protected override void ExecuteReceive(ReadOnlySpan<byte> datagram)

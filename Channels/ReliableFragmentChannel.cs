@@ -42,7 +42,7 @@ namespace Link.Channels
 
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet)
         {
-            var dataByteCount = packet.Writer.Position - HeaderSize;
+            var dataByteCount = packet.WritePosition - HeaderSize;
             var fragmentCount = dataByteCount / BodySize + (dataByteCount % BodySize != 0 ? 1 : 0);
 
             if (fragmentCount == 0)
@@ -62,15 +62,15 @@ namespace Link.Channels
 
         private (int packetsSent, int bytesSent) SendSingleFragmentPacket(Packet packet)
         {
-            packet.Writer.Write(_localSequenceNumber);
-            packet.Writer.Write((ushort) LastFragmentBitmask);
+            packet.Write(_localSequenceNumber);
+            packet.Write((ushort) LastFragmentBitmask);
 
             lock (_pendingPackets)
             {
                 _pendingPackets.Add((_localSequenceNumber++, LastFragmentBitmask), PendingPacket.Get(packet, reliableChannel: this));
                 Connection.Node.Send(packet, Connection.RemoteEndPoint);
 
-                return (1, packet.Writer.Position);
+                return (1, packet.WritePosition);
             }
         }
 
@@ -84,10 +84,10 @@ namespace Link.Channels
                     var fragmentLength = i < fragmentCount - 1 ? BodySize : dataByteCount - i * BodySize;
                     var fragment = Packet.Get(HeaderType.Data);
 
-                    fragment.Writer.Write(packet.Buffer[1]);
-                    fragment.Writer.WriteSpan<byte>(packet.Buffer.AsSpan(start: HeaderSize + i * BodySize, fragmentLength));
-                    fragment.Writer.Write(_localSequenceNumber);
-                    fragment.Writer.Write(fragmentNumber);
+                    fragment.Write(packet.Buffer[1]);
+                    fragment.WriteSpan<byte>(packet.Buffer.AsSpan(start: HeaderSize + i * BodySize, fragmentLength));
+                    fragment.Write(_localSequenceNumber);
+                    fragment.Write(fragmentNumber);
 
                     _pendingPackets.Add((_localSequenceNumber, fragmentNumber), PendingPacket.Get(fragment, reliableChannel: this));
                     Connection.Node.Send(fragment, Connection.RemoteEndPoint);
@@ -158,9 +158,9 @@ namespace Link.Channels
         private void SendAcknowledgement(byte channelId, ushort sequenceNumber, ushort fragmentNumber)
         {
             var packet = Packet.Get(HeaderType.Acknowledgement);
-            packet.Writer.Write(channelId);
-            packet.Writer.Write(sequenceNumber);
-            packet.Writer.Write(fragmentNumber);
+            packet.Write(channelId);
+            packet.Write(sequenceNumber);
+            packet.Write(fragmentNumber);
             Connection.Node.Send(packet, Connection.RemoteEndPoint);
             packet.Return();
         }
@@ -182,8 +182,8 @@ namespace Link.Channels
 
         protected override string ExtractPacketInfo(Packet packet)
         {
-            var sequenceNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.Writer.Position - FooterSize);
-            var fragmentNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.Writer.Position - FooterSize + sizeof(ushort));
+            var sequenceNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.WritePosition - FooterSize);
+            var fragmentNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.WritePosition - FooterSize + sizeof(ushort));
             return $"[sequence: {sequenceNumber}, fragment: {fragmentNumber}]";
         }
     }

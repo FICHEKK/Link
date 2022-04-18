@@ -99,8 +99,8 @@ namespace Link.Channels
             var packet = Packet.Get();
             datagram.CopyTo(packet.Buffer);
 
-            packet.Writer.Position = datagram.Length;
-            packet.Reader.Position = HeaderSize;
+            packet.WritePosition = datagram.Length;
+            packet.ReadPosition = HeaderSize;
             return packet;
         }
     }
