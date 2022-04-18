@@ -86,6 +86,11 @@ namespace Link
         public int Size => _writePosition;
 
         /// <summary>
+        /// If packet is read-only, further write operations are not allowed.
+        /// </summary>
+        public bool IsReadOnly { get; internal set; }
+
+        /// <summary>
         /// Direct reference to the underlying buffer (defensive copy will <b>not</b> be made).
         /// </summary>
         internal byte[] Buffer
@@ -156,6 +161,7 @@ namespace Link
                     packet._writePosition = 0;
                     packet._readPosition = 0;
                     packet._isInPool = false;
+                    packet.IsReadOnly = false;
                     return packet;
                 }
             }
@@ -196,6 +202,8 @@ namespace Link
 
         private void EnsureBufferSize(int requiredBufferSize)
         {
+            if (IsReadOnly) throw new InvalidOperationException("Cannot write to a read-only packet.");
+
             var currentBuffer = Buffer;
             if (currentBuffer.Length >= requiredBufferSize) return;
 

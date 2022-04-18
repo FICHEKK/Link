@@ -264,6 +264,7 @@ namespace Link.Nodes
                         continue;
                     }
 
+                    packet.IsReadOnly = true;
                     packetHandler(packet, senderEndPoint);
                     packet.Return();
                 }
