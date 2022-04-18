@@ -42,7 +42,7 @@ namespace Link.Channels
 
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet)
         {
-            var dataByteCount = packet.WritePosition - HeaderSize;
+            var dataByteCount = packet.Size - HeaderSize;
             var fragmentCount = dataByteCount / BodySize + (dataByteCount % BodySize != 0 ? 1 : 0);
 
             if (fragmentCount == 0)
@@ -70,7 +70,7 @@ namespace Link.Channels
                 _pendingPackets.Add((_localSequenceNumber++, LastFragmentBitmask), PendingPacket.Get(packet, reliableChannel: this));
                 Connection.Node.Send(packet, Connection.RemoteEndPoint);
 
-                return (1, packet.WritePosition);
+                return (1, packet.Size);
             }
         }
 
@@ -116,7 +116,7 @@ namespace Link.Channels
                 _fragmentedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
             }
 
-            if (!fragmentedPacket.Add(CreatePacket(datagram), fragmentNumber & ~LastFragmentBitmask, (fragmentNumber & LastFragmentBitmask) != 0))
+            if (!fragmentedPacket.Add(Packet.From(datagram, HeaderSize), fragmentNumber & ~LastFragmentBitmask, (fragmentNumber & LastFragmentBitmask) != 0))
             {
                 PacketsDuplicated++;
                 BytesDuplicated += datagram.Length;
@@ -182,8 +182,8 @@ namespace Link.Channels
 
         protected override string ExtractPacketInfo(Packet packet)
         {
-            var sequenceNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.WritePosition - FooterSize);
-            var fragmentNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.WritePosition - FooterSize + sizeof(ushort));
+            var sequenceNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.Size - FooterSize);
+            var fragmentNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.Size - FooterSize + sizeof(ushort));
             return $"[sequence: {sequenceNumber}, fragment: {fragmentNumber}]";
         }
     }

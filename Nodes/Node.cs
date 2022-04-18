@@ -197,13 +197,13 @@ namespace Link.Nodes
         /// <returns><c>true</c> if packet was successfully sent, <c>false</c> otherwise.</returns>
         internal bool Send(Packet packet, EndPoint receiverEndPoint)
         {
-            if (packet.WritePosition > Packet.MaxSize)
+            if (packet.Size > Packet.MaxSize)
             {
-                Log.Error($"Packet exceeded maximum size of {Packet.MaxSize} bytes (has {packet.WritePosition} bytes).");
+                Log.Error($"Packet exceeded maximum size of {Packet.MaxSize} bytes (has {packet.Size} bytes).");
                 return false;
             }
 
-            _socket.SendTo(packet.Buffer, offset: 0, packet.WritePosition, SocketFlags.None, receiverEndPoint);
+            _socket.SendTo(packet.Buffer, offset: 0, packet.Size, SocketFlags.None, receiverEndPoint);
             return true;
         }
 

@@ -81,13 +81,9 @@ namespace Link
         private static readonly Encoding Encoding = Encoding.UTF8;
 
         /// <summary>
-        /// Gets or sets <see cref="byte"/> at the specified index in this packet.
+        /// Returns the number of bytes currently contained in this packet.
         /// </summary>
-        public byte this[int index]
-        {
-            get => _buffer[index];
-            set => _buffer[index] = _isInPool ? throw new InvalidOperationException("Cannot modify a packet that is in pool.") : value;
-        }
+        public int Size => _writePosition;
 
         /// <summary>
         /// Direct reference to the underlying buffer (defensive copy will <b>not</b> be made).
@@ -98,17 +94,9 @@ namespace Link
             set => _buffer = _isInPool ? throw new InvalidOperationException("Cannot set buffer of a packet that is in pool.") : value;
         }
 
-        /// <summary>
-        /// Index at which the next write operation will be performed.
-        /// </summary>
-        public int WritePosition { get; set; }
-
-        /// <summary>
-        /// Index at which the next read operation will be performed.
-        /// </summary>
-        public int ReadPosition { get; set; }
-
         private byte[] _buffer;
+        private int _writePosition;
+        private int _readPosition;
         private bool _isInPool;
 
         /// <summary>
@@ -121,7 +109,7 @@ namespace Link
             var packet = Get(HeaderType.Data);
             packet.Write((byte) delivery);
             packet.Write(id);
-            packet.ReadPosition = 2;
+            packet._readPosition = 2;
             return packet;
         }
 
@@ -129,7 +117,7 @@ namespace Link
         {
             var packet = Get();
             packet.Write((byte) headerType);
-            packet.ReadPosition = 1;
+            packet._readPosition = 1;
             return packet;
         }
 
@@ -137,12 +125,22 @@ namespace Link
         {
             // Since packet is provided from the outside source, property
             // getters need to be used to ensure packet is not in the pool.
-            var packetCopy = Get();
-            Array.Copy(packet.Buffer, packetCopy._buffer, length: packet.WritePosition);
+            var copy = Get();
+            Array.Copy(packet.Buffer, copy._buffer, packet.Size);
 
-            packetCopy.WritePosition = packet.WritePosition;
-            packetCopy.ReadPosition = packet.ReadPosition;
-            return packetCopy;
+            copy._writePosition = packet._writePosition;
+            copy._readPosition = packet._readPosition;
+            return copy;
+        }
+
+        internal static Packet From(ReadOnlySpan<byte> span, int readPosition)
+        {
+            var packet = Get();
+            span.CopyTo(packet._buffer);
+
+            packet._writePosition = span.Length;
+            packet._readPosition = readPosition;
+            return packet;
         }
 
         /// <summary>
@@ -155,8 +153,8 @@ namespace Link
                 if (PacketPool.Count > 0)
                 {
                     var packet = PacketPool.Dequeue();
-                    packet.WritePosition = 0;
-                    packet.ReadPosition = 0;
+                    packet._writePosition = 0;
+                    packet._readPosition = 0;
                     packet._isInPool = false;
                     return packet;
                 }
@@ -175,25 +173,25 @@ namespace Link
         public unsafe void Write<T>(T value) where T : unmanaged
         {
             var bytesToWrite = sizeof(T);
-            EnsureBufferSize(requiredBufferSize: WritePosition + bytesToWrite);
-            Buffer.AsSpan().Write(value, WritePosition);
-            WritePosition += bytesToWrite;
+            EnsureBufferSize(requiredBufferSize: _writePosition + bytesToWrite);
+            Buffer.AsSpan().Write(value, _writePosition);
+            _writePosition += bytesToWrite;
         }
 
         public unsafe void WriteArray<T>(T[] array) where T : unmanaged
         {
             var bytesToWrite = sizeof(int) + array.Length * sizeof(T);
-            EnsureBufferSize(requiredBufferSize: WritePosition + bytesToWrite);
-            Buffer.AsSpan().WriteArray(array, WritePosition);
-            WritePosition += bytesToWrite;
+            EnsureBufferSize(requiredBufferSize: _writePosition + bytesToWrite);
+            Buffer.AsSpan().WriteArray(array, _writePosition);
+            _writePosition += bytesToWrite;
         }
 
         public unsafe void WriteSpan<T>(ReadOnlySpan<T> span) where T : unmanaged
         {
             var bytesToWrite = span.Length * sizeof(T);
-            EnsureBufferSize(requiredBufferSize: WritePosition + bytesToWrite);
-            Buffer.AsSpan().WriteSpan(span, WritePosition);
-            WritePosition += bytesToWrite;
+            EnsureBufferSize(requiredBufferSize: _writePosition + bytesToWrite);
+            Buffer.AsSpan().WriteSpan(span, _writePosition);
+            _writePosition += bytesToWrite;
         }
 
         private void EnsureBufferSize(int requiredBufferSize)
@@ -202,29 +200,29 @@ namespace Link
             if (currentBuffer.Length >= requiredBufferSize) return;
 
             var expandedBuffer = new byte[Math.Max(currentBuffer.Length * 2, requiredBufferSize)];
-            Array.Copy(currentBuffer, expandedBuffer, WritePosition);
+            Array.Copy(currentBuffer, expandedBuffer, _writePosition);
             Buffer = expandedBuffer;
         }
 
         public string ReadString()
         {
             var stringByteCount = Read<int>();
-            var stringValue = Encoding.GetString(Buffer, ReadPosition, stringByteCount);
-            ReadPosition += stringByteCount;
+            var stringValue = Encoding.GetString(Buffer, _readPosition, stringByteCount);
+            _readPosition += stringByteCount;
             return stringValue;
         }
 
         public unsafe T Read<T>() where T : unmanaged
         {
-            var value = new ReadOnlySpan<byte>(Buffer).Read<T>(ReadPosition);
-            ReadPosition += sizeof(T);
+            var value = new ReadOnlySpan<byte>(Buffer).Read<T>(_readPosition);
+            _readPosition += sizeof(T);
             return value;
         }
 
         public unsafe T[] ReadArray<T>() where T : unmanaged
         {
-            var array = new ReadOnlySpan<byte>(Buffer).ReadArray<T>(ReadPosition);
-            ReadPosition += sizeof(int) + array.Length * sizeof(T);
+            var array = new ReadOnlySpan<byte>(Buffer).ReadArray<T>(_readPosition);
+            _readPosition += sizeof(int) + array.Length * sizeof(T);
             return array;
         }
 

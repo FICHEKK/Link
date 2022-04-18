@@ -17,7 +17,7 @@ namespace Link.Channels
         protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet)
         {
             packet.Write(++_localSequenceNumber);
-            return _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.WritePosition) : (0, 0);
+            return _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.Size) : (0, 0);
         }
 
         protected override void ExecuteReceive(ReadOnlySpan<byte> datagram)
@@ -27,7 +27,7 @@ namespace Link.Channels
             if (IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber))
             {
                 _remoteSequenceNumber = sequenceNumber;
-                _connection.Node.EnqueuePendingPacket(CreatePacket(datagram), _connection.RemoteEndPoint);
+                _connection.Node.EnqueuePendingPacket(Packet.From(datagram, HeaderSize), _connection.RemoteEndPoint);
             }
             else
             {

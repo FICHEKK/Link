@@ -62,7 +62,7 @@ namespace Link.Channels
 
         private void Reassemble()
         {
-            var lastFragmentByteCount = _fragments[_lastFragmentNumber].WritePosition - _headerSize - _footerSize;
+            var lastFragmentByteCount = _fragments[_lastFragmentNumber].Size - _headerSize - _footerSize;
 
             ReassembledPacket = Packet.Get();
             ReassembledPacket.Buffer = new byte[_lastFragmentNumber * _bodySize + lastFragmentByteCount];

@@ -26,7 +26,7 @@ namespace Link.Channels
             lock (_pendingPackets)
             {
                 _pendingPackets.Add(_localSequenceNumber++, PendingPacket.Get(packet, reliableChannel: this));
-                return (1, packet.WritePosition);
+                return (1, packet.Size);
             }
         }
 
@@ -43,7 +43,7 @@ namespace Link.Channels
                 return;
             }
 
-            _receivedPackets[sequenceNumber] = CreatePacket(datagram);
+            _receivedPackets[sequenceNumber] = Packet.From(datagram, HeaderSize);
             _receivedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
 
             if (!_isOrdered)
@@ -118,7 +118,7 @@ namespace Link.Channels
 
         protected override string ExtractPacketInfo(Packet packet)
         {
-            var sequenceNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.WritePosition - sizeof(ushort));
+            var sequenceNumber = new ReadOnlySpan<byte>(packet.Buffer).Read<ushort>(offset: packet.Size - sizeof(ushort));
             return $"[sequence: {sequenceNumber}]";
         }
     }

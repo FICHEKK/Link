@@ -90,18 +90,5 @@ namespace Link.Channels
         /// <param name="s2">Second sequence number.</param>
         protected static bool IsFirstSequenceNumberGreater(ushort s1, ushort s2) =>
             s1 > s2 && s1 - s2 <= ushort.MaxValue / 2 || s1 < s2 && s2 - s1 > ushort.MaxValue / 2;
-
-        /// <summary>
-        /// Creates <see cref="Packet"/> instance from the given datagram bytes.
-        /// </summary>
-        protected static Packet CreatePacket(ReadOnlySpan<byte> datagram)
-        {
-            var packet = Packet.Get();
-            datagram.CopyTo(packet.Buffer);
-
-            packet.WritePosition = datagram.Length;
-            packet.ReadPosition = HeaderSize;
-            return packet;
-        }
     }
 }
