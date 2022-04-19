@@ -69,16 +69,17 @@ namespace Link
         private static readonly Queue<Packet> PacketPool = new();
 
         /// <summary>
-        /// Represents total number of new packet allocations. This value should eventually stagnate
-        /// if packets are properly returned. If this value keeps on increasing, that is a clear sign
-        /// that there is a packet leak - somewhere a packet is taken but not returned to the pool.
+        /// Represents total number of new packet allocations. This value should eventually stagnate if
+        /// packets are properly returned (unless big packets are created frequently, which will not be
+        /// returned to preserve memory). If this value keeps on increasing, that is a clear sign that
+        /// there is a packet leak - somewhere a packet is taken but not returned to the pool.
         /// </summary>
         public static int TotalAllocationCount { get; private set; }
 
         /// <summary>
         /// Encoding used for reading and writing <see cref="string"/> values.
         /// </summary>
-        private static readonly Encoding Encoding = Encoding.UTF8;
+        public static Encoding Encoding { get; set; } = Encoding.UTF8;
 
         /// <summary>
         /// Returns the number of bytes currently contained in this packet.
