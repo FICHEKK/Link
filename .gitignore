@@ -1,0 +1,6 @@
+# IDE settings
+.idea
+
+# Compilation artefacts
+obj
+bin
