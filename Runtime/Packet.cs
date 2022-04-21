@@ -140,12 +140,12 @@ namespace Link
             return copy;
         }
 
-        internal static Packet From(ReadOnlySpan<byte> span, int readPosition)
+        internal static Packet From(byte[] datagram, int bytesReceived, int readPosition)
         {
             var packet = Get();
-            span.CopyTo(packet._buffer);
+            Array.Copy(datagram, packet._buffer, bytesReceived);
 
-            packet._writePosition = span.Length;
+            packet._writePosition = bytesReceived;
             packet._readPosition = readPosition;
             return packet;
         }
@@ -181,24 +181,24 @@ namespace Link
         public unsafe void Write<T>(T value) where T : unmanaged
         {
             var bytesToWrite = sizeof(T);
-            EnsureBufferSize(requiredBufferSize: _writePosition + bytesToWrite);
-            Buffer.AsSpan().Write(value, _writePosition);
+            EnsureBufferSize(_writePosition + bytesToWrite);
+            Buffer.Write(value, _writePosition);
             _writePosition += bytesToWrite;
         }
 
         public unsafe void WriteArray<T>(T[] array) where T : unmanaged
         {
             var bytesToWrite = sizeof(int) + array.Length * sizeof(T);
-            EnsureBufferSize(requiredBufferSize: _writePosition + bytesToWrite);
-            Buffer.AsSpan().WriteArray(array, _writePosition);
+            EnsureBufferSize(_writePosition + bytesToWrite);
+            Buffer.WriteArray(array, _writePosition);
             _writePosition += bytesToWrite;
         }
 
-        public unsafe void WriteSpan<T>(ReadOnlySpan<T> span) where T : unmanaged
+        public unsafe void WriteSlice<T>(T[] array, int start, int length) where T : unmanaged
         {
-            var bytesToWrite = span.Length * sizeof(T);
-            EnsureBufferSize(requiredBufferSize: _writePosition + bytesToWrite);
-            Buffer.AsSpan().WriteSpan(span, _writePosition);
+            var bytesToWrite = length * sizeof(T);
+            EnsureBufferSize(_writePosition + bytesToWrite);
+            Buffer.WriteSlice(array, start, length, _writePosition);
             _writePosition += bytesToWrite;
         }
 
@@ -224,16 +224,23 @@ namespace Link
 
         public unsafe T Read<T>() where T : unmanaged
         {
-            var value = new ReadOnlySpan<byte>(Buffer).Read<T>(_readPosition);
+            var value = Buffer.Read<T>(_readPosition);
             _readPosition += sizeof(T);
             return value;
         }
 
         public unsafe T[] ReadArray<T>() where T : unmanaged
         {
-            var array = new ReadOnlySpan<byte>(Buffer).ReadArray<T>(_readPosition);
+            var array = Buffer.ReadArray<T>(_readPosition);
             _readPosition += sizeof(int) + array.Length * sizeof(T);
             return array;
+        }
+        
+        public unsafe T[] ReadSlice<T>(int length) where T : unmanaged
+        {
+            var slice = Buffer.ReadSlice<T>(length, _readPosition);
+            _readPosition += length * sizeof(T);
+            return slice;
         }
 
         /// <summary>

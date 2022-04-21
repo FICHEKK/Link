@@ -105,7 +105,7 @@ namespace Link
             if (delayBetweenAttempts <= 0) throw new ArgumentException($"'{nameof(delayBetweenAttempts)}' must be a positive value.");
 
             var connectPacket = Packet.Get(HeaderType.Connect);
-            if (connectData is not null) connectPacket.WriteSpan<byte>(connectData.AsSpan());
+            if (connectData is not null) connectPacket.WriteSlice(connectData, start: 0, length: connectData.Length);
 
             for (var attempt = 0; attempt < maxAttempts; attempt++)
             {
@@ -143,10 +143,10 @@ namespace Link
         public void Send(Packet packet) =>
             GetChannel(packet.Buffer[1]).Send(packet);
 
-        internal void ReceiveData(ReadOnlySpan<byte> datagram) =>
-            GetChannel(datagram[1]).Receive(datagram);
+        internal void ReceiveData(byte[] datagram, int bytesReceived) =>
+            GetChannel(datagram[1]).Receive(datagram, bytesReceived);
 
-        internal void ReceiveAcknowledgement(ReadOnlySpan<byte> datagram) =>
+        internal void ReceiveAcknowledgement(byte[] datagram) =>
             GetChannel(datagram[1]).ReceiveAcknowledgement(datagram);
 
         private Channel GetChannel(byte channelId) =>
@@ -169,7 +169,7 @@ namespace Link
             _rttStopwatch.Restart();
         }
 
-        internal void ReceivePing(ReadOnlySpan<byte> datagram)
+        internal void ReceivePing(byte[] datagram)
         {
             var pongPacket = Packet.Get(HeaderType.Pong);
             pongPacket.Write(datagram.Read<uint>(offset: 1));
@@ -177,7 +177,7 @@ namespace Link
             pongPacket.Return();
         }
 
-        internal void ReceivePong(ReadOnlySpan<byte> datagram)
+        internal void ReceivePong(byte[] datagram)
         {
             var responseId = datagram.Read<uint>(offset: 1);
             if (responseId <= _lastPingResponseId) return;

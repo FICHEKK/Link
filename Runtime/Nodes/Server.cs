@@ -34,7 +34,7 @@ namespace Link.Nodes
         /// <summary>
         /// Represents a method that is responsible for handling incoming connect packet data.
         /// </summary>
-        public delegate bool ConnectDataHandler(ReadOnlySpan<byte> connectData, EndPoint clientEndPoint);
+        public delegate bool ConnectDataHandler(byte[] connectData, EndPoint clientEndPoint);
 
         /// <summary>
         /// Validates incoming connection request and decides whether connection should be accepted or not.
@@ -78,12 +78,12 @@ namespace Link.Nodes
             Started?.Invoke();
         }
 
-        protected override void Receive(ReadOnlySpan<byte> datagram, EndPoint senderEndPoint)
+        protected override void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
             switch ((HeaderType) datagram[0])
             {
                 case HeaderType.Data:
-                    TryGetConnection(senderEndPoint)?.ReceiveData(datagram);
+                    TryGetConnection(senderEndPoint)?.ReceiveData(datagram, bytesReceived);
                     return;
 
                 case HeaderType.Acknowledgement:
@@ -99,7 +99,7 @@ namespace Link.Nodes
                     return;
 
                 case HeaderType.Connect:
-                    HandleConnectPacket(datagram[1..], senderEndPoint);
+                    HandleConnectPacket(datagram, bytesReceived, senderEndPoint);
                     return;
 
                 case HeaderType.Disconnect:
@@ -112,7 +112,7 @@ namespace Link.Nodes
             }
         }
 
-        private void HandleConnectPacket(ReadOnlySpan<byte> connectData, EndPoint senderEndPoint)
+        private void HandleConnectPacket(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
             // Client is already connected, but might have not received the approval.
             if (_connections.TryGetValue(senderEndPoint, out var connection))
@@ -127,10 +127,17 @@ namespace Link.Nodes
                 return;
             }
 
-            if (ConnectionValidator is not null && !ConnectionValidator(connectData, senderEndPoint))
+            if (ConnectionValidator is not null)
             {
-                Log.Info($"Client connection from {senderEndPoint} was declined as it did not pass validation test(s).");
-                return;
+                // First byte is header and should not be given to the user.
+                var connectData = new byte[bytesReceived - 1];
+                Array.Copy(datagram, 1, connectData, 0, bytesReceived - 1);
+
+                if (!ConnectionValidator(connectData, senderEndPoint))
+                {
+                    Log.Info($"Client connection from {senderEndPoint} was declined as it did not pass the validation test.");
+                    return;
+                }
             }
 
             Log.Info($"Client from {senderEndPoint} connected.");

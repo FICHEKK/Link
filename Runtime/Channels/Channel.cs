@@ -1,5 +1,3 @@
-using System;
-
 namespace Link.Channels
 {
     /// <summary>
@@ -56,23 +54,23 @@ namespace Link.Channels
         /// <summary>
         /// Reads header information and attempts to convert incoming bytes to packet instance(s).
         /// </summary>
-        internal void Receive(ReadOnlySpan<byte> datagram)
+        internal void Receive(byte[] datagram, int bytesReceived)
         {
             PacketsReceived++;
-            BytesReceived += datagram.Length;
-            ExecuteReceive(datagram);
+            BytesReceived += bytesReceived;
+            ExecuteReceive(datagram, bytesReceived);
         }
 
         /// <summary>
         /// Executes logic of receiving the incoming datagram.
         /// </summary>
-        protected abstract void ExecuteReceive(ReadOnlySpan<byte> datagram);
+        protected abstract void ExecuteReceive(byte[] datagram, int bytesReceived);
 
         /// <summary>
         /// Receives and processes acknowledgement packet. This method should be implemented by reliable channels,
         /// but is also useful as a diagnostic tool to write warnings if ack is received on the unreliable channel.
         /// </summary>
-        internal abstract void ReceiveAcknowledgement(ReadOnlySpan<byte> datagram);
+        internal abstract void ReceiveAcknowledgement(byte[] datagram);
 
         /// <summary>
         /// Returns statistics of this channel written in textual form.

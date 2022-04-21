@@ -55,7 +55,7 @@ namespace Link.Nodes
             Connecting?.Invoke();
         }
 
-        protected override void Receive(ReadOnlySpan<byte> datagram, EndPoint senderEndPoint)
+        protected override void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
             if (Connection is null)
             {
@@ -72,7 +72,7 @@ namespace Link.Nodes
             switch ((HeaderType) datagram[0])
             {
                 case HeaderType.Data:
-                    Connection.ReceiveData(datagram);
+                    Connection.ReceiveData(datagram, bytesReceived);
                     return;
 
                 case HeaderType.Acknowledgement:
