@@ -12,9 +12,9 @@ namespace Link
         /// </summary>
         public delegate void Logger(string message);
 
-        private static Logger _info;
-        private static Logger _warning;
-        private static Logger _error;
+        private static Logger _info = delegate { };
+        private static Logger _warning = delegate { };
+        private static Logger _error = delegate { };
 
         /// <summary>
         /// Logs informative messages that are useful during development.
