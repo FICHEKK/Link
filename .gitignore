@@ -4,3 +4,6 @@
 # Compilation artefacts
 obj
 bin
+
+# Settings
+*.DotSettings.user
