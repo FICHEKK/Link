@@ -175,8 +175,11 @@ namespace Link
         private Packet(int size) =>
             _buffer = new byte[size];
 
-        public void Write(string value) =>
+        public void Write(string value)
+        {
+            if (value is null) throw new InvalidOperationException("Cannot write null string to a packet.");
             WriteArray(Encoding.GetBytes(value));
+        }
 
         public unsafe void Write<T>(T value) where T : unmanaged
         {
@@ -188,6 +191,8 @@ namespace Link
 
         public unsafe void WriteArray<T>(T[] array) where T : unmanaged
         {
+            if (array is null) throw new InvalidOperationException("Cannot write null array to a packet.");
+            
             var bytesToWrite = sizeof(int) + array.Length * sizeof(T);
             EnsureBufferSize(_writePosition + bytesToWrite);
             Buffer.WriteArray(array, _writePosition);
@@ -196,6 +201,8 @@ namespace Link
 
         public unsafe void WriteSlice<T>(T[] array, int start, int length) where T : unmanaged
         {
+            if (array is null) throw new InvalidOperationException("Cannot write slice of null array to a packet.");
+            
             var bytesToWrite = length * sizeof(T);
             EnsureBufferSize(_writePosition + bytesToWrite);
             Buffer.WriteSlice(array, start, length, _writePosition);
@@ -248,6 +255,8 @@ namespace Link
         /// </summary>
         public Packet AsReadOnly()
         {
+            if (_isReadOnly) throw new InvalidOperationException("Packet is already read-only.");
+            
             _isReadOnly = true;
             return this;
         }
