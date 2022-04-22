@@ -256,24 +256,26 @@ namespace Link
         /// Returns this packet to the pool unless it is already in the pool
         /// or its size exceeds <see cref="MaxSizeInPool"/> bytes.
         /// </summary>
-        public void Return()
+        /// <returns><c>true</c> if packet was successfully returned to the pool, <c>false</c> otherwise.</returns>
+        public bool Return()
         {
             lock (PacketPool)
             {
                 if (_isInPool)
                 {
                     Log.Error("Attempt was made to return a packet that is already in pool.");
-                    return;
+                    return false;
                 }
 
                 if (_buffer.Length > MaxSizeInPool)
                 {
                     Log.Info($"Big packet ({_buffer.Length} bytes) was not returned to the pool to preserve memory.");
-                    return;
+                    return false;
                 }
 
                 PacketPool.Enqueue(this);
                 _isInPool = true;
+                return true;
             }
         }
     }
