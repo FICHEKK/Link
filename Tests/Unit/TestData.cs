@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Link.Tests;
+namespace Link.Tests.Unit;
 
 public static class TestData
 {

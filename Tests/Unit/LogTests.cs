@@ -1,6 +1,6 @@
 using NUnit.Framework;
 
-namespace Link.Tests;
+namespace Link.Tests.Unit;
 
 [TestFixture]
 public class LogTests
