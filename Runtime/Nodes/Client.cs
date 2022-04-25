@@ -46,12 +46,12 @@ namespace Link.Nodes
         /// <param name="port">Server port.</param>
         /// <param name="maxAttempts">Maximum number of connect attempts before considering server as unreachable.</param>
         /// <param name="delayBetweenAttempts">Delay between consecutive connect attempts, in milliseconds.</param>
-        /// <param name="connectData">Additional data to send in the connection packet when establishing the connection.</param>
-        public void Connect(string ipAddress, int port, int maxAttempts = 5, int delayBetweenAttempts = 1000, byte[] connectData = null)
+        /// <param name="connectPacketWriter">Allows additional data to be written to the connect packet.</param>
+        public void Connect(string ipAddress, int port, int maxAttempts = 5, int delayBetweenAttempts = 1000, Action<Packet> connectPacketWriter = null)
         {
             StartListening(port: 0);
             Connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port));
-            Connection.Establish(maxAttempts, delayBetweenAttempts, connectData);
+            Connection.Establish(maxAttempts, delayBetweenAttempts, connectPacketWriter);
             Connecting?.Invoke();
         }
 

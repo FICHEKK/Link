@@ -99,13 +99,13 @@ namespace Link
             _channels[(int) Delivery.Fragmented] = new ReliableFragmentChannel(connection: this, isOrdered: true) {Name = nameof(Delivery.Fragmented)};
         }
 
-        internal async void Establish(int maxAttempts, int delayBetweenAttempts, byte[] connectData)
+        internal async void Establish(int maxAttempts, int delayBetweenAttempts, Action<Packet> connectPacketWriter = null)
         {
             if (maxAttempts <= 0) throw new ArgumentException($"'{nameof(maxAttempts)}' must be a positive value.");
             if (delayBetweenAttempts <= 0) throw new ArgumentException($"'{nameof(delayBetweenAttempts)}' must be a positive value.");
 
             var connectPacket = Packet.Get(HeaderType.Connect);
-            if (connectData is not null) connectPacket.WriteSlice(connectData, start: 0, length: connectData.Length);
+            connectPacketWriter?.Invoke(connectPacket);
 
             for (var attempt = 0; attempt < maxAttempts; attempt++)
             {

@@ -32,14 +32,14 @@ namespace Link.Nodes
         public event Action Stopped;
 
         /// <summary>
-        /// Represents a method that is responsible for handling incoming connect packet data.
+        /// Represents a method that is responsible for handling incoming connect packet.
         /// </summary>
-        public delegate bool ConnectDataHandler(byte[] connectData, EndPoint clientEndPoint);
+        public delegate bool ConnectPacketHandler(Packet connectPacket, EndPoint clientEndPoint);
 
         /// <summary>
         /// Validates incoming connection request and decides whether connection should be accepted or not.
         /// </summary>
-        public ConnectDataHandler ConnectionValidator { get; set; }
+        public ConnectPacketHandler ConnectionValidator { get; set; }
 
         /// <summary>
         /// Returns current number of client connections.
@@ -127,17 +127,10 @@ namespace Link.Nodes
                 return;
             }
 
-            if (ConnectionValidator is not null)
+            if (ConnectionValidator is not null && !ConnectionValidator(Packet.From(datagram, bytesReceived, readPosition: 1), senderEndPoint))
             {
-                // First byte is header and should not be given to the user.
-                var connectData = new byte[bytesReceived - 1];
-                Array.Copy(datagram, 1, connectData, 0, bytesReceived - 1);
-
-                if (!ConnectionValidator(connectData, senderEndPoint))
-                {
-                    Log.Info($"Client connection from {senderEndPoint} was declined as it did not pass the validation test.");
-                    return;
-                }
+                Log.Info($"Client connection from {senderEndPoint} was declined as it did not pass the validation test.");
+                return;
             }
 
             Log.Info($"Client from {senderEndPoint} connected.");
