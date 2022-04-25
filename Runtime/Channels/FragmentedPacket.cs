@@ -42,7 +42,10 @@ namespace Link.Channels
         /// <returns><c>true</c> if fragment was successfully added, <c>false</c> if it already exists.</returns>
         public bool Add(Packet fragment, int fragmentNumber, bool isLastFragment)
         {
-            if (_fragments.ContainsKey(fragmentNumber))
+            if (fragment is null) throw new InvalidOperationException("Cannot add null fragment to fragmented packet.");
+            if (fragmentNumber < 0) throw new InvalidOperationException("Fragment number cannot be a negative value.");
+                
+            if (ReassembledPacket is not null || _fragments.ContainsKey(fragmentNumber))
             {
                 fragment.Return();
                 return false;
