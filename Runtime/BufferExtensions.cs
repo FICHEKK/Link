@@ -49,14 +49,16 @@ namespace Link
         /// Writes variable-length encoded integer (also known as "var-int") which uses
         /// significantly less memory for smaller values (which is very often the case).
         /// </summary>
-        public static void WriteVarInt(this byte[] buffer, int value, int offset)
+        public static void WriteVarInt(this byte[] buffer, int value, int offset, out int bytesWritten)
         {
             var v = (uint) value;
+            bytesWritten = 1;
 
             while (v >= 0x80)
             {
                 buffer[offset++] = (byte) (v | 0x80);
                 v >>= 7;
+                bytesWritten++;
             }
 
             buffer[offset] = (byte) v;
@@ -106,10 +108,11 @@ namespace Link
         /// <summary>
         /// Reads variable-length encoded integer that was written with <see cref="WriteVarInt"/>.
         /// </summary>
-        public static int ReadVarInt(this byte[] buffer, int offset)
+        public static int ReadVarInt(this byte[] buffer, int offset, out int bytesRead)
         {
             var value = 0;
             var shift = 0;
+            bytesRead = 0;
 
             do
             {
@@ -118,6 +121,7 @@ namespace Link
 
                 value |= (buffer[offset] & 0x7F) << shift;
                 shift += 7;
+                bytesRead++;
             } while ((buffer[offset++] & 0x80) != 0);
 
             return value;
