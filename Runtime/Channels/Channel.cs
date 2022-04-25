@@ -37,34 +37,34 @@ namespace Link.Channels
         public long BytesReceived { get; private set; }
 
         /// <summary>
-        /// Writes header information and sends given packet to the remote end-point.
+        /// Processes and sends given packet to the remote end-point.
         /// </summary>
         internal void Send(Packet packet)
         {
-            var (packetsSent, bytesSent) = ExecuteSend(packet);
+            var (packetsSent, bytesSent) = SendData(packet);
             PacketsSent += packetsSent;
             BytesSent += bytesSent;
         }
 
         /// <summary>
-        /// Executes logic required to send the given packet.
+        /// Processes and sends outgoing data-packet.
         /// </summary>
-        protected abstract (int packetsSent, int bytesSent) ExecuteSend(Packet packet);
+        protected abstract (int packetsSent, int bytesSent) SendData(Packet packet);
 
         /// <summary>
-        /// Reads header information and attempts to convert incoming bytes to packet instance(s).
+        /// Receives and processes incoming datagram, attempting to convert it to packet instance(s).
         /// </summary>
         internal void Receive(byte[] datagram, int bytesReceived)
         {
             PacketsReceived++;
             BytesReceived += bytesReceived;
-            ExecuteReceive(datagram, bytesReceived);
+            ReceiveData(datagram, bytesReceived);
         }
 
         /// <summary>
-        /// Executes logic of receiving the incoming datagram.
+        /// Receives and processes incoming data-packet.
         /// </summary>
-        protected abstract void ExecuteReceive(byte[] datagram, int bytesReceived);
+        protected abstract void ReceiveData(byte[] datagram, int bytesReceived);
 
         /// <summary>
         /// Receives and processes acknowledgement packet. This method should be implemented by reliable channels,

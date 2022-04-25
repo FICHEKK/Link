@@ -17,7 +17,7 @@ namespace Link.Channels
 
         public ReliablePacketChannel(Connection connection, bool isOrdered) : base(connection) => _isOrdered = isOrdered;
 
-        protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet)
+        protected override (int packetsSent, int bytesSent) SendData(Packet packet)
         {
             packet.Write(_localSequenceNumber);
             if (!Connection.Node.Send(packet, Connection.RemoteEndPoint)) return (0, 0);
@@ -29,7 +29,7 @@ namespace Link.Channels
             }
         }
 
-        protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
+        protected override void ReceiveData(byte[] datagram, int bytesReceived)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: bytesReceived - sizeof(ushort));
             UpdateRemoteSequenceNumber(sequenceNumber);

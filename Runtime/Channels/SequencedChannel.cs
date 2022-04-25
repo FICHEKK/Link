@@ -12,13 +12,13 @@ namespace Link.Channels
         public SequencedChannel(Connection connection) =>
             _connection = connection;
 
-        protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet)
+        protected override (int packetsSent, int bytesSent) SendData(Packet packet)
         {
             packet.Write(++_localSequenceNumber);
             return _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.Size) : (0, 0);
         }
 
-        protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
+        protected override void ReceiveData(byte[] datagram, int bytesReceived)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: bytesReceived - sizeof(ushort));
 

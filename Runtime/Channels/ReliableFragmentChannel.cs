@@ -39,7 +39,7 @@ namespace Link.Channels
 
         public ReliableFragmentChannel(Connection connection, bool isOrdered) : base(connection) => _isOrdered = isOrdered;
 
-        protected override (int packetsSent, int bytesSent) ExecuteSend(Packet packet)
+        protected override (int packetsSent, int bytesSent) SendData(Packet packet)
         {
             var dataByteCount = packet.Size - HeaderSize;
             var fragmentCount = dataByteCount / BodySize + (dataByteCount % BodySize != 0 ? 1 : 0);
@@ -99,7 +99,7 @@ namespace Link.Channels
             }
         }
 
-        protected override void ExecuteReceive(byte[] datagram, int bytesReceived)
+        protected override void ReceiveData(byte[] datagram, int bytesReceived)
         {
             var sequenceNumber = datagram.Read<ushort>(offset: bytesReceived - FooterSize);
             var fragmentNumber = datagram.Read<ushort>(offset: bytesReceived - FooterSize + sizeof(ushort));
