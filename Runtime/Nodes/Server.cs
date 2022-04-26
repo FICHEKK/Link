@@ -135,6 +135,7 @@ namespace Link.Nodes
 
             Log.Info($"Client from {senderEndPoint} connected.");
             connection = new Connection(node: this, remoteEndPoint: senderEndPoint);
+            ConnectionInitializer?.Invoke(connection);
             connection.ReceiveConnect();
 
             _connections.TryAdd(senderEndPoint, connection);
@@ -161,7 +162,7 @@ namespace Link.Nodes
         /// </summary>
         public void SendToOne(Packet packet, EndPoint clientEndPoint)
         {
-            TryGetConnection(clientEndPoint)?.Send(packet);
+            TryGetConnection(clientEndPoint)?.SendData(packet);
             packet.Return();
         }
 
@@ -171,7 +172,7 @@ namespace Link.Nodes
         public void SendToMany(Packet packet, IEnumerable<EndPoint> clientEndPoints)
         {
             foreach (var clientEndPoint in clientEndPoints)
-                TryGetConnection(clientEndPoint)?.Send(packet);
+                TryGetConnection(clientEndPoint)?.SendData(packet);
 
             packet.Return();
         }
@@ -182,7 +183,7 @@ namespace Link.Nodes
         public void SendToAll(Packet packet)
         {
             foreach (var connection in _connections.Values)
-                connection.Send(packet);
+                connection.SendData(packet);
 
             packet.Return();
         }

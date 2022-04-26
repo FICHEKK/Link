@@ -55,6 +55,12 @@ namespace Link.Nodes
         public int ReceiveBufferSize { get; set; } = DefaultBufferSize;
 
         /// <summary>
+        /// Initializes newly created connections. Can be used to define custom channels or
+        /// to set connection settings to values that differ from the default ones.
+        /// </summary>
+        public Action<Connection> ConnectionInitializer { get; set; }
+
+        /// <summary>
         /// Defines the probability of a packet being lost.
         /// This property should only be used only for testing purposes.
         /// </summary>

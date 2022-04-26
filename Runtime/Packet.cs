@@ -109,13 +109,20 @@ namespace Link
         /// <summary>
         /// Returns a packet with defined ID and delivery method.
         /// </summary>
-        /// <param name="id">Indicates packet type to allow the receiver to successfully decode its contents.</param>
+        /// <param name="packetId">Defines packet type which allows receiver to decode its contents.</param>
         /// <param name="delivery">Defines the way this packet should be delivered to the remote destination.</param>
-        public static Packet Get(ushort id, Delivery delivery = Delivery.Unreliable)
+        public static Packet Get(ushort packetId, Delivery delivery) => Get(packetId, (byte) delivery);
+
+        /// <summary>
+        /// Returns a packet with defined ID and channel ID.
+        /// </summary>
+        /// <param name="packetId">Defines packet type which allows receiver to decode its contents.</param>
+        /// <param name="channelId">Defines on which channel this packet should be sent.</param>
+        public static Packet Get(ushort packetId, byte channelId)
         {
             var packet = Get(HeaderType.Data);
-            packet.Write((byte) delivery);
-            packet.Write(id);
+            packet.Write(channelId);
+            packet.Write(packetId);
             packet._readPosition = 2;
             return packet;
         }

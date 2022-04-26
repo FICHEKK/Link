@@ -51,6 +51,7 @@ namespace Link.Nodes
         {
             StartListening(port: 0);
             Connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port));
+            ConnectionInitializer?.Invoke(Connection);
             Connection.Establish(maxAttempts, delayBetweenAttempts, connectPacketWriter);
             Connecting?.Invoke();
         }
@@ -113,7 +114,7 @@ namespace Link.Nodes
         {
             if (!IsConnected) throw new InvalidOperationException("Cannot send packet as client is not connected to the server.");
 
-            Connection.Send(packet);
+            Connection.SendData(packet);
             packet.Return();
         }
 
