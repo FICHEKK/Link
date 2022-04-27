@@ -18,24 +18,12 @@ public class PacketTests
         Assert.That(_packet.Size, Is.EqualTo(0));
 
     [Test]
-    public void Fresh_packet_should_not_be_read_only() =>
-        Assert.That(_packet.IsReadOnly, Is.False);
-    
-    [Test]
     public void Setting_max_size_to_lower_than_min_valid_value_throws() =>
         Assert.That(() => Packet.MaxSize = 507, Throws.Exception);
 
     [Test]
     public void Setting_max_size_to_min_valid_value_does_not_throw() =>
         Assert.That(() => Packet.MaxSize = 508, Throws.Nothing);
-
-    [Test]
-    public void Writing_to_read_only_packet_throws() =>
-        Assert.That(() => _packet.AsReadOnly().Write(0), Throws.Exception);
-    
-    [Test]
-    public void Setting_read_only_packet_to_read_only_throws() =>
-        Assert.That(() => _packet.AsReadOnly().AsReadOnly(), Throws.Exception);
 
     [Test]
     public void Writing_to_packet_in_pool_throws()
