@@ -103,9 +103,6 @@ namespace Link.Nodes
             }
         }
 
-        internal override void Timeout(Connection connection) =>
-            Disconnect(sendDisconnectPacket: false);
-
         /// <summary>
         /// Sends a packet to the server.
         /// </summary>
@@ -121,7 +118,13 @@ namespace Link.Nodes
         /// <summary>
         /// Disconnects from the server and stops listening for incoming packets.
         /// </summary>
-        public void Disconnect(bool sendDisconnectPacket = true)
+        public void Disconnect() =>
+            Disconnect(sendDisconnectPacket: true);
+        
+        internal override void Timeout(Connection connection) =>
+            Disconnect(sendDisconnectPacket: false);
+
+        private void Disconnect(bool sendDisconnectPacket)
         {
             if (Connection is not null)
             {
