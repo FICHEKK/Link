@@ -21,6 +21,11 @@ namespace Link.Nodes
         /// Defines a method that handles incoming packet.
         /// </summary>
         public delegate void PacketHandler(PacketReader reader, EndPoint senderEndPoint);
+        
+        /// <summary>
+        /// Raised each time a packet is received.
+        /// </summary>
+        public event PacketHandler PacketReceived;
 
         /// <summary>
         /// Cached end-point instance used for <see cref="Socket.ReceiveFrom(byte[],ref System.Net.EndPoint)"/> calls.
@@ -31,11 +36,6 @@ namespace Link.Nodes
         /// Random instance used for network simulation purposes.
         /// </summary>
         private static readonly Random Random = new();
-
-        /// <summary>
-        /// Returns packet handlers registered for this network node.
-        /// </summary>
-        public IReadOnlyDictionary<ushort, PacketHandler> PacketIdToPacketHandler => _packetIdToPacketHandler;
 
         /// <summary>
         /// Returns port on which this node is listening on, or <c>-1</c> if not currently listening.
@@ -96,7 +96,6 @@ namespace Link.Nodes
             set => _maxLatency = value >= 0 && value >= _minLatency ? value : throw new ArgumentOutOfRangeException(nameof(MaxLatency));
         }
 
-        private readonly Dictionary<ushort, PacketHandler> _packetIdToPacketHandler = new();
         private readonly Queue<(Packet packet, EndPoint senderEndPoint)> _pendingPackets = new();
         private readonly Queue<Action> _pendingActions = new();
         private readonly byte[] _receiveBuffer = new byte[Packet.MaxSize];
@@ -267,18 +266,9 @@ namespace Link.Nodes
                 while (_pendingPackets.Count > 0)
                 {
                     var (packet, senderEndPoint) = _pendingPackets.Dequeue();
-
                     var reader = new PacketReader(packet, readPosition: 2);
-                    var packetId = reader.Read<ushort>();
 
-                    if (!_packetIdToPacketHandler.TryGetValue(packetId, out var packetHandler))
-                    {
-                        Log.Error($"Could not handle packet (ID = {packetId}) as it does not have a registered handler.");
-                        packet.Return();
-                        continue;
-                    }
-
-                    packetHandler(reader, senderEndPoint);
+                    PacketReceived?.Invoke(reader, senderEndPoint);
                     packet.Return();
                 }
             }
@@ -294,24 +284,5 @@ namespace Link.Nodes
                 }
             }
         }
-
-        /// <summary>
-        /// Registers a new packet handler for a packet with specific ID.
-        /// </summary>
-        public void AddPacketHandler(ushort packetId, PacketHandler packetHandler) =>
-            _packetIdToPacketHandler.Add(packetId, packetHandler);
-
-        /// <summary>
-        /// Returns true if packet handler for specific ID exists, false otherwise.
-        /// </summary>
-        public bool TryGetPacketHandler(ushort packedId, out PacketHandler packetHandler) =>
-            _packetIdToPacketHandler.TryGetValue(packedId, out packetHandler);
-
-        /// <summary>
-        /// Removes packet handler for specific packet ID.
-        /// </summary>
-        /// <returns><c>true</c> if packet handler has been successfully removed, <c>false</c> otherwise.</returns>
-        public bool RemovePacketHandler(ushort packetId) =>
-            _packetIdToPacketHandler.Remove(packetId);
     }
 }

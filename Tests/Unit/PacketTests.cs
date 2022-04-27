@@ -24,6 +24,14 @@ public class PacketTests
     [Test]
     public void Setting_max_size_to_min_valid_value_does_not_throw() =>
         Assert.That(() => Packet.MaxSize = 508, Throws.Nothing);
+    
+    [Test]
+    public void Packet_with_specified_delivery_should_have_size_2() =>
+        Assert.That(Packet.Get(Delivery.Unreliable).Size, Is.EqualTo(2));
+    
+    [Test]
+    public void Packet_with_specified_channel_should_have_size_2() =>
+        Assert.That(Packet.Get(channelId: 123).Size, Is.EqualTo(2));
 
     [Test]
     public void Writing_to_packet_in_pool_throws()

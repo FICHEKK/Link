@@ -99,22 +99,17 @@ namespace Link
         private bool _isInPool;
 
         /// <summary>
-        /// Returns a packet with defined ID and delivery method.
+        /// Returns a packet that will be sent using specified delivery method.
         /// </summary>
-        /// <param name="packetId">Defines packet type which allows receiver to decode its contents.</param>
-        /// <param name="delivery">Defines the way this packet should be delivered to the remote destination.</param>
-        public static Packet Get(ushort packetId, Delivery delivery) => Get(packetId, (byte) delivery);
+        public static Packet Get(Delivery delivery) => Get((byte) delivery);
 
         /// <summary>
-        /// Returns a packet with defined ID and channel ID.
+        /// Returns a packet that will be sent on the specified channel.
         /// </summary>
-        /// <param name="packetId">Defines packet type which allows receiver to decode its contents.</param>
-        /// <param name="channelId">Defines on which channel this packet should be sent.</param>
-        public static Packet Get(ushort packetId, byte channelId)
+        public static Packet Get(byte channelId)
         {
             var packet = Get(HeaderType.Data);
             packet.Write(channelId);
-            packet.Write(packetId);
             return packet;
         }
 
