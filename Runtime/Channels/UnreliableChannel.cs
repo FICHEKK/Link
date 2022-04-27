@@ -11,7 +11,7 @@ namespace Link.Channels
             _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.Size) : (0, 0);
 
         protected override void ReceiveData(byte[] datagram, int bytesReceived) =>
-            _connection.Node.EnqueuePendingPacket(Packet.From(datagram, bytesReceived, HeaderSize), _connection.RemoteEndPoint);
+            _connection.Node.EnqueuePendingPacket(Packet.From(datagram, bytesReceived), _connection.RemoteEndPoint);
 
         internal override void ReceiveAcknowledgement(byte[] datagram) =>
             Log.Warning($"Acknowledgement packet received on '{nameof(UnreliableChannel)}'.");

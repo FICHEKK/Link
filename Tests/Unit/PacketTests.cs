@@ -50,7 +50,7 @@ public class PacketTests
     {
         var packet = Packet.Get();
         packet.Return();
-        Assert.That(() => packet.Read<int>(), Throws.Exception);
+        Assert.That(() => new PacketReader(packet).Read<int>(), Throws.Exception);
     }
 
     [Test]
@@ -88,7 +88,7 @@ public class PacketTests
     public void Reading_string_that_was_written_produces_same_string([Values("", "Test")] string stringToWrite)
     {
         _packet.Write(stringToWrite);
-        var @string = _packet.ReadString();
+        var @string = new PacketReader(_packet).ReadString();
         Assert.That(@string, Is.EqualTo(stringToWrite));
     }
     
@@ -97,7 +97,7 @@ public class PacketTests
         where T : unmanaged
     {
         _packet.Write(valueToWrite);
-        var value = _packet.Read<T>();
+        var value = new PacketReader(_packet).Read<T>();
         Assert.That(value, Is.EqualTo(valueToWrite));
     }
 
@@ -106,7 +106,7 @@ public class PacketTests
         where T : unmanaged
     {
         _packet.WriteArray(arrayToWrite);
-        var array = _packet.ReadArray<T>();
+        var array = new PacketReader(_packet).ReadArray<T>();
         Assert.That(array, Is.EqualTo(arrayToWrite));
     }
     
@@ -115,7 +115,7 @@ public class PacketTests
         where T : unmanaged
     {
         _packet.WriteSlice(sliceToWrite, start: 0, length: sliceToWrite.Length);
-        var slice = _packet.ReadSlice<T>(sliceToWrite.Length);
+        var slice = new PacketReader(_packet).ReadSlice<T>(sliceToWrite.Length);
         Assert.That(slice, Is.EqualTo(sliceToWrite));
     }
 }

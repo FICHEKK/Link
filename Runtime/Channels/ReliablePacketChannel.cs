@@ -42,7 +42,7 @@ namespace Link.Channels
                 return;
             }
 
-            _receivedPackets[sequenceNumber] = Packet.From(datagram, bytesReceived, HeaderSize);
+            _receivedPackets[sequenceNumber] = Packet.From(datagram, bytesReceived);
             _receivedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
 
             if (!_isOrdered)

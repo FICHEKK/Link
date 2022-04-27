@@ -34,7 +34,7 @@ namespace Link.Nodes
         /// <summary>
         /// Represents a method that is responsible for handling incoming connect packet.
         /// </summary>
-        public delegate bool ConnectPacketHandler(Packet connectPacket, EndPoint clientEndPoint);
+        public delegate bool ConnectPacketHandler(PacketReader connectPacketReader, EndPoint clientEndPoint);
 
         /// <summary>
         /// Validates incoming connection request and decides whether connection should be accepted or not.
@@ -127,10 +127,17 @@ namespace Link.Nodes
                 return;
             }
 
-            if (ConnectionValidator is not null && !ConnectionValidator(Packet.From(datagram, bytesReceived, readPosition: 1), senderEndPoint))
+            if (ConnectionValidator is not null)
             {
-                Log.Info($"Client connection from {senderEndPoint} was declined as it did not pass the validation test.");
-                return;
+                var connectPacket = Packet.From(datagram, bytesReceived);
+                var validationPassed = ConnectionValidator(new PacketReader(connectPacket, readPosition: 1), senderEndPoint);
+                connectPacket.Return();
+                
+                if (!validationPassed)
+                {
+                    Log.Info($"Client connection from {senderEndPoint} was declined as it did not pass the validation test.");
+                    return;
+                }
             }
 
             Log.Info($"Client from {senderEndPoint} connected.");

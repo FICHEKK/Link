@@ -102,7 +102,6 @@ namespace Link
 
         private byte[] _buffer;
         private int _writePosition;
-        private int _readPosition;
         private bool _isReadOnly;
         private bool _isInPool;
 
@@ -123,7 +122,6 @@ namespace Link
             var packet = Get(HeaderType.Data);
             packet.Write(channelId);
             packet.Write(packetId);
-            packet._readPosition = 2;
             return packet;
         }
 
@@ -131,7 +129,6 @@ namespace Link
         {
             var packet = Get();
             packet.Write((byte) headerType);
-            packet._readPosition = 1;
             return packet;
         }
 
@@ -143,17 +140,15 @@ namespace Link
             Array.Copy(packet.Buffer, copy._buffer, packet.Size);
 
             copy._writePosition = packet._writePosition;
-            copy._readPosition = packet._readPosition;
             return copy;
         }
 
-        internal static Packet From(byte[] datagram, int bytesReceived, int readPosition)
+        internal static Packet From(byte[] buffer, int size)
         {
             var packet = Get();
-            Array.Copy(datagram, packet._buffer, bytesReceived);
+            Array.Copy(buffer, packet._buffer, size);
 
-            packet._writePosition = bytesReceived;
-            packet._readPosition = readPosition;
+            packet._writePosition = size;
             return packet;
         }
 
@@ -175,7 +170,6 @@ namespace Link
                 {
                     var packet = PacketPool.Dequeue();
                     packet._writePosition = 0;
-                    packet._readPosition = 0;
                     packet._isReadOnly = false;
                     packet._isInPool = false;
                     return packet;
@@ -233,35 +227,6 @@ namespace Link
             var expandedBuffer = new byte[Math.Max(currentBuffer.Length * 2, requiredBufferSize)];
             Array.Copy(currentBuffer, expandedBuffer, _writePosition);
             Buffer = expandedBuffer;
-        }
-
-        public string ReadString()
-        {
-            var stringByteCount = Read<int>();
-            var stringValue = Encoding.GetString(Buffer, _readPosition, stringByteCount);
-            _readPosition += stringByteCount;
-            return stringValue;
-        }
-
-        public unsafe T Read<T>() where T : unmanaged
-        {
-            var value = Buffer.Read<T>(_readPosition);
-            _readPosition += sizeof(T);
-            return value;
-        }
-
-        public unsafe T[] ReadArray<T>() where T : unmanaged
-        {
-            var array = Buffer.ReadArray<T>(_readPosition);
-            _readPosition += sizeof(int) + array.Length * sizeof(T);
-            return array;
-        }
-        
-        public unsafe T[] ReadSlice<T>(int length) where T : unmanaged
-        {
-            var slice = Buffer.ReadSlice<T>(length, _readPosition);
-            _readPosition += length * sizeof(T);
-            return slice;
         }
 
         /// <summary>
