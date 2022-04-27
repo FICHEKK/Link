@@ -46,13 +46,10 @@ public class SendingDataTests
             Assert.That(reader.ReadString(), Is.EqualTo(ExampleString));
         };
 
-        var packet = Packet.Get(Delivery.Reliable);
-        packet.Write(ExampleString);
-        _client.Send(packet);
-        
+        _client.Send(Packet.Get(Delivery.Reliable).Write(ExampleString));
         await Task.Delay(NetworkDelay);
-        _server.Tick();
         
+        _server.Tick();
         Assert.That(wasReceivedOnServer);
     }
     
@@ -74,13 +71,10 @@ public class SendingDataTests
             Assert.That(reader.ReadString(), Is.EqualTo(ExampleString));
         };
 
-        var packet = Packet.Get(Delivery.Reliable);
-        packet.Write(ExampleString);
-        _client.Send(packet);
-        
+        _client.Send(Packet.Get(Delivery.Reliable).Write(ExampleString));
         await Task.Delay(NetworkDelay);
-        _server.Tick();
         
+        _server.Tick();
         Assert.That(firstListenerWasCalled);
         Assert.That(secondListenerWasCalled);
     }

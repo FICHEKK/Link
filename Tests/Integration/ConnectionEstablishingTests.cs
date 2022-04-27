@@ -37,7 +37,7 @@ public class ConnectionEstablishingTests
         client.Connect(IpAddress, Port);
 
         await Task.Delay(ConnectWaitDelay);
-        Assert.That(client.IsConnected, Is.True);
+        Assert.That(client.IsConnected);
         
         client.Disconnect();
     }
@@ -80,13 +80,13 @@ public class ConnectionEstablishingTests
     {
         const int integerToWrite = 123;
         const string stringToWrite = "Test";
-        var sameDataReceived = true;
+        var sameDataWasReceived = true;
 
         _server.ConnectionValidator = (connectPacketReader, _) =>
         {
-            sameDataReceived = sameDataReceived && connectPacketReader.Read<int>() == integerToWrite;
-            sameDataReceived = sameDataReceived && connectPacketReader.ReadString() == stringToWrite;
-            return sameDataReceived;
+            sameDataWasReceived = sameDataWasReceived && connectPacketReader.Read<int>() == integerToWrite;
+            sameDataWasReceived = sameDataWasReceived && connectPacketReader.ReadString() == stringToWrite;
+            return sameDataWasReceived;
         };
 
         var client = new Client();
@@ -97,7 +97,7 @@ public class ConnectionEstablishingTests
         });
 
         await Task.Delay(ConnectWaitDelay);
-        Assert.That(sameDataReceived, Is.True);
+        Assert.That(sameDataWasReceived);
         
         client.Disconnect();
     }
