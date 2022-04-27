@@ -84,7 +84,7 @@ namespace Link
         /// <summary>
         /// Returns the number of bytes currently contained in this packet.
         /// </summary>
-        public int Size => _writePosition;
+        public int Size { get; private set; }
 
         /// <summary>
         /// Direct reference to the underlying buffer (defensive copy will <b>not</b> be made).
@@ -96,7 +96,6 @@ namespace Link
         }
 
         private byte[] _buffer;
-        private int _writePosition;
         private bool _isInPool;
 
         /// <summary>
@@ -133,7 +132,7 @@ namespace Link
             var copy = Get();
             Array.Copy(packet.Buffer, copy._buffer, packet.Size);
 
-            copy._writePosition = packet._writePosition;
+            copy.Size = packet.Size;
             return copy;
         }
 
@@ -142,7 +141,7 @@ namespace Link
             var packet = Get();
             Array.Copy(buffer, packet._buffer, size);
 
-            packet._writePosition = size;
+            packet.Size = size;
             return packet;
         }
 
@@ -163,7 +162,7 @@ namespace Link
                 if (PacketPool.Count > 0)
                 {
                     var packet = PacketPool.Dequeue();
-                    packet._writePosition = 0;
+                    packet.Size = 0;
                     packet._isInPool = false;
                     return packet;
                 }
@@ -185,9 +184,9 @@ namespace Link
         public unsafe void Write<T>(T value) where T : unmanaged
         {
             var bytesToWrite = sizeof(T);
-            EnsureBufferSize(_writePosition + bytesToWrite);
-            Buffer.Write(value, _writePosition);
-            _writePosition += bytesToWrite;
+            EnsureBufferSize(Size + bytesToWrite);
+            Buffer.Write(value, Size);
+            Size += bytesToWrite;
         }
 
         public unsafe void WriteArray<T>(T[] array) where T : unmanaged
@@ -195,9 +194,9 @@ namespace Link
             if (array is null) throw new InvalidOperationException("Cannot write null array to a packet.");
             
             var bytesToWrite = sizeof(int) + array.Length * sizeof(T);
-            EnsureBufferSize(_writePosition + bytesToWrite);
-            Buffer.WriteArray(array, _writePosition);
-            _writePosition += bytesToWrite;
+            EnsureBufferSize(Size + bytesToWrite);
+            Buffer.WriteArray(array, Size);
+            Size += bytesToWrite;
         }
 
         public unsafe void WriteSlice<T>(T[] array, int start, int length) where T : unmanaged
@@ -205,9 +204,9 @@ namespace Link
             if (array is null) throw new InvalidOperationException("Cannot write slice of null array to a packet.");
             
             var bytesToWrite = length * sizeof(T);
-            EnsureBufferSize(_writePosition + bytesToWrite);
-            Buffer.WriteSlice(array, start, length, _writePosition);
-            _writePosition += bytesToWrite;
+            EnsureBufferSize(Size + bytesToWrite);
+            Buffer.WriteSlice(array, start, length, Size);
+            Size += bytesToWrite;
         }
 
         private void EnsureBufferSize(int requiredBufferSize)
@@ -216,7 +215,7 @@ namespace Link
             if (currentBuffer.Length >= requiredBufferSize) return;
 
             var expandedBuffer = new byte[Math.Max(currentBuffer.Length * 2, requiredBufferSize)];
-            Array.Copy(currentBuffer, expandedBuffer, _writePosition);
+            Array.Copy(currentBuffer, expandedBuffer, Size);
             Buffer = expandedBuffer;
         }
 
