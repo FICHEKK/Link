@@ -66,9 +66,7 @@ namespace Link.Channels
         private void Reassemble()
         {
             var lastFragmentByteCount = _fragments[_lastFragmentNumber].Size - _headerSize - _footerSize;
-
-            ReassembledPacket = Packet.Get();
-            ReassembledPacket.Buffer = new byte[_lastFragmentNumber * _bodySize + lastFragmentByteCount];
+            ReassembledPacket = Packet.With(new byte[_lastFragmentNumber * _bodySize + lastFragmentByteCount]);
 
             // Copy data from all of the full fragments.
             for (var i = 0; i < _lastFragmentNumber; i++)

@@ -97,7 +97,7 @@ namespace Link
         internal byte[] Buffer
         {
             get => _isInPool ? throw new InvalidOperationException("Cannot get buffer of a packet that is in pool.") : _buffer;
-            set => _buffer = _isInPool ? throw new InvalidOperationException("Cannot set buffer of a packet that is in pool.") : value;
+            private set => _buffer = _isInPool ? throw new InvalidOperationException("Cannot set buffer of a packet that is in pool.") : value;
         }
 
         private byte[] _buffer;
@@ -154,6 +154,13 @@ namespace Link
 
             packet._writePosition = bytesReceived;
             packet._readPosition = readPosition;
+            return packet;
+        }
+
+        internal static Packet With(byte[] buffer)
+        {
+            var packet = Get();
+            packet.Buffer = buffer;
             return packet;
         }
 
