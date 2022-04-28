@@ -118,11 +118,7 @@ namespace Link.Nodes
             _socket.ReceiveBufferSize = ReceiveBufferSize;
             _socket.Bind(new IPEndPoint(IPAddress.Any, port));
 
-            new Thread(Listen)
-            {
-                Name = $"{GetType()}::{nameof(Listen)}",
-                IsBackground = true
-            }.Start();
+            new Thread(Listen) { Name = $"{GetType()}::{nameof(Listen)}", IsBackground = true }.Start();
         }
 
         private void Listen()
@@ -223,7 +219,7 @@ namespace Link.Nodes
         /// </summary>
         protected void StopListening()
         {
-            if (!IsListening) throw new InvalidOperationException("Could not stop listening as node is already not listening.");
+            if (!IsListening) return;
 
             _socket.Dispose();
             _socket = null;
@@ -255,12 +251,6 @@ namespace Link.Nodes
         /// </summary>
         public void Tick()
         {
-            HandlePendingPackets();
-            HandlePendingActions();
-        }
-
-        private void HandlePendingPackets()
-        {
             lock (_pendingPackets)
             {
                 while (_pendingPackets.Count > 0)
@@ -272,10 +262,7 @@ namespace Link.Nodes
                     packet.Return();
                 }
             }
-        }
-
-        private void HandlePendingActions()
-        {
+            
             lock (_pendingActions)
             {
                 while (_pendingActions.Count > 0)
