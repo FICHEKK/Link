@@ -10,7 +10,7 @@ namespace Link.Nodes
     /// <summary>
     /// Represents a network node - a fundamental building block of any network graph that can send and receive data.
     /// </summary>
-    public abstract class Node
+    public abstract class Node : IDisposable
     {
         /// <summary>
         /// Default socket send and receive buffer size.
@@ -106,10 +106,9 @@ namespace Link.Nodes
         private int _maxLatency;
 
         /// <summary>
-        /// Starts listening for incoming packets.
+        /// Starts listening for incoming packets on the given port.
         /// </summary>
-        /// <param name="port">Port to listen on.</param>
-        protected void StartListening(int port)
+        protected void Listen(int port)
         {
             if (IsListening) throw new InvalidOperationException("Could not start listening as node is already listening.");
 
@@ -215,17 +214,6 @@ namespace Link.Nodes
         }
 
         /// <summary>
-        /// Stop listening for incoming packets.
-        /// </summary>
-        protected void StopListening()
-        {
-            if (!IsListening) return;
-
-            _socket.Dispose();
-            _socket = null;
-        }
-
-        /// <summary>
         /// Enqueues a packet that will be handled on the next <see cref="Tick"/> method call.
         /// </summary>
         internal void EnqueuePendingPacket(Packet packet, EndPoint senderEndPoint)
@@ -270,6 +258,27 @@ namespace Link.Nodes
                     _pendingActions.Dequeue()();
                 }
             }
+        }
+
+        /// <summary>
+        /// Stop listening for incoming packets.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(isDisposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Performs the actual logic of disposing resources.
+        /// </summary>
+        protected virtual void Dispose(bool isDisposing)
+        {
+            if (!isDisposing) return;
+            if (!IsListening) return;
+        
+            _socket.Dispose();
+            _socket = null;
         }
     }
 }

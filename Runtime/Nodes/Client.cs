@@ -49,7 +49,7 @@ namespace Link.Nodes
         /// <param name="connectPacketWriter">Allows additional data to be written to the connect packet.</param>
         public void Connect(string ipAddress, int port, int maxAttempts = 5, int delayBetweenAttempts = 1000, Action<Packet> connectPacketWriter = null)
         {
-            StartListening(port: 0);
+            Listen(port: 0);
             Connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port));
             ConnectionInitializer?.Invoke(Connection);
             Connection.Establish(maxAttempts, delayBetweenAttempts, connectPacketWriter);
@@ -94,7 +94,7 @@ namespace Link.Nodes
                     return;
 
                 case HeaderType.Disconnect:
-                    Disconnect(sendDisconnectPacket: false);
+                    Disconnect();
                     return;
 
                 default:
@@ -118,22 +118,20 @@ namespace Link.Nodes
         /// <summary>
         /// Disconnects from the server and stops listening for incoming packets.
         /// </summary>
-        public void Disconnect() =>
-            Disconnect(sendDisconnectPacket: true);
+        public void Disconnect() => Dispose();
         
-        internal override void Timeout(Connection connection) =>
-            Disconnect(sendDisconnectPacket: false);
+        internal override void Timeout(Connection connection) => Dispose();
 
-        private void Disconnect(bool sendDisconnectPacket)
+        protected override void Dispose(bool isDisposing)
         {
             if (Connection is not null)
             {
-                Connection.Close(sendDisconnectPacket);
+                Connection.Dispose();
                 Connection = null;
                 EnqueuePendingAction(() => Disconnected?.Invoke());
             }
 
-            StopListening();
+            base.Dispose(isDisposing);
         }
     }
 }

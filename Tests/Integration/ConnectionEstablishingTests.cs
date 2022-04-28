@@ -33,13 +33,11 @@ public class ConnectionEstablishingTests
     [Test]
     public async Task Server_with_no_validator_and_empty_slot_should_accept_client_connection()
     {
-        var client = new Client();
+        using var client = new Client();
         client.Connect(IpAddress, Port);
 
         await Task.Delay(ConnectWaitDelay);
         Assert.That(client.IsConnected);
-        
-        client.Disconnect();
     }
 
     [Test]
@@ -47,32 +45,27 @@ public class ConnectionEstablishingTests
     {
         _server.ConnectionValidator = (_, _) => false;
 
-        var client = new Client();
+        using var client = new Client();
         client.Connect(IpAddress, Port);
 
         await Task.Delay(ConnectWaitDelay);
-        Assert.That(client.IsConnected, Is.False);
-        
-        client.Disconnect();
+        Assert.That(!client.IsConnected);
     }
     
     [Test]
     public async Task Full_server_should_decline_client_connection()
     {
-        var client1 = new Client();
+        using var client1 = new Client();
         client1.Connect(IpAddress, Port);
 
         await Task.Delay(ConnectWaitDelay);
-        Assert.That(client1.IsConnected, Is.True);
+        Assert.That(client1.IsConnected);
         
-        var client2 = new Client();
+        using var client2 = new Client();
         client2.Connect(IpAddress, Port);
         
         await Task.Delay(ConnectWaitDelay);
-        Assert.That(client2.IsConnected, Is.False);
-
-        client1.Disconnect();
-        client2.Disconnect();
+        Assert.That(!client2.IsConnected);
     }
     
     [Test]
@@ -89,7 +82,7 @@ public class ConnectionEstablishingTests
             return sameDataWasReceived;
         };
 
-        var client = new Client();
+        using var client = new Client();
         client.Connect(IpAddress, Port, connectPacketWriter: packet =>
         {
             packet.Write(integerToWrite);
@@ -98,7 +91,5 @@ public class ConnectionEstablishingTests
 
         await Task.Delay(ConnectWaitDelay);
         Assert.That(sameDataWasReceived);
-        
-        client.Disconnect();
     }
 }

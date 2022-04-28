@@ -12,7 +12,7 @@ namespace Link
     /// Represents a connection between two end-points. It is a higher level class that
     /// internally handles different channels and keeps track of packet statistics.
     /// </summary>
-    public class Connection
+    public class Connection : IDisposable
     {
         /// <summary>
         /// Channel slots from 0 to this value are reserved and cannot be changed by the user.
@@ -212,25 +212,27 @@ namespace Link
             RoundTripTimeDeviation = (1 - DeviationFactor) * RoundTripTimeDeviation + DeviationFactor * Math.Abs(RoundTripTime - SmoothRoundTripTime);
         }
 
-        internal void Close(bool sendDisconnectPacket)
-        {
-            if (sendDisconnectPacket)
-            {
-                var disconnectPacket = Packet.Get(HeaderType.Disconnect);
-                Node.Send(disconnectPacket, RemoteEndPoint);
-                disconnectPacket.Return();
-            }
-
-            _sendPingTimer.Dispose();
-            CurrentState = State.Disconnected;
-        }
-
         /// <summary>
         /// Called each time connection gets timed-out. This could happen for multiple
         /// reasons, such as not receiving valid ping response for an extended period
         /// of time, or an external component detected faulty connection.
         /// </summary>
         internal void Timeout() => Node.Timeout(connection: this);
+        
+        /// <summary>
+        /// Sends disconnect packet to the remote end-point and disposes all of the used resources.
+        /// </summary>
+        public void Dispose()
+        {
+            if (CurrentState == State.Disconnected) return;
+            
+            var disconnectPacket = Packet.Get(HeaderType.Disconnect);
+            Node.Send(disconnectPacket, RemoteEndPoint);
+            disconnectPacket.Return();
+
+            _sendPingTimer.Dispose();
+            CurrentState = State.Disconnected;
+        }
 
         /// <summary>
         /// Enumeration of all the possible states a connection can be found in.

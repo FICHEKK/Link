@@ -74,7 +74,7 @@ namespace Link.Nodes
         public void Start(int port, int maxClientCount)
         {
             MaxConnectionCount = maxClientCount;
-            StartListening(port);
+            Listen(port);
             Started?.Invoke();
         }
 
@@ -150,17 +150,17 @@ namespace Link.Nodes
         }
 
         private void HandleDisconnectPacket(EndPoint senderEndPoint) =>
-            TryDisconnect(senderEndPoint, "disconnected");
+            DisconnectClient(senderEndPoint, "disconnected");
 
         internal override void Timeout(Connection connection) =>
-            TryDisconnect(connection.RemoteEndPoint, "timed-out");
+            DisconnectClient(connection.RemoteEndPoint, "timed-out");
 
-        private void TryDisconnect(EndPoint clientEndPoint, string disconnectMethod)
+        private void DisconnectClient(EndPoint clientEndPoint, string disconnectMethod)
         {
             if (!_connections.TryRemove(clientEndPoint, out var connection)) return;
 
             Log.Info($"Client from {clientEndPoint} {disconnectMethod}.");
-            connection.Close(sendDisconnectPacket: false);
+            connection.Dispose();
             EnqueuePendingAction(() => ClientDisconnected?.Invoke(connection));
         }
 
@@ -207,13 +207,15 @@ namespace Link.Nodes
         /// Stops this server which disconnects all the clients
         /// and prevents any further incoming packets.
         /// </summary>
-        public void Stop()
+        public void Stop() => Dispose();
+
+        protected override void Dispose(bool isDisposing)
         {
             foreach (var connection in _connections.Values)
-                connection.Close(sendDisconnectPacket: true);
+                connection.Dispose();
 
-            StopListening();
             _connections.Clear();
+            base.Dispose(isDisposing);
             Stopped?.Invoke();
         }
     }
