@@ -8,7 +8,6 @@ namespace Link.Tests.Integration;
 public class SendingDataTests
 {
     private const int Port = 12345;
-    private const int MaxClientCount = 1;
     private const string IpAddress = "127.0.0.1";
     private const int NetworkDelay = 10;
     private const string ExampleString = "Hello world!";
@@ -19,7 +18,7 @@ public class SendingDataTests
     [SetUp]
     public void Start_default_server()
     {
-        (_server = new Server()).Start(Port, MaxClientCount);
+        (_server = new Server()).Start(Port);
         (_client = new Client()).Connect(IpAddress, Port);
 
         while (!_client.IsConnected)

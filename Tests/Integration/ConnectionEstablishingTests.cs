@@ -11,7 +11,6 @@ namespace Link.Tests.Integration;
 public class ConnectionEstablishingTests
 {
     private const int Port = 12345;
-    private const int MaxClientCount = 1;
     private const string IpAddress = "127.0.0.1";
     private const int ConnectWaitDelay = 10;
 
@@ -21,7 +20,7 @@ public class ConnectionEstablishingTests
     public void Start_default_server()
     {
         _server = new Server();
-        _server.Start(Port, MaxClientCount);
+        _server.Start(Port);
     }
 
     [TearDown]
@@ -55,17 +54,22 @@ public class ConnectionEstablishingTests
     [Test]
     public async Task Full_server_should_decline_client_connection()
     {
+        // Accept only if empty.
+        _server.ConnectionValidator = (_, _) => _server.ConnectionCount < 1;
+        
         using var client1 = new Client();
         client1.Connect(IpAddress, Port);
 
         await Task.Delay(ConnectWaitDelay);
         Assert.That(client1.IsConnected);
+        Assert.That(_server.ConnectionCount, Is.EqualTo(1));
         
         using var client2 = new Client();
         client2.Connect(IpAddress, Port);
         
         await Task.Delay(ConnectWaitDelay);
         Assert.That(!client2.IsConnected);
+        Assert.That(_server.ConnectionCount, Is.EqualTo(1));
     }
     
     [Test]

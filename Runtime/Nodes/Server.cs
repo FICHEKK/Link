@@ -47,11 +47,6 @@ namespace Link.Nodes
         public int ConnectionCount => _connections.Count;
 
         /// <summary>
-        /// Returns maximum allowed number of simultaneous client connections.
-        /// </summary>
-        public int MaxConnectionCount { get; private set; }
-
-        /// <summary>
         /// Returns end-points of currently connected clients.
         /// </summary>
         public IEnumerable<EndPoint> EndPoints => _connections.Keys;
@@ -70,10 +65,8 @@ namespace Link.Nodes
         /// Starts this server and listens for incoming client connections.
         /// </summary>
         /// <param name="port">Port to listen on.</param>
-        /// <param name="maxClientCount">Maximum number of clients allowed.</param>
-        public void Start(int port, int maxClientCount)
+        public void Start(int port)
         {
-            MaxConnectionCount = maxClientCount;
             Listen(port);
             Started?.Invoke();
         }
@@ -114,16 +107,10 @@ namespace Link.Nodes
 
         private void HandleConnectPacket(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
         {
-            // Client is already connected, but might have not received the approval.
             if (_connections.TryGetValue(senderEndPoint, out var connection))
             {
+                // Client is connected, but hasn't received the approval.
                 connection.ReceiveConnect();
-                return;
-            }
-
-            if (ConnectionCount >= MaxConnectionCount)
-            {
-                Log.Info($"Client connection from {senderEndPoint} was declined as server is full.");
                 return;
             }
 
