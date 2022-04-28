@@ -8,19 +8,15 @@ namespace Link.Tests.Integration;
 /// Tests the behavior of establishing a connection between client and server.
 /// </summary>
 [TestFixture]
-public class ConnectionEstablishingTests
+public class ConnectTests
 {
-    private const int Port = 12345;
-    private const string IpAddress = "127.0.0.1";
-    private const int ConnectWaitDelay = 10;
-
     private Server _server;
 
     [SetUp]
     public void Start_default_server()
     {
         _server = new Server();
-        _server.Start(Port);
+        _server.Start(Config.Port);
     }
 
     [TearDown]
@@ -33,9 +29,9 @@ public class ConnectionEstablishingTests
     public async Task Server_with_no_validator_and_empty_slot_should_accept_client_connection()
     {
         using var client = new Client();
-        client.Connect(IpAddress, Port);
+        client.Connect(Config.IpAddress, Config.Port);
 
-        await Task.Delay(ConnectWaitDelay);
+        await Task.Delay(Config.NetworkDelay);
         Assert.That(client.IsConnected);
     }
 
@@ -45,9 +41,9 @@ public class ConnectionEstablishingTests
         _server.ConnectionValidator = (_, _) => false;
 
         using var client = new Client();
-        client.Connect(IpAddress, Port);
+        client.Connect(Config.IpAddress, Config.Port);
 
-        await Task.Delay(ConnectWaitDelay);
+        await Task.Delay(Config.NetworkDelay);
         Assert.That(!client.IsConnected);
     }
     
@@ -58,16 +54,16 @@ public class ConnectionEstablishingTests
         _server.ConnectionValidator = (_, _) => _server.ConnectionCount < 1;
         
         using var client1 = new Client();
-        client1.Connect(IpAddress, Port);
+        client1.Connect(Config.IpAddress, Config.Port);
 
-        await Task.Delay(ConnectWaitDelay);
+        await Task.Delay(Config.NetworkDelay);
         Assert.That(client1.IsConnected);
         Assert.That(_server.ConnectionCount, Is.EqualTo(1));
         
         using var client2 = new Client();
-        client2.Connect(IpAddress, Port);
+        client2.Connect(Config.IpAddress, Config.Port);
         
-        await Task.Delay(ConnectWaitDelay);
+        await Task.Delay(Config.NetworkDelay);
         Assert.That(!client2.IsConnected);
         Assert.That(_server.ConnectionCount, Is.EqualTo(1));
     }
@@ -87,13 +83,13 @@ public class ConnectionEstablishingTests
         };
 
         using var client = new Client();
-        client.Connect(IpAddress, Port, connectPacketWriter: packet =>
+        client.Connect(Config.IpAddress, Config.Port, connectPacketWriter: packet =>
         {
             packet.Write(integerToWrite);
             packet.Write(stringToWrite);
         });
 
-        await Task.Delay(ConnectWaitDelay);
+        await Task.Delay(Config.NetworkDelay);
         Assert.That(sameDataWasReceived);
     }
 }

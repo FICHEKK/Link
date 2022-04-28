@@ -7,9 +7,6 @@ namespace Link.Tests.Integration;
 [TestFixture]
 public class SendingDataTests
 {
-    private const int Port = 12345;
-    private const string IpAddress = "127.0.0.1";
-    private const int NetworkDelay = 10;
     private const string ExampleString = "Hello world!";
     
     private Server _server;
@@ -18,8 +15,8 @@ public class SendingDataTests
     [SetUp]
     public void Start_default_server()
     {
-        (_server = new Server()).Start(Port);
-        (_client = new Client()).Connect(IpAddress, Port);
+        (_server = new Server()).Start(Config.Port);
+        (_client = new Client()).Connect(Config.IpAddress, Config.Port);
 
         while (!_client.IsConnected)
         {
@@ -46,7 +43,7 @@ public class SendingDataTests
         };
 
         _client.Send(Packet.Get(Delivery.Reliable).Write(ExampleString));
-        await Task.Delay(NetworkDelay);
+        await Task.Delay(Config.NetworkDelay);
         
         _server.Tick();
         Assert.That(wasReceivedOnServer);
@@ -71,7 +68,7 @@ public class SendingDataTests
         };
 
         _client.Send(Packet.Get(Delivery.Reliable).Write(ExampleString));
-        await Task.Delay(NetworkDelay);
+        await Task.Delay(Config.NetworkDelay);
         
         _server.Tick();
         Assert.That(firstListenerWasCalled);

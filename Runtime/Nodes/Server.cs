@@ -142,6 +142,12 @@ namespace Link.Nodes
         internal override void Timeout(Connection connection) =>
             DisconnectClient(connection.RemoteEndPoint, "timed-out");
 
+        /// <summary>
+        /// Deliberately disconnects specific client.
+        /// </summary>
+        public void Kick(EndPoint clientEndPoint) =>
+            DisconnectClient(clientEndPoint, "kicked");
+
         private void DisconnectClient(EndPoint clientEndPoint, string disconnectMethod)
         {
             if (!_connections.TryRemove(clientEndPoint, out var connection)) return;
