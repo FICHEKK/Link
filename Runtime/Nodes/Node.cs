@@ -96,9 +96,11 @@ namespace Link.Nodes
             set => _maxLatency = value >= 0 && value >= _minLatency ? value : throw new ArgumentOutOfRangeException(nameof(MaxLatency));
         }
 
-        private readonly Queue<(Packet packet, EndPoint senderEndPoint)> _pendingPackets = new();
-        private readonly Queue<Action> _pendingActions = new();
         private readonly byte[] _receiveBuffer = new byte[Packet.MaxSize];
+        private readonly Queue<Action> _pendingActions = new();
+        
+        private Queue<(Packet packet, EndPoint senderEndPoint)> _producerPackets = new();
+        private Queue<(Packet packet, EndPoint senderEndPoint)> _consumerPackets = new();
 
         private Socket _socket;
         private float _packetLoss;
@@ -221,7 +223,7 @@ namespace Link.Nodes
             if (packet is null) throw new ArgumentNullException(nameof(packet));
             if (senderEndPoint is null) throw new ArgumentNullException(nameof(senderEndPoint));
 
-            lock (_pendingPackets) _pendingPackets.Enqueue((packet, senderEndPoint));
+            lock (_producerPackets) _producerPackets.Enqueue((packet, senderEndPoint));
         }
 
         /// <summary>
@@ -239,11 +241,18 @@ namespace Link.Nodes
         /// </summary>
         public void Tick()
         {
-            lock (_pendingPackets)
+            lock (_producerPackets)
+            lock (_consumerPackets)
             {
-                while (_pendingPackets.Count > 0)
+                // In order to not block producer's queue while consuming packets, we simply swap queues.
+                (_producerPackets, _consumerPackets) = (_consumerPackets, _producerPackets);
+            }
+            
+            lock (_consumerPackets)
+            {
+                while (_consumerPackets.Count > 0)
                 {
-                    var (packet, senderEndPoint) = _pendingPackets.Dequeue();
+                    var (packet, senderEndPoint) = _consumerPackets.Dequeue();
                     var reader = new PacketReader(packet, readPosition: 2);
 
                     PacketReceived?.Invoke(reader, senderEndPoint);
