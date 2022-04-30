@@ -164,11 +164,11 @@ namespace Link
         internal void SendData(Packet packet) =>
             RequireChannel(packet.Buffer[1]).Send(packet);
 
-        internal void ReceiveData(Packet packet) =>
-            RequireChannel(packet.Buffer[1]).Receive(packet);
+        internal void ReceiveData(PacketReader reader) =>
+            RequireChannel(reader.Read<byte>()).Receive(reader);
 
-        internal void ReceiveAcknowledgement(Packet packet) =>
-            RequireChannel(packet.Buffer[1]).ReceiveAcknowledgement(packet);
+        internal void ReceiveAcknowledgement(PacketReader reader) =>
+            RequireChannel(reader.Read<byte>()).ReceiveAcknowledgement(reader);
 
         private Channel RequireChannel(byte id) =>
             _channels[id] ?? throw new ArgumentException($"Channel with ID {id} does not exist.");
@@ -189,17 +189,17 @@ namespace Link
             _rttStopwatch.Restart();
         }
 
-        internal void ReceivePing(Packet packet)
+        internal void ReceivePing(PacketReader reader)
         {
             var pongPacket = Packet.Get(HeaderType.Pong);
-            pongPacket.Write(packet.Buffer.Read<uint>(offset: 1));
+            pongPacket.Write(reader.Read<uint>());
             Node.Send(pongPacket, RemoteEndPoint);
             pongPacket.Return();
         }
 
-        internal void ReceivePong(Packet packet)
+        internal void ReceivePong(PacketReader reader)
         {
-            var responseId = packet.Buffer.Read<uint>(offset: 1);
+            var responseId = reader.Read<uint>();
             if (responseId <= _lastPingResponseId) return;
 
             _lastPingResponseId = responseId;

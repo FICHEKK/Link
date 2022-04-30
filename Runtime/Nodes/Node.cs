@@ -207,7 +207,7 @@ namespace Link.Nodes
                 while (_consumerPackets.Count > 0)
                 {
                     var (packet, senderEndPoint) = _consumerPackets.Dequeue();
-                    Consume(packet, senderEndPoint);
+                    Consume(new PacketReader(packet), senderEndPoint);
                     packet.Return();
                 }
             }
@@ -216,14 +216,14 @@ namespace Link.Nodes
         /// <summary>
         /// Consumes received packet by performing specific action based on the packet contents.
         /// </summary>
-        /// <param name="packet">Packet to process.</param>
+        /// <param name="reader">Reader used to read packet contents.</param>
         /// <param name="senderEndPoint">Specifies from where the packet came from.</param>
-        protected abstract void Consume(Packet packet, EndPoint senderEndPoint);
+        protected abstract void Consume(PacketReader reader, EndPoint senderEndPoint);
 
         /// <summary>
         /// Performs the logic of receiving a data-packet.
         /// </summary>
-        internal abstract void Receive(Packet packet, EndPoint senderEndPoint);
+        internal abstract void Receive(PacketReader reader, EndPoint senderEndPoint);
 
         /// <summary>
         /// Stop listening for incoming packets.

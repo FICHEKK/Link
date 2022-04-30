@@ -66,7 +66,7 @@ namespace Link.Nodes
             Connecting?.Invoke();
         }
 
-        protected override void Consume(Packet packet, EndPoint senderEndPoint)
+        protected override void Consume(PacketReader reader, EndPoint senderEndPoint)
         {
             if (Connection is null)
             {
@@ -80,22 +80,22 @@ namespace Link.Nodes
                 return;
             }
 
-            switch (packet.HeaderType)
+            switch ((HeaderType) reader.Read<byte>())
             {
                 case HeaderType.Data:
-                    Connection.ReceiveData(packet);
+                    Connection.ReceiveData(reader);
                     return;
 
                 case HeaderType.Acknowledgement:
-                    Connection.ReceiveAcknowledgement(packet);
+                    Connection.ReceiveAcknowledgement(reader);
                     return;
 
                 case HeaderType.Ping:
-                    Connection.ReceivePing(packet);
+                    Connection.ReceivePing(reader);
                     return;
 
                 case HeaderType.Pong:
-                    Connection.ReceivePong(packet);
+                    Connection.ReceivePong(reader);
                     return;
 
                 case HeaderType.ConnectApproved:
@@ -112,16 +112,12 @@ namespace Link.Nodes
                     return;
 
                 default:
-                    Log.Warning($"Client received invalid packet header {packet.HeaderType} from server.");
+                    Log.Warning("Client received invalid packet header from server.");
                     return;
             }
         }
 
-        internal override void Receive(Packet packet, EndPoint _)
-        {
-            var reader = new PacketReader(packet, readPosition: 2);
-            PacketReceived?.Invoke(reader);
-        }
+        internal override void Receive(PacketReader reader, EndPoint _) => PacketReceived?.Invoke(reader);
 
         /// <summary>
         /// Sends a packet to the server.

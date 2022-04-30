@@ -29,34 +29,41 @@ namespace Link.Channels
             }
         }
 
-        protected override void ReceiveData(Packet packet)
+        protected override void ReceiveData(PacketReader reader)
         {
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Size - sizeof(ushort));
+            var sequenceNumber = reader.Read<ushort>(position: reader.Size - sizeof(ushort));
             UpdateRemoteSequenceNumber(sequenceNumber);
-            SendAcknowledgement(channelId: packet.Buffer[1], sequenceNumber);
+
+            var channelId = reader.Read<byte>(position: 1);
+            SendAcknowledgement(channelId, sequenceNumber);
 
             if (_receivedPackets[sequenceNumber] is not null)
             {
                 PacketsDuplicated++;
-                BytesDuplicated += packet.Size;
+                BytesDuplicated += reader.Size;
                 return;
             }
 
-            _receivedPackets[sequenceNumber] = Packet.Copy(packet);
+            _receivedPackets[sequenceNumber] = reader.CopyPacket();
             _receivedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
 
             if (!_isOrdered)
             {
-                Connection.Node.Receive(_receivedPackets[sequenceNumber], Connection.RemoteEndPoint);
-                _receivedPackets[sequenceNumber].Return();
+                ReceivePacket(_receivedPackets[sequenceNumber]);
                 return;
             }
 
             while (_receivedPackets[_receiveSequenceNumber] is not null)
             {
-                Connection.Node.Receive(_receivedPackets[_receiveSequenceNumber], Connection.RemoteEndPoint);
-                _receivedPackets[_receiveSequenceNumber].Return();
+                ReceivePacket(_receivedPackets[_receiveSequenceNumber]);
                 _receiveSequenceNumber++;
+            }
+
+            void ReceivePacket(Packet packet)
+            {
+                var packetReader = new PacketReader(packet, position: HeaderSize);
+                Connection.Node.Receive(packetReader, Connection.RemoteEndPoint);
+                packet.Return();
             }
         }
 
@@ -92,10 +99,10 @@ namespace Link.Channels
             packet.Return();
         }
 
-        internal override void ReceiveAcknowledgement(Packet packet)
+        internal override void ReceiveAcknowledgement(PacketReader reader)
         {
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: HeaderSize);
-            var acknowledgeBitField = packet.Buffer.Read<int>(offset: HeaderSize + sizeof(ushort));
+            var sequenceNumber = reader.Read<ushort>();
+            var acknowledgeBitField = reader.Read<int>();
 
             lock (_pendingPackets)
             {

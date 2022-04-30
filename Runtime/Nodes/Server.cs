@@ -81,28 +81,28 @@ namespace Link.Nodes
             Started?.Invoke();
         }
 
-        protected override void Consume(Packet packet, EndPoint senderEndPoint)
+        protected override void Consume(PacketReader reader, EndPoint senderEndPoint)
         {
-            switch (packet.HeaderType)
+            switch ((HeaderType) reader.Read<byte>())
             {
                 case HeaderType.Data:
-                    TryGetConnection(senderEndPoint)?.ReceiveData(packet);
+                    TryGetConnection(senderEndPoint)?.ReceiveData(reader);
                     return;
 
                 case HeaderType.Acknowledgement:
-                    TryGetConnection(senderEndPoint)?.ReceiveAcknowledgement(packet);
+                    TryGetConnection(senderEndPoint)?.ReceiveAcknowledgement(reader);
                     return;
 
                 case HeaderType.Ping:
-                    TryGetConnection(senderEndPoint)?.ReceivePing(packet);
+                    TryGetConnection(senderEndPoint)?.ReceivePing(reader);
                     return;
 
                 case HeaderType.Pong:
-                    TryGetConnection(senderEndPoint)?.ReceivePong(packet);
+                    TryGetConnection(senderEndPoint)?.ReceivePong(reader);
                     return;
 
                 case HeaderType.Connect:
-                    HandleConnectPacket(packet, senderEndPoint);
+                    HandleConnectPacket(reader, senderEndPoint);
                     return;
 
                 case HeaderType.Disconnect:
@@ -114,18 +114,14 @@ namespace Link.Nodes
                     return;
 
                 default:
-                    Log.Warning($"Server received invalid packet header {packet.HeaderType} from {senderEndPoint}.");
+                    Log.Warning($"Server received invalid packet header from {senderEndPoint}.");
                     return;
             }
         }
 
-        internal override void Receive(Packet packet, EndPoint clientEndPoint)
-        {
-            var reader = new PacketReader(packet, readPosition: 2);
-            PacketReceived?.Invoke(reader, clientEndPoint);
-        }
+        internal override void Receive(PacketReader reader, EndPoint clientEndPoint) => PacketReceived?.Invoke(reader, clientEndPoint);
 
-        private void HandleConnectPacket(Packet connectPacket, EndPoint senderEndPoint)
+        private void HandleConnectPacket(PacketReader connectPacketReader, EndPoint senderEndPoint)
         {
             if (_connections.TryGetValue(senderEndPoint, out var connection))
             {
@@ -134,7 +130,7 @@ namespace Link.Nodes
                 return;
             }
 
-            if (ConnectionValidator is not null && !ConnectionValidator(new PacketReader(connectPacket, readPosition: 1), senderEndPoint))
+            if (ConnectionValidator is not null && !ConnectionValidator(connectPacketReader, senderEndPoint))
             {
                 Log.Info($"Client connection from {senderEndPoint} was declined as it did not pass the validation test.");
                 return;

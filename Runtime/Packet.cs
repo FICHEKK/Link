@@ -85,11 +85,6 @@ namespace Link
         /// Returns the number of bytes currently contained in this packet.
         /// </summary>
         public int Size { get; private set; }
-        
-        /// <summary>
-        /// Returns what type of packet this instance represents.
-        /// </summary>
-        internal HeaderType HeaderType => (HeaderType) Buffer[0];
 
         /// <summary>
         /// Direct reference to the underlying buffer (defensive copy will <b>not</b> be made).
