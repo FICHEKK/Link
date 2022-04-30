@@ -218,7 +218,7 @@ namespace Link
         /// </summary>
         internal void Timeout(string timeoutCause)
         {
-            Node.Enqueue(Packet.Get(HeaderType.Timeout), RemoteEndPoint);
+            Node.ConsumeOrEnqueuePacket(Packet.Get(HeaderType.Timeout), RemoteEndPoint);
             Log.Info($"Connection timed-out: {timeoutCause}");
         }
         

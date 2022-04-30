@@ -34,44 +34,28 @@ public class SendingDataTests
     [Test]
     public async Task Sending_string_works_as_intended()
     {
-        var wasReceivedOnServer = false;
-        
-        _server.PacketReceived += (reader, _) =>
-        {
-            wasReceivedOnServer = true;
-            Assert.That(reader.ReadString(), Is.EqualTo(ExampleString));
-        };
+        string stringReceivedOnServer = null;
+        _server.PacketReceived += (reader, _) => stringReceivedOnServer = reader.ReadString();
 
         _client.Send(Packet.Get(Delivery.Reliable).Write(ExampleString));
         await Task.Delay(Config.NetworkDelay);
         
-        _server.Tick();
-        Assert.That(wasReceivedOnServer);
+        Assert.That(stringReceivedOnServer, Is.EqualTo(ExampleString));
     }
     
     [Test]
     public async Task All_packet_listeners_should_be_called_and_get_same_packet_data()
     {
-        var firstListenerWasCalled = false;
-        var secondListenerWasCalled = false;
+        string stringReceivedByFirstListener = null;
+        string stringReceivedBySecondListener = null;
         
-        _server.PacketReceived += (reader, _) =>
-        {
-            firstListenerWasCalled = true;
-            Assert.That(reader.ReadString(), Is.EqualTo(ExampleString));
-        };
-        
-        _server.PacketReceived += (reader, _) =>
-        {
-            secondListenerWasCalled = true;
-            Assert.That(reader.ReadString(), Is.EqualTo(ExampleString));
-        };
+        _server.PacketReceived += (reader, _) => stringReceivedByFirstListener = reader.ReadString();
+        _server.PacketReceived += (reader, _) => stringReceivedBySecondListener = reader.ReadString();
 
         _client.Send(Packet.Get(Delivery.Reliable).Write(ExampleString));
         await Task.Delay(Config.NetworkDelay);
         
-        _server.Tick();
-        Assert.That(firstListenerWasCalled);
-        Assert.That(secondListenerWasCalled);
+        Assert.That(stringReceivedByFirstListener, Is.EqualTo(ExampleString));
+        Assert.That(stringReceivedBySecondListener, Is.EqualTo(ExampleString));
     }
 }

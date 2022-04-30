@@ -26,6 +26,18 @@ namespace Link.Nodes
         /// Random instance used for network simulation purposes.
         /// </summary>
         private static readonly Random Random = new();
+        
+        /// <summary>
+        /// If <c>true</c>, packets will be automatically and immediately processed as they are received. 
+        /// This means packets will be processed on a thread that is not under your control.
+        /// <br/><br/>
+        /// If <c>false</c>, packets will be enqueued as they are received. Packets are processed with a
+        /// call to the <see cref="Tick"/> method, which gives you the control to choose on which thread
+        /// packets should be processed.
+        /// <br/><br/>
+        /// This option defaults to <c>true</c>.
+        /// </summary>
+        public bool IsAutomatic { get; set; } = true;
 
         /// <summary>
         /// Returns port on which this node is listening on, or <c>-1</c> if not currently listening.
@@ -158,16 +170,23 @@ namespace Link.Nodes
             var packet = Packet.From(_receiveBuffer, bytesReceived);
             if (MaxLatency > 0) await Task.Delay(Random.Next(MinLatency, MaxLatency + 1));
 
-            Enqueue(packet, senderEndPoint);
+            ConsumeOrEnqueuePacket(packet, senderEndPoint);
         }
 
         /// <summary>
-        /// Enqueues a packet that will be handled on the next <see cref="Tick"/> method call.
+        /// Consumes or enqueues a given packet (action is decided by <see cref="IsAutomatic"/>).
         /// </summary>
-        internal void Enqueue(Packet packet, EndPoint senderEndPoint)
+        internal void ConsumeOrEnqueuePacket(Packet packet, EndPoint senderEndPoint)
         {
             if (packet is null) throw new ArgumentNullException(nameof(packet));
             if (senderEndPoint is null) throw new ArgumentNullException(nameof(senderEndPoint));
+
+            if (IsAutomatic)
+            {
+                Consume(new PacketReader(packet), senderEndPoint);
+                packet.Return();
+                return;
+            }
 
             lock (_producerPackets) _producerPackets.Enqueue((packet, senderEndPoint));
         }
@@ -192,9 +211,12 @@ namespace Link.Nodes
 
         /// <summary>
         /// Handles all of the packets that have been enqueued since last time this method was called.
+        /// This method should be called only when <see cref="IsAutomatic"/> is set to <c>false</c>.
         /// </summary>
         public void Tick()
         {
+            if (IsAutomatic) throw new InvalidOperationException($"'{nameof(Tick)}' called with automatic mode on.");
+            
             lock (_producerPackets)
             lock (_consumerPackets)
             {
