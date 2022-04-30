@@ -10,10 +10,10 @@ namespace Link.Channels
         protected override (int packetsSent, int bytesSent) SendData(Packet packet) =>
             _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.Size) : (0, 0);
 
-        protected override void ReceiveData(byte[] datagram, int bytesReceived) =>
-            _connection.Node.EnqueuePendingPacket(Packet.From(datagram, bytesReceived), _connection.RemoteEndPoint);
+        protected override void ReceiveData(Packet packet) =>
+            _connection.Node.Receive(packet, _connection.RemoteEndPoint);
 
-        internal override void ReceiveAcknowledgement(byte[] datagram) =>
+        internal override void ReceiveAcknowledgement(Packet packet) =>
             Log.Warning($"Acknowledgement packet received on '{nameof(UnreliableChannel)}'.");
     }
 }

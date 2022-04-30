@@ -37,7 +37,7 @@ namespace Link.Channels
         public long BytesReceived { get; private set; }
 
         /// <summary>
-        /// Processes and sends given packet to the remote end-point.
+        /// Processes and sends given data-packet to the remote end-point.
         /// </summary>
         internal void Send(Packet packet)
         {
@@ -52,25 +52,25 @@ namespace Link.Channels
         protected abstract (int packetsSent, int bytesSent) SendData(Packet packet);
 
         /// <summary>
-        /// Receives and processes incoming datagram, attempting to convert it to packet instance(s).
+        /// Receives and processes incoming data-packet.
         /// </summary>
-        internal void Receive(byte[] datagram, int bytesReceived)
+        internal void Receive(Packet packet)
         {
             PacketsReceived++;
-            BytesReceived += bytesReceived;
-            ReceiveData(datagram, bytesReceived);
+            BytesReceived += packet.Size;
+            ReceiveData(packet);
         }
 
         /// <summary>
         /// Receives and processes incoming data-packet.
         /// </summary>
-        protected abstract void ReceiveData(byte[] datagram, int bytesReceived);
+        protected abstract void ReceiveData(Packet packet);
 
         /// <summary>
         /// Receives and processes acknowledgement packet. This method should be implemented by reliable channels,
         /// but is also useful as a diagnostic tool to write warnings if ack is received on the unreliable channel.
         /// </summary>
-        internal abstract void ReceiveAcknowledgement(byte[] datagram);
+        internal abstract void ReceiveAcknowledgement(Packet packet);
 
         /// <summary>
         /// Returns statistics of this channel written in textual form.

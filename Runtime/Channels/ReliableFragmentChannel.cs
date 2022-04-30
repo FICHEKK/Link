@@ -99,12 +99,12 @@ namespace Link.Channels
             }
         }
 
-        protected override void ReceiveData(byte[] datagram, int bytesReceived)
+        protected override void ReceiveData(Packet packet)
         {
-            var sequenceNumber = datagram.Read<ushort>(offset: bytesReceived - FooterSize);
-            var fragmentNumber = datagram.Read<ushort>(offset: bytesReceived - FooterSize + sizeof(ushort));
+            var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Size - FooterSize);
+            var fragmentNumber = packet.Buffer.Read<ushort>(offset: packet.Size - FooterSize + sizeof(ushort));
             UpdateRemoteSequenceNumber(sequenceNumber);
-            SendAcknowledgement(channelId: datagram[1], sequenceNumber, fragmentNumber);
+            SendAcknowledgement(channelId: packet.Buffer[1], sequenceNumber, fragmentNumber);
 
             var fragmentedPacket = _fragmentedPackets[sequenceNumber];
 
@@ -115,10 +115,10 @@ namespace Link.Channels
                 _fragmentedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
             }
 
-            if (!fragmentedPacket.Add(Packet.From(datagram, bytesReceived), fragmentNumber & ~LastFragmentBitmask, (fragmentNumber & LastFragmentBitmask) != 0))
+            if (!fragmentedPacket.Add(Packet.Copy(packet), fragmentNumber & ~LastFragmentBitmask, (fragmentNumber & LastFragmentBitmask) != 0))
             {
                 PacketsDuplicated++;
-                BytesDuplicated += bytesReceived;
+                BytesDuplicated += packet.Size;
                 return;
             }
 
@@ -126,7 +126,8 @@ namespace Link.Channels
             {
                 if (fragmentedPacket.ReassembledPacket is null) return;
 
-                Connection.Node.EnqueuePendingPacket(fragmentedPacket.ReassembledPacket, Connection.RemoteEndPoint);
+                Connection.Node.Receive(fragmentedPacket.ReassembledPacket, Connection.RemoteEndPoint);
+                fragmentedPacket.ReassembledPacket.Return();
                 return;
             }
 
@@ -135,7 +136,8 @@ namespace Link.Channels
                 var nextFragmentedPacket = _fragmentedPackets[_receiveSequenceNumber];
                 if (nextFragmentedPacket?.ReassembledPacket is null) break;
 
-                Connection.Node.EnqueuePendingPacket(nextFragmentedPacket.ReassembledPacket, Connection.RemoteEndPoint);
+                Connection.Node.Receive(nextFragmentedPacket.ReassembledPacket, Connection.RemoteEndPoint);
+                nextFragmentedPacket.ReassembledPacket.Return();
                 _receiveSequenceNumber++;
             }
         }
@@ -164,10 +166,10 @@ namespace Link.Channels
             packet.Return();
         }
 
-        internal override void ReceiveAcknowledgement(byte[] datagram)
+        internal override void ReceiveAcknowledgement(Packet packet)
         {
-            var sequenceNumber = datagram.Read<ushort>(offset: HeaderSize);
-            var fragmentNumber = datagram.Read<ushort>(offset: HeaderSize + sizeof(ushort));
+            var sequenceNumber = packet.Buffer.Read<ushort>(offset: HeaderSize);
+            var fragmentNumber = packet.Buffer.Read<ushort>(offset: HeaderSize + sizeof(ushort));
 
             lock (_pendingPackets)
             {

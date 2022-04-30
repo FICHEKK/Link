@@ -71,28 +71,28 @@ namespace Link.Nodes
             Started?.Invoke();
         }
 
-        protected override void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
+        protected override void Consume(Packet packet, EndPoint senderEndPoint)
         {
-            switch ((HeaderType) datagram[0])
+            switch (packet.HeaderType)
             {
                 case HeaderType.Data:
-                    TryGetConnection(senderEndPoint)?.ReceiveData(datagram, bytesReceived);
+                    TryGetConnection(senderEndPoint)?.ReceiveData(packet);
                     return;
 
                 case HeaderType.Acknowledgement:
-                    TryGetConnection(senderEndPoint)?.ReceiveAcknowledgement(datagram);
+                    TryGetConnection(senderEndPoint)?.ReceiveAcknowledgement(packet);
                     return;
 
                 case HeaderType.Ping:
-                    TryGetConnection(senderEndPoint)?.ReceivePing(datagram);
+                    TryGetConnection(senderEndPoint)?.ReceivePing(packet);
                     return;
 
                 case HeaderType.Pong:
-                    TryGetConnection(senderEndPoint)?.ReceivePong(datagram);
+                    TryGetConnection(senderEndPoint)?.ReceivePong(packet);
                     return;
 
                 case HeaderType.Connect:
-                    HandleConnectPacket(datagram, bytesReceived, senderEndPoint);
+                    HandleConnectPacket(packet, senderEndPoint);
                     return;
 
                 case HeaderType.Disconnect:
@@ -100,12 +100,12 @@ namespace Link.Nodes
                     return;
 
                 default:
-                    Log.Warning($"Server received invalid packet header {datagram[0]} from {senderEndPoint}.");
+                    Log.Warning($"Server received invalid packet header {packet.HeaderType} from {senderEndPoint}.");
                     return;
             }
         }
 
-        private void HandleConnectPacket(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
+        private void HandleConnectPacket(Packet connectPacket, EndPoint senderEndPoint)
         {
             if (_connections.TryGetValue(senderEndPoint, out var connection))
             {
@@ -114,17 +114,10 @@ namespace Link.Nodes
                 return;
             }
 
-            if (ConnectionValidator is not null)
+            if (ConnectionValidator is not null && !ConnectionValidator(new PacketReader(connectPacket, readPosition: 1), senderEndPoint))
             {
-                var connectPacket = Packet.From(datagram, bytesReceived);
-                var validationPassed = ConnectionValidator(new PacketReader(connectPacket, readPosition: 1), senderEndPoint);
-                connectPacket.Return();
-                
-                if (!validationPassed)
-                {
-                    Log.Info($"Client connection from {senderEndPoint} was declined as it did not pass the validation test.");
-                    return;
-                }
+                Log.Info($"Client connection from {senderEndPoint} was declined as it did not pass the validation test.");
+                return;
             }
 
             Log.Info($"Client from {senderEndPoint} connected.");
@@ -133,7 +126,7 @@ namespace Link.Nodes
             connection.ReceiveConnect();
 
             _connections.TryAdd(senderEndPoint, connection);
-            EnqueuePendingAction(() => ClientConnected?.Invoke(connection));
+            ClientConnected?.Invoke(connection);
         }
 
         private void HandleDisconnectPacket(EndPoint senderEndPoint) =>
@@ -154,7 +147,7 @@ namespace Link.Nodes
 
             Log.Info($"Client from {clientEndPoint} {disconnectMethod}.");
             connection.Dispose();
-            EnqueuePendingAction(() => ClientDisconnected?.Invoke(connection));
+            ClientDisconnected?.Invoke(connection);
         }
 
         /// <summary>

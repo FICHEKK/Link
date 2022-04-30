@@ -29,31 +29,33 @@ namespace Link.Channels
             }
         }
 
-        protected override void ReceiveData(byte[] datagram, int bytesReceived)
+        protected override void ReceiveData(Packet packet)
         {
-            var sequenceNumber = datagram.Read<ushort>(offset: bytesReceived - sizeof(ushort));
+            var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Size - sizeof(ushort));
             UpdateRemoteSequenceNumber(sequenceNumber);
-            SendAcknowledgement(channelId: datagram[1], sequenceNumber);
+            SendAcknowledgement(channelId: packet.Buffer[1], sequenceNumber);
 
             if (_receivedPackets[sequenceNumber] is not null)
             {
                 PacketsDuplicated++;
-                BytesDuplicated += bytesReceived;
+                BytesDuplicated += packet.Size;
                 return;
             }
 
-            _receivedPackets[sequenceNumber] = Packet.From(datagram, bytesReceived);
+            _receivedPackets[sequenceNumber] = Packet.Copy(packet);
             _receivedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
 
             if (!_isOrdered)
             {
-                Connection.Node.EnqueuePendingPacket(_receivedPackets[sequenceNumber], Connection.RemoteEndPoint);
+                Connection.Node.Receive(_receivedPackets[sequenceNumber], Connection.RemoteEndPoint);
+                _receivedPackets[sequenceNumber].Return();
                 return;
             }
 
             while (_receivedPackets[_receiveSequenceNumber] is not null)
             {
-                Connection.Node.EnqueuePendingPacket(_receivedPackets[_receiveSequenceNumber], Connection.RemoteEndPoint);
+                Connection.Node.Receive(_receivedPackets[_receiveSequenceNumber], Connection.RemoteEndPoint);
+                _receivedPackets[_receiveSequenceNumber].Return();
                 _receiveSequenceNumber++;
             }
         }
@@ -90,10 +92,10 @@ namespace Link.Channels
             packet.Return();
         }
 
-        internal override void ReceiveAcknowledgement(byte[] datagram)
+        internal override void ReceiveAcknowledgement(Packet packet)
         {
-            var sequenceNumber = datagram.Read<ushort>(offset: HeaderSize);
-            var acknowledgeBitField = datagram.Read<int>(offset: HeaderSize + sizeof(ushort));
+            var sequenceNumber = packet.Buffer.Read<ushort>(offset: HeaderSize);
+            var acknowledgeBitField = packet.Buffer.Read<int>(offset: HeaderSize + sizeof(ushort));
 
             lock (_pendingPackets)
             {

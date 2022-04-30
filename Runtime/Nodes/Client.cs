@@ -56,7 +56,7 @@ namespace Link.Nodes
             Connecting?.Invoke();
         }
 
-        protected override void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint)
+        protected override void Consume(Packet packet, EndPoint senderEndPoint)
         {
             if (Connection is null)
             {
@@ -70,27 +70,27 @@ namespace Link.Nodes
                 return;
             }
 
-            switch ((HeaderType) datagram[0])
+            switch (packet.HeaderType)
             {
                 case HeaderType.Data:
-                    Connection.ReceiveData(datagram, bytesReceived);
+                    Connection.ReceiveData(packet);
                     return;
 
                 case HeaderType.Acknowledgement:
-                    Connection.ReceiveAcknowledgement(datagram);
+                    Connection.ReceiveAcknowledgement(packet);
                     return;
 
                 case HeaderType.Ping:
-                    Connection.ReceivePing(datagram);
+                    Connection.ReceivePing(packet);
                     return;
 
                 case HeaderType.Pong:
-                    Connection.ReceivePong(datagram);
+                    Connection.ReceivePong(packet);
                     return;
 
                 case HeaderType.ConnectApproved:
                     Connection.ReceiveConnectApproved();
-                    EnqueuePendingAction(() => Connected?.Invoke());
+                    Connected?.Invoke();
                     return;
 
                 case HeaderType.Disconnect:
@@ -98,7 +98,7 @@ namespace Link.Nodes
                     return;
 
                 default:
-                    Log.Warning($"Client received invalid packet header {datagram[0]} from server.");
+                    Log.Warning($"Client received invalid packet header {packet.HeaderType} from server.");
                     return;
             }
         }
@@ -128,7 +128,7 @@ namespace Link.Nodes
             {
                 Connection.Dispose();
                 Connection = null;
-                EnqueuePendingAction(() => Disconnected?.Invoke());
+                Disconnected?.Invoke();
             }
 
             base.Dispose(isDisposing);

@@ -43,7 +43,7 @@ namespace Link.Nodes
         public int Port => IsListening ? ((IPEndPoint) _socket.LocalEndPoint).Port : -1;
 
         /// <summary>
-        /// Returns true if this node is currently listening for incoming packets.
+        /// Returns <c>true</c> if this node is currently listening for incoming packets.
         /// </summary>
         public bool IsListening => _socket is not null;
 
@@ -97,8 +97,6 @@ namespace Link.Nodes
         }
 
         private readonly byte[] _receiveBuffer = new byte[Packet.MaxSize];
-        private readonly Queue<Action> _pendingActions = new();
-        
         private Queue<(Packet packet, EndPoint senderEndPoint)> _producerPackets = new();
         private Queue<(Packet packet, EndPoint senderEndPoint)> _consumerPackets = new();
 
@@ -167,35 +165,22 @@ namespace Link.Nodes
         {
             if (PacketLoss > 0 && Random.NextDouble() < PacketLoss) return;
 
-            if (MaxLatency == 0)
-            {
-                Receive(_receiveBuffer, bytesReceived, senderEndPoint);
-            }
-            else
-            {
-                // We need to copy receive buffer as it is going to get overwritten by new incoming packets.
-                // However, this is totally fine as this branch is only executing when using the simulation.
-                var receiveBufferCopy = new byte[bytesReceived];
-                Array.Copy(_receiveBuffer, receiveBufferCopy, bytesReceived);
+            var packet = Packet.From(_receiveBuffer, bytesReceived);
+            if (MaxLatency > 0) await Task.Delay(Random.Next(MinLatency, MaxLatency + 1));
 
-                await Task.Delay(Random.Next(MinLatency, MaxLatency + 1));
-                Receive(receiveBufferCopy, bytesReceived, senderEndPoint);
-            }
+            Enqueue(packet, senderEndPoint);
         }
 
         /// <summary>
-        /// Processes received datagram and performs specific action based on the datagram contents.
+        /// Enqueues a packet that will be handled on the next <see cref="Tick"/> method call.
         /// </summary>
-        /// <param name="datagram">Array containing datagram bytes.</param>
-        /// <param name="bytesReceived">Number of bytes that datagram contains.</param>
-        /// <param name="senderEndPoint">Specifies from where datagram came from.</param>
-        protected abstract void Receive(byte[] datagram, int bytesReceived, EndPoint senderEndPoint);
+        internal void Enqueue(Packet packet, EndPoint senderEndPoint)
+        {
+            if (packet is null) throw new ArgumentNullException(nameof(packet));
+            if (senderEndPoint is null) throw new ArgumentNullException(nameof(senderEndPoint));
 
-        /// <summary>
-        /// Handles the case of connection getting timed-out.
-        /// </summary>
-        /// <param name="connection">Connection that timed-out.</param>
-        internal abstract void Timeout(Connection connection);
+            lock (_producerPackets) _producerPackets.Enqueue((packet, senderEndPoint));
+        }
 
         /// <summary>
         /// Sends outgoing packet to the specified end-point.
@@ -216,28 +201,7 @@ namespace Link.Nodes
         }
 
         /// <summary>
-        /// Enqueues a packet that will be handled on the next <see cref="Tick"/> method call.
-        /// </summary>
-        internal void EnqueuePendingPacket(Packet packet, EndPoint senderEndPoint)
-        {
-            if (packet is null) throw new ArgumentNullException(nameof(packet));
-            if (senderEndPoint is null) throw new ArgumentNullException(nameof(senderEndPoint));
-
-            lock (_producerPackets) _producerPackets.Enqueue((packet, senderEndPoint));
-        }
-
-        /// <summary>
-        /// Enqueues an action that will be executed on the next <see cref="Tick"/> method call.
-        /// </summary>
-        protected void EnqueuePendingAction(Action action)
-        {
-            if (action is null) throw new ArgumentNullException(nameof(action));
-
-            lock (_pendingActions) _pendingActions.Enqueue(action);
-        }
-
-        /// <summary>
-        /// Handles all of the packets and actions that have been enqueued since last time this method was called.
+        /// Handles all of the packets that have been enqueued since last time this method was called.
         /// </summary>
         public void Tick()
         {
@@ -253,21 +217,33 @@ namespace Link.Nodes
                 while (_consumerPackets.Count > 0)
                 {
                     var (packet, senderEndPoint) = _consumerPackets.Dequeue();
-                    var reader = new PacketReader(packet, readPosition: 2);
-
-                    PacketReceived?.Invoke(reader, senderEndPoint);
+                    Consume(packet, senderEndPoint);
                     packet.Return();
                 }
             }
-            
-            lock (_pendingActions)
-            {
-                while (_pendingActions.Count > 0)
-                {
-                    _pendingActions.Dequeue()();
-                }
-            }
         }
+        
+        /// <summary>
+        /// Consumes received packet by performing specific action based on the packet contents.
+        /// </summary>
+        /// <param name="packet">Packet to process.</param>
+        /// <param name="senderEndPoint">Specifies from where the packet came from.</param>
+        protected abstract void Consume(Packet packet, EndPoint senderEndPoint);
+
+        /// <summary>
+        /// Receives data-packet, which raises <see cref="PacketReceived"/> event.
+        /// </summary>
+        internal void Receive(Packet packet, EndPoint senderEndPoint)
+        {
+            var reader = new PacketReader(packet, readPosition: 2);
+            PacketReceived?.Invoke(reader, senderEndPoint);
+        }
+
+        /// <summary>
+        /// Handles the case of connection getting timed-out.
+        /// </summary>
+        /// <param name="connection">Connection that timed-out.</param>
+        internal abstract void Timeout(Connection connection);
 
         /// <summary>
         /// Stop listening for incoming packets.

@@ -85,6 +85,11 @@ namespace Link
         /// Returns the number of bytes currently contained in this packet.
         /// </summary>
         public int Size { get; private set; }
+        
+        /// <summary>
+        /// Returns what type of packet this instance represents.
+        /// </summary>
+        internal HeaderType HeaderType => (HeaderType) Buffer[0];
 
         /// <summary>
         /// Direct reference to the underlying buffer (defensive copy will <b>not</b> be made).
@@ -126,7 +131,6 @@ namespace Link
             // getters need to be used to ensure packet is not in the pool.
             var copy = Get();
             Array.Copy(packet.Buffer, copy._buffer, packet.Size);
-
             copy.Size = packet.Size;
             return copy;
         }
@@ -135,7 +139,6 @@ namespace Link
         {
             var packet = Get();
             Array.Copy(buffer, packet._buffer, size);
-
             packet.Size = size;
             return packet;
         }
