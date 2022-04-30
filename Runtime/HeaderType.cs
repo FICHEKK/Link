@@ -47,5 +47,12 @@ namespace Link
         /// side of the connection and will no longer send or receive any packets.
         /// </summary>
         Disconnect,
+        
+        /// <summary>
+        /// Marks this packet as a timeout packet which indicates that a connection has timed-out.
+        /// This is a self-referential packet, meaning that it does not come from the remote
+        /// end-point, but rather is sent by the local end-point when connection times-out.
+        /// </summary>
+        Timeout,
     }
 }

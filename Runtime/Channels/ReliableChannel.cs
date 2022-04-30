@@ -76,11 +76,8 @@ namespace Link.Channels
         /// Handles the case of packet exceeding maximum resend attempts.
         /// </summary>
         /// <param name="packet">Packet that was lost.</param>
-        public void HandleLostPacket(Packet packet)
-        {
-            Connection.Timeout();
-            Log.Info($"Connection timed-out: Packet {ExtractPacketInfo(packet)} exceeded maximum resend attempts of {MaxResendAttempts}.");
-        }
+        public void HandleLostPacket(Packet packet) =>
+            Connection.Timeout($"Packet {ExtractPacketInfo(packet)} exceeded maximum resend attempts of {MaxResendAttempts}.");
 
         /// <summary>
         /// Returns information stored inside the given packet.

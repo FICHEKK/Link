@@ -96,7 +96,11 @@ namespace Link.Nodes
                     return;
 
                 case HeaderType.Disconnect:
-                    HandleDisconnectPacket(senderEndPoint);
+                    DisconnectClient(senderEndPoint, "disconnected");
+                    return;
+                
+                case HeaderType.Timeout:
+                    DisconnectClient(senderEndPoint, "timed-out");
                     return;
 
                 default:
@@ -129,18 +133,14 @@ namespace Link.Nodes
             ClientConnected?.Invoke(connection);
         }
 
-        private void HandleDisconnectPacket(EndPoint senderEndPoint) =>
-            DisconnectClient(senderEndPoint, "disconnected");
-
-        internal override void Timeout(Connection connection) =>
-            DisconnectClient(connection.RemoteEndPoint, "timed-out");
-
         /// <summary>
         /// Deliberately disconnects specific client.
         /// </summary>
-        public void Kick(EndPoint clientEndPoint) =>
-            DisconnectClient(clientEndPoint, "kicked");
+        public void Kick(EndPoint clientEndPoint) => DisconnectClient(clientEndPoint, "kicked");
 
+        /// <summary>
+        /// Disconnects client at specific end-point and logs the reason client was disconnected.
+        /// </summary>
         private void DisconnectClient(EndPoint clientEndPoint, string disconnectMethod)
         {
             if (!_connections.TryRemove(clientEndPoint, out var connection)) return;

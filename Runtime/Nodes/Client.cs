@@ -96,6 +96,10 @@ namespace Link.Nodes
                 case HeaderType.Disconnect:
                     Disconnect();
                     return;
+                
+                case HeaderType.Timeout:
+                    Disconnect();
+                    return;
 
                 default:
                     Log.Warning($"Client received invalid packet header {packet.HeaderType} from server.");
@@ -119,8 +123,6 @@ namespace Link.Nodes
         /// Disconnects from the server and stops listening for incoming packets.
         /// </summary>
         public void Disconnect() => Dispose();
-        
-        internal override void Timeout(Connection connection) => Dispose();
 
         protected override void Dispose(bool isDisposing)
         {

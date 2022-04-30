@@ -240,12 +240,6 @@ namespace Link.Nodes
         }
 
         /// <summary>
-        /// Handles the case of connection getting timed-out.
-        /// </summary>
-        /// <param name="connection">Connection that timed-out.</param>
-        internal abstract void Timeout(Connection connection);
-
-        /// <summary>
         /// Stop listening for incoming packets.
         /// </summary>
         public void Dispose()

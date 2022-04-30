@@ -142,8 +142,7 @@ namespace Link
             }
 
             connectPacket.Return();
-            Node.Timeout(connection: this);
-            Log.Info($"Connection timed-out: could not connect to {RemoteEndPoint} (exceeded maximum connect attempts of {maxAttempts}).");
+            Timeout($"Exceeded maximum connect attempts of {maxAttempts} while connecting to {RemoteEndPoint}.");
         }
 
         internal void ReceiveConnect()
@@ -178,8 +177,7 @@ namespace Link
         {
             if ((DateTime.UtcNow - _lastPingResponseTime).TotalMilliseconds > TimeoutDuration)
             {
-                Log.Info($"Connection timed-out: Valid ping response was not received in over {TimeoutDuration} ms.");
-                Timeout();
+                Timeout($"Valid ping response was not received in over {TimeoutDuration} ms.");
                 return;
             }
 
@@ -215,9 +213,14 @@ namespace Link
         /// <summary>
         /// Called each time connection gets timed-out. This could happen for multiple
         /// reasons, such as not receiving valid ping response for an extended period
-        /// of time, or an external component detected faulty connection.
+        /// of time, or an external component detected faulty connection. This method
+        /// "pretends" that timeout packet was sent from the remote end-point.
         /// </summary>
-        internal void Timeout() => Node.Timeout(connection: this);
+        internal void Timeout(string timeoutCause)
+        {
+            Node.Enqueue(Packet.Get(HeaderType.Timeout), RemoteEndPoint);
+            Log.Info($"Connection timed-out: {timeoutCause}");
+        }
         
         /// <summary>
         /// Sends disconnect packet to the remote end-point and disposes all of the used resources.
