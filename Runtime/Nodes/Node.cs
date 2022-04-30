@@ -16,16 +16,6 @@ namespace Link.Nodes
         /// Default socket send and receive buffer size.
         /// </summary>
         private const int DefaultBufferSize = 1024 * 1024;
-        
-        /// <summary>
-        /// Defines a method that handles incoming packet.
-        /// </summary>
-        public delegate void PacketHandler(PacketReader reader, EndPoint senderEndPoint);
-        
-        /// <summary>
-        /// Raised each time a packet is received.
-        /// </summary>
-        public event PacketHandler PacketReceived;
 
         /// <summary>
         /// Cached end-point instance used for <see cref="Socket.ReceiveFrom(byte[],ref System.Net.EndPoint)"/> calls.
@@ -231,13 +221,9 @@ namespace Link.Nodes
         protected abstract void Consume(Packet packet, EndPoint senderEndPoint);
 
         /// <summary>
-        /// Receives data-packet, which raises <see cref="PacketReceived"/> event.
+        /// Performs the logic of receiving a data-packet.
         /// </summary>
-        internal void Receive(Packet packet, EndPoint senderEndPoint)
-        {
-            var reader = new PacketReader(packet, readPosition: 2);
-            PacketReceived?.Invoke(reader, senderEndPoint);
-        }
+        internal abstract void Receive(Packet packet, EndPoint senderEndPoint);
 
         /// <summary>
         /// Stop listening for incoming packets.

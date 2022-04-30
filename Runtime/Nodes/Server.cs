@@ -12,6 +12,16 @@ namespace Link.Nodes
     public class Server : Node
     {
         /// <summary>
+        /// Defines a method that handles incoming packet from a client.
+        /// </summary>
+        public delegate void PacketHandler(PacketReader reader, EndPoint clientEndPoint);
+        
+        /// <summary>
+        /// Raised each time a packet is received from a client.
+        /// </summary>
+        public event PacketHandler PacketReceived;
+        
+        /// <summary>
         /// Invoked each time server starts and begins listening for client connections.
         /// </summary>
         public event Action Started;
@@ -107,6 +117,12 @@ namespace Link.Nodes
                     Log.Warning($"Server received invalid packet header {packet.HeaderType} from {senderEndPoint}.");
                     return;
             }
+        }
+
+        internal override void Receive(Packet packet, EndPoint clientEndPoint)
+        {
+            var reader = new PacketReader(packet, readPosition: 2);
+            PacketReceived?.Invoke(reader, clientEndPoint);
         }
 
         private void HandleConnectPacket(Packet connectPacket, EndPoint senderEndPoint)
