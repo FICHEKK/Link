@@ -86,7 +86,7 @@ namespace Link.Channels
         /// </summary>
         /// <param name="s1">First sequence number.</param>
         /// <param name="s2">Second sequence number.</param>
-        protected static bool IsFirstSequenceNumberGreater(ushort s1, ushort s2) =>
+        public static bool IsFirstSequenceNumberGreater(ushort s1, ushort s2) =>
             s1 > s2 && s1 - s2 <= ushort.MaxValue / 2 || s1 < s2 && s2 - s1 > ushort.MaxValue / 2;
     }
 }
