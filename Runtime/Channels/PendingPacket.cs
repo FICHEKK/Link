@@ -8,7 +8,7 @@ namespace Link.Channels
     /// performs retransmissions if not acknowledged for a certain period of time.
     /// </summary>
     /// <remarks>This class is thread-safe.</remarks>
-    public class PendingPacket
+    internal class PendingPacket
     {
         /// <summary>
         /// Collection of reusable pending packet instances used to avoid frequent memory allocations.

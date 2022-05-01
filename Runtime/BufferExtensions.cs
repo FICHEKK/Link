@@ -5,7 +5,7 @@ namespace Link
     /// <summary>
     /// Component that extends <see cref="byte"/> buffer with the ability to read and write structured data.
     /// </summary>
-    public static class BufferExtensions
+    internal static class BufferExtensions
     {
         /// <summary>
         /// Writes a single value to the specified position.

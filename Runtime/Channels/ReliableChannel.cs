@@ -63,7 +63,7 @@ namespace Link.Channels
         /// Retries sending packet as acknowledgement wasn't received in time.
         /// </summary>
         /// <param name="packet">Packet being resent.</param>
-        public void ResendPacket(Packet packet)
+        internal void ResendPacket(Packet packet)
         {
             Connection.Node.Send(packet, Connection.RemoteEndPoint);
             Log.Info($"Re-sent packet {ExtractPacketInfo(packet)}.");
@@ -76,7 +76,7 @@ namespace Link.Channels
         /// Handles the case of packet exceeding maximum resend attempts.
         /// </summary>
         /// <param name="packet">Packet that was lost.</param>
-        public void HandleLostPacket(Packet packet) =>
+        internal void HandleLostPacket(Packet packet) =>
             Connection.Timeout($"Packet {ExtractPacketInfo(packet)} exceeded maximum resend attempts of {MaxResendAttempts}.");
 
         /// <summary>

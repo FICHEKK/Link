@@ -6,7 +6,7 @@ namespace Link.Channels
     /// <summary>
     /// Represents a packet that consists of one or more smaller, limited-sized pieces called <i>fragments</i>.
     /// </summary>
-    public class FragmentedPacket
+    internal class FragmentedPacket
     {
         private readonly Dictionary<int, Packet> _fragments = new();
         private readonly int _headerSize;

@@ -12,7 +12,7 @@ namespace Link
     /// Represents a connection between two end-points. It is a higher level class that
     /// internally handles different channels and keeps track of packet statistics.
     /// </summary>
-    public class Connection : IDisposable
+    public class Connection
     {
         /// <summary>
         /// Channel slots from 0 to this value are reserved and cannot be changed by the user.
@@ -225,7 +225,7 @@ namespace Link
         /// <summary>
         /// Sends disconnect packet to the remote end-point and disposes all of the used resources.
         /// </summary>
-        public void Dispose()
+        internal void Close()
         {
             if (CurrentState == State.Disconnected) return;
             

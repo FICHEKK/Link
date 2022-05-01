@@ -140,7 +140,7 @@ namespace Link.Nodes
         {
             if (Connection is not null)
             {
-                Connection.Dispose();
+                Connection.Close();
                 Connection = null;
                 Disconnected?.Invoke();
             }

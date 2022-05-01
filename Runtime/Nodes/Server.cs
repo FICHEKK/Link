@@ -158,7 +158,7 @@ namespace Link.Nodes
             if (!_connections.TryRemove(clientEndPoint, out var connection)) return;
 
             Log.Info($"Client from {clientEndPoint} {disconnectMethod}.");
-            connection.Dispose();
+            connection.Close();
             ClientDisconnected?.Invoke(connection);
         }
 
@@ -209,8 +209,7 @@ namespace Link.Nodes
 
         protected override void Dispose(bool isDisposing)
         {
-            foreach (var connection in _connections.Values)
-                connection.Dispose();
+            foreach (var connection in _connections.Values) connection.Close();
 
             _connections.Clear();
             base.Dispose(isDisposing);

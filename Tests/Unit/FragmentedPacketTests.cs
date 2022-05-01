@@ -1,7 +1,7 @@
 using Link.Channels;
 using NUnit.Framework;
 
-namespace Link.Tests.Unit.Channels;
+namespace Link.Tests.Unit;
 
 [TestFixture]
 public class FragmentedPacketTests
