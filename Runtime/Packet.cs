@@ -33,12 +33,7 @@ namespace Link
         /// Default maximum packet size. If network layer fragmentation occurs when using
         /// this buffer size, consider lowering the value stored in <see cref="MaxSize"/>.
         /// </summary>
-        private const int DefaultMaxSize = EthernetMtu - MaxIpHeaderSize - UdpHeaderSize;
-
-        /// <summary>
-        /// Minimum safe UDP payload size that will not cause fragmentation.
-        /// </summary>
-        private const int MinSize = 576 - MaxIpHeaderSize - UdpHeaderSize;
+        private const int DefaultMaxSize = EthernetMtu - IpHeaderSize - UdpHeaderSize;
 
         /// <summary>
         /// Maximum number of data bytes that can be transferred in a single Ethernet frame.
@@ -46,14 +41,19 @@ namespace Link
         private const int EthernetMtu = 1500;
 
         /// <summary>
-        /// Internet Protocol (IP) maximum header size, in bytes.
+        /// Internet Protocol (IP) standard header size, in bytes.
         /// </summary>
-        private const int MaxIpHeaderSize = 60;
+        private const int IpHeaderSize = 20;
 
         /// <summary>
         /// User Datagram Protocol (UDP) header size, in bytes.
         /// </summary>
         private const int UdpHeaderSize = 8;
+        
+        /// <summary>
+        /// Minimum safe UDP payload size (in bytes) that will not cause fragmentation.
+        /// </summary>
+        public const int MinSize = 508;
 
         /// <summary>
         /// Maximum allowed packet size of a pooled packet. Trying to return a packet with bigger

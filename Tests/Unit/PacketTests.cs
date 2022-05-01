@@ -19,11 +19,11 @@ public class PacketTests
 
     [Test]
     public void Setting_max_size_to_lower_than_min_valid_value_throws() =>
-        Assert.That(() => Packet.MaxSize = 507, Throws.Exception);
+        Assert.That(() => Packet.MaxSize = Packet.MinSize - 1, Throws.Exception);
 
     [Test]
     public void Setting_max_size_to_min_valid_value_does_not_throw() =>
-        Assert.That(() => Packet.MaxSize = 508, Throws.Nothing);
+        Assert.That(() => Packet.MaxSize = Packet.MinSize, Throws.Nothing);
     
     [Test]
     public void Packet_with_specified_delivery_should_have_size_2() =>
