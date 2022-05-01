@@ -4,6 +4,7 @@
         <TargetFramework>net6.0</TargetFramework>
         <IsPackable>false</IsPackable>
         <RootNamespace>Link.Tests</RootNamespace>
+        <AssemblyName>Link.Tests</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>

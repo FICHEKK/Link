@@ -5,10 +5,11 @@
         <RootNamespace>Link</RootNamespace>
         <LangVersion>9</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <AssemblyName>Link</AssemblyName>
     </PropertyGroup>
 	
     <ItemGroup>
-        <InternalsVisibleTo Include="Tests" />
+        <InternalsVisibleTo Include="$(AssemblyName).Tests" />
     </ItemGroup>
 
 </Project>
