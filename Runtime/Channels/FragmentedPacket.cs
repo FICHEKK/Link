@@ -20,6 +20,11 @@ namespace Link.Channels
         public Packet ReassembledPacket { get; private set; }
 
         /// <summary>
+        /// Returns the current number of fragments stored inside this fragmented packet.
+        /// </summary>
+        public int FragmentCount => ReassembledPacket is not null && _fragments.Count == 0 ? 1 : _fragments.Count;
+
+        /// <summary>
         /// Constructs a new fragmented packet with defined fragment structure.
         /// </summary>
         /// <param name="headerSize">Number of bytes contained in a single fragment header.</param>

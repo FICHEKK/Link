@@ -142,6 +142,7 @@ namespace Link
         {
             var packet = Get();
             packet.Buffer = buffer;
+            packet.Size = buffer.Length;
             return packet;
         }
 

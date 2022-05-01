@@ -128,7 +128,7 @@ namespace Link.Channels
             {
                 if (fragmentedPacket.ReassembledPacket is null) return;
 
-                ReceivePacket(fragmentedPacket.ReassembledPacket);
+                ReceivePacket(fragmentedPacket);
                 return;
             }
 
@@ -137,15 +137,15 @@ namespace Link.Channels
                 var nextFragmentedPacket = _fragmentedPackets[_receiveSequenceNumber];
                 if (nextFragmentedPacket?.ReassembledPacket is null) break;
 
-                ReceivePacket(nextFragmentedPacket.ReassembledPacket);
+                ReceivePacket(nextFragmentedPacket);
                 _receiveSequenceNumber++;
             }
 
-            void ReceivePacket(Packet packet)
+            void ReceivePacket(FragmentedPacket fragmented)
             {
-                var packetReader = new PacketReader(packet, position: HeaderSize);
+                var packetReader = new PacketReader(fragmented.ReassembledPacket, position: fragmented.FragmentCount == 1 ? HeaderSize : 0);
                 Connection.Node.Receive(packetReader, Connection.RemoteEndPoint);
-                packet.Return();
+                fragmented.ReassembledPacket.Return();
             }
         }
 
