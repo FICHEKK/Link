@@ -18,10 +18,7 @@ public class SendingDataTests
         (_server = new Server()).Start(Config.Port);
         (_client = new Client()).Connect(Config.IpAddress, Config.Port);
 
-        while (!_client.IsConnected)
-        {
-            // Simple wait...
-        }
+        while (!_client.IsConnected) { }
     }
 
     [TearDown]
@@ -57,5 +54,15 @@ public class SendingDataTests
         
         Assert.That(stringReceivedByFirstListener, Is.EqualTo(ExampleString));
         Assert.That(stringReceivedBySecondListener, Is.EqualTo(ExampleString));
+    }
+    
+    [Test]
+    public void Sending_packet_with_size_greater_than_max_size_should_fail()
+    {
+        var packet = Packet.Get().WriteSlice(new byte[1024], start: 0, length: 1024);
+        
+        Assert.That(_client.Send(packet, _client.Connection.RemoteEndPoint), Is.True);
+        Packet.MaxSize = 1000;
+        Assert.That(_client.Send(packet, _client.Connection.RemoteEndPoint), Is.False);
     }
 }
