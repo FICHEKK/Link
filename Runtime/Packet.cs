@@ -101,18 +101,16 @@ namespace Link
         /// <summary>
         /// Returns a packet that will be sent using specified delivery method.
         /// </summary>
-        public static Packet Get(Delivery delivery) => Get((byte) delivery);
+        public static PacketWriter Get(Delivery delivery) => Get((byte) delivery);
 
         /// <summary>
         /// Returns a packet that will be sent on the specified channel.
         /// </summary>
-        public static Packet Get(byte channelId)
-        {
-            var packet = Get(HeaderType.Data);
-            packet.Write(channelId);
-            return packet;
-        }
+        public static PacketWriter Get(byte channelId) => new PacketWriter(Get(HeaderType.Data)).Write(channelId);
 
+        /// <summary>
+        /// Returns a packet with specific <see cref="HeaderType"/>.
+        /// </summary>
         internal static Packet Get(HeaderType headerType)
         {
             var packet = Get();
@@ -149,7 +147,7 @@ namespace Link
         /// <summary>
         /// Returns an empty packet.
         /// </summary>
-        public static Packet Get()
+        internal static Packet Get()
         {
             lock (PacketPool)
             {
@@ -166,8 +164,7 @@ namespace Link
             return new Packet(MaxSize);
         }
 
-        private Packet(int size) =>
-            _buffer = new byte[size];
+        private Packet(int size) => _buffer = new byte[size];
 
         public Packet Write(string value)
         {

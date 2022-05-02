@@ -56,13 +56,13 @@ namespace Link.Nodes
         /// <param name="port">Server port.</param>
         /// <param name="maxAttempts">Maximum number of connect attempts before considering server as unreachable.</param>
         /// <param name="delayBetweenAttempts">Delay between consecutive connect attempts, in milliseconds.</param>
-        /// <param name="connectPacketWriter">Allows additional data to be written to the connect packet.</param>
-        public void Connect(string ipAddress, int port, int maxAttempts = 5, int delayBetweenAttempts = 1000, Action<Packet> connectPacketWriter = null)
+        /// <param name="connectPacketFactory">Allows additional data to be written to the connect packet.</param>
+        public void Connect(string ipAddress, int port, int maxAttempts = 5, int delayBetweenAttempts = 1000, Connection.ConnectPacketFactory connectPacketFactory = null)
         {
             Listen(port: 0);
             Connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port));
             ConnectionInitializer?.Invoke(Connection);
-            Connection.Establish(maxAttempts, delayBetweenAttempts, connectPacketWriter);
+            Connection.Establish(maxAttempts, delayBetweenAttempts, connectPacketFactory);
             Connecting?.Invoke();
         }
 
@@ -122,13 +122,13 @@ namespace Link.Nodes
         /// <summary>
         /// Sends a packet to the server.
         /// </summary>
-        /// <param name="packet">Packet being sent.</param>
-        public void Send(Packet packet)
+        /// <param name="writer">Packet being sent.</param>
+        public void Send(PacketWriter writer)
         {
             if (!IsConnected) throw new InvalidOperationException("Cannot send packet as client is not connected to the server.");
 
-            Connection.SendData(packet);
-            packet.Return();
+            Connection.SendData(writer.Packet);
+            writer.Packet.Return();
         }
 
         /// <summary>

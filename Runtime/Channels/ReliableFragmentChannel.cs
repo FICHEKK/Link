@@ -117,7 +117,7 @@ namespace Link.Channels
                 _fragmentedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
             }
 
-            if (!fragmentedPacket.Add(reader.CopyPacket(), fragmentNumber & ~LastFragmentBitmask, (fragmentNumber & LastFragmentBitmask) != 0))
+            if (!fragmentedPacket.Add(Packet.Copy(reader.Packet), fragmentNumber & ~LastFragmentBitmask, (fragmentNumber & LastFragmentBitmask) != 0))
             {
                 PacketsDuplicated++;
                 BytesDuplicated += reader.Size;

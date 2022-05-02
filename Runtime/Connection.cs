@@ -15,6 +15,11 @@ namespace Link
     public class Connection
     {
         /// <summary>
+        /// Represents a method that creates connect packet by filling it with required data.
+        /// </summary>
+        public delegate void ConnectPacketFactory(PacketWriter connectPacketWriter);
+        
+        /// <summary>
         /// Channel slots from 0 to this value are reserved and cannot be changed by the user.
         /// This channel range defines channels for all of the basic delivery methods, which
         /// relieves the user from having to declare any channels (making custom channels an
@@ -121,13 +126,13 @@ namespace Link
             }
         }
 
-        internal async void Establish(int maxAttempts, int delayBetweenAttempts, Action<Packet> connectPacketWriter = null)
+        internal async void Establish(int maxAttempts, int delayBetweenAttempts, ConnectPacketFactory connectPacketFactory = null)
         {
             if (maxAttempts <= 0) throw new ArgumentException($"'{nameof(maxAttempts)}' must be a positive value.");
             if (delayBetweenAttempts <= 0) throw new ArgumentException($"'{nameof(delayBetweenAttempts)}' must be a positive value.");
 
             var connectPacket = Packet.Get(HeaderType.Connect);
-            connectPacketWriter?.Invoke(connectPacket);
+            connectPacketFactory?.Invoke(new PacketWriter(connectPacket));
 
             for (var attempt = 0; attempt < maxAttempts; attempt++)
             {

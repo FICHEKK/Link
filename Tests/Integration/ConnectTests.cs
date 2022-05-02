@@ -83,11 +83,7 @@ public class ConnectTests
         };
 
         using var client = new Client();
-        client.Connect(Config.IpAddress, Config.Port, connectPacketWriter: packet =>
-        {
-            packet.Write(integerToWrite);
-            packet.Write(stringToWrite);
-        });
+        client.Connect(Config.IpAddress, Config.Port, connectPacketFactory: writer => writer.Write(integerToWrite).Write(stringToWrite));
 
         await Task.Delay(Config.NetworkDelay);
         Assert.That(sameDataWasReceived);

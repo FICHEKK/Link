@@ -16,7 +16,7 @@ namespace Link
         /// <summary>
         /// Returns total number of bytes that this reader can read from the packet.
         /// </summary>
-        public int Size => _packet.Size;
+        public int Size => Packet.Size;
         
         /// <summary>
         /// Gets or sets the index at which this reader is reading next bytes.
@@ -26,19 +26,19 @@ namespace Link
         /// <summary>
         /// Underlying packet from which this reader is reading from.
         /// </summary>
-        private readonly Packet _packet;
+        internal Packet Packet { get; }
 
         /// <summary>
         /// Creates a new reader for the given packet, which starts reading at the specified position.
         /// </summary>
-        public PacketReader(Packet packet, int position = 0)
+        internal PacketReader(Packet packet, int position = 0)
         {
-            _packet = packet;
+            Packet = packet;
             Position = position;
         }
         
         /// <summary>
-        /// Reads a <see cref="string"/> using encoding defined by <see cref="Packet.Encoding"/>.
+        /// Reads a <see cref="string"/> using encoding defined by <see cref="Link.Packet.Encoding"/>.
         /// </summary>
         public string ReadString()
         {
@@ -47,7 +47,7 @@ namespace Link
             if (BytesLeft < stringByteCount)
                 throw new InvalidOperationException("Could not read string (out-of-bounds bytes).");
             
-            var stringValue = Packet.Encoding.GetString(_packet.Buffer, Position, stringByteCount);
+            var stringValue = Packet.Encoding.GetString(Packet.Buffer, Position, stringByteCount);
             Position += stringByteCount;
             return stringValue;
         }
@@ -60,7 +60,7 @@ namespace Link
             if (BytesLeft < sizeof(T))
                 throw new InvalidOperationException($"Could not read value of type '{typeof(T)}' (out-of-bounds bytes).");
             
-            var value = _packet.Buffer.Read<T>(Position);
+            var value = Packet.Buffer.Read<T>(Position);
             Position += sizeof(T);
             return value;
         }
@@ -93,7 +93,7 @@ namespace Link
             if (BytesLeft < length * sizeof(T))
                 throw new InvalidOperationException($"Could not read slice of type '{typeof(T)}' (out-of-bounds bytes).");
 
-            var slice = _packet.Buffer.ReadSlice<T>(length, Position);
+            var slice = Packet.Buffer.ReadSlice<T>(length, Position);
             Position += length * sizeof(T);
             return slice;
         }
@@ -108,10 +108,5 @@ namespace Link
             
             return value;
         }
-
-        /// <summary>
-        /// Returns a copy of the underlying packet.
-        /// </summary>
-        internal Packet CopyPacket() => Packet.Copy(_packet);
     }
 }

@@ -165,32 +165,32 @@ namespace Link.Nodes
         /// <summary>
         /// Sends a given packet to one client.
         /// </summary>
-        public void SendToOne(Packet packet, EndPoint clientEndPoint)
+        public void SendToOne(PacketWriter writer, EndPoint clientEndPoint)
         {
-            TryGetConnection(clientEndPoint)?.SendData(packet);
-            packet.Return();
+            TryGetConnection(clientEndPoint)?.SendData(writer.Packet);
+            writer.Packet.Return();
         }
 
         /// <summary>
         /// Sends a given packet to many clients.
         /// </summary>
-        public void SendToMany(Packet packet, IEnumerable<EndPoint> clientEndPoints)
+        public void SendToMany(PacketWriter writer, IEnumerable<EndPoint> clientEndPoints)
         {
             foreach (var clientEndPoint in clientEndPoints)
-                TryGetConnection(clientEndPoint)?.SendData(packet);
+                TryGetConnection(clientEndPoint)?.SendData(writer.Packet);
 
-            packet.Return();
+            writer.Packet.Return();
         }
 
         /// <summary>
         /// Sends a given packet to all clients.
         /// </summary>
-        public void SendToAll(Packet packet)
+        public void SendToAll(PacketWriter writer)
         {
             foreach (var connection in _connections.Values)
-                connection.SendData(packet);
+                connection.SendData(writer.Packet);
 
-            packet.Return();
+            writer.Packet.Return();
         }
 
         private Connection TryGetConnection(EndPoint clientEndPoint)

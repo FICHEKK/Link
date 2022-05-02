@@ -44,7 +44,7 @@ namespace Link.Channels
                 return;
             }
 
-            _receivedPackets[sequenceNumber] = reader.CopyPacket();
+            _receivedPackets[sequenceNumber] = Packet.Copy(reader.Packet);
             _receivedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
 
             if (!_isOrdered)
