@@ -141,23 +141,24 @@ namespace Link
             if (MaxConnectAttempts <= 0) throw new ArgumentException($"'{nameof(MaxConnectAttempts)}' must be a positive value.");
             if (DelayBetweenConnectAttempts <= 0) throw new ArgumentException($"'{nameof(DelayBetweenConnectAttempts)}' must be a positive value.");
 
-            var connectPacket = Packet.Get(HeaderType.Connect);
-            connectPacketFactory?.Invoke(new PacketWriter(connectPacket));
-
             for (var attempt = 0; attempt < MaxConnectAttempts; attempt++)
             {
-                Node.Send(connectPacket, RemoteEndPoint);
+                SendConnectPacket();
                 CurrentState = State.Connecting;
 
                 await Task.Delay(DelayBetweenConnectAttempts);
-                if (CurrentState == State.Connecting) continue;
-
-                connectPacket.Return();
-                return;
+                if (CurrentState != State.Connecting) return;
             }
 
-            connectPacket.Return();
             Timeout($"Exceeded maximum connect attempts of {MaxConnectAttempts} while connecting to {RemoteEndPoint}.");
+
+            void SendConnectPacket()
+            {
+                var connectPacket = Packet.Get(HeaderType.Connect);
+                connectPacketFactory?.Invoke(new PacketWriter(connectPacket));
+                Node.Send(connectPacket, RemoteEndPoint);
+                connectPacket.Return();
+            }
         }
 
         internal void ReceiveConnect()
