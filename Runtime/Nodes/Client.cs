@@ -54,15 +54,13 @@ namespace Link.Nodes
         /// </summary>
         /// <param name="ipAddress">Server IP address.</param>
         /// <param name="port">Server port.</param>
-        /// <param name="maxAttempts">Maximum number of connect attempts before considering server as unreachable.</param>
-        /// <param name="delayBetweenAttempts">Delay between consecutive connect attempts, in milliseconds.</param>
         /// <param name="connectPacketFactory">Allows additional data to be written to the connect packet.</param>
-        public void Connect(string ipAddress, int port, int maxAttempts = 5, int delayBetweenAttempts = 1000, Connection.ConnectPacketFactory connectPacketFactory = null)
+        public void Connect(string ipAddress, int port, Connection.ConnectPacketFactory connectPacketFactory = null)
         {
             Listen(port: 0);
             Connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port));
             ConnectionInitializer?.Invoke(Connection);
-            Connection.Establish(maxAttempts, delayBetweenAttempts, connectPacketFactory);
+            Connection.Establish(connectPacketFactory);
             Connecting?.Invoke();
         }
 

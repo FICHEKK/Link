@@ -38,6 +38,16 @@ namespace Link
         public EndPoint RemoteEndPoint { get; }
 
         /// <summary>
+        /// Maximum number of connect attempts before considering remote host as unreachable.
+        /// </summary>
+        public int MaxConnectAttempts { get; set; } = 5;
+
+        /// <summary>
+        /// Delay between consecutive connect attempts, in milliseconds.
+        /// </summary>
+        public int DelayBetweenConnectAttempts { get; set; } = 1000;
+
+        /// <summary>
         /// Duration between two consecutive ping packets, in milliseconds.
         /// </summary>
         public int PeriodDuration { get; set; } = 1000;
@@ -126,20 +136,20 @@ namespace Link
             }
         }
 
-        internal async void Establish(int maxAttempts, int delayBetweenAttempts, ConnectPacketFactory connectPacketFactory = null)
+        internal async void Establish(ConnectPacketFactory connectPacketFactory = null)
         {
-            if (maxAttempts <= 0) throw new ArgumentException($"'{nameof(maxAttempts)}' must be a positive value.");
-            if (delayBetweenAttempts <= 0) throw new ArgumentException($"'{nameof(delayBetweenAttempts)}' must be a positive value.");
+            if (MaxConnectAttempts <= 0) throw new ArgumentException($"'{nameof(MaxConnectAttempts)}' must be a positive value.");
+            if (DelayBetweenConnectAttempts <= 0) throw new ArgumentException($"'{nameof(DelayBetweenConnectAttempts)}' must be a positive value.");
 
             var connectPacket = Packet.Get(HeaderType.Connect);
             connectPacketFactory?.Invoke(new PacketWriter(connectPacket));
 
-            for (var attempt = 0; attempt < maxAttempts; attempt++)
+            for (var attempt = 0; attempt < MaxConnectAttempts; attempt++)
             {
                 Node.Send(connectPacket, RemoteEndPoint);
                 CurrentState = State.Connecting;
 
-                await Task.Delay(delayBetweenAttempts);
+                await Task.Delay(DelayBetweenConnectAttempts);
                 if (CurrentState == State.Connecting) continue;
 
                 connectPacket.Return();
@@ -147,7 +157,7 @@ namespace Link
             }
 
             connectPacket.Return();
-            Timeout($"Exceeded maximum connect attempts of {maxAttempts} while connecting to {RemoteEndPoint}.");
+            Timeout($"Exceeded maximum connect attempts of {MaxConnectAttempts} while connecting to {RemoteEndPoint}.");
         }
 
         internal void ReceiveConnect()
