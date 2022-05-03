@@ -18,23 +18,23 @@ namespace Link.Channels
             return _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.Size) : (0, 0);
         }
 
-        protected override void ReceiveData(PacketReader reader)
+        protected override void ReceiveData(ReadOnlyPacket packet)
         {
-            var sequenceNumber = reader.Read<ushort>(position: reader.Size - sizeof(ushort));
+            var sequenceNumber = packet.Read<ushort>(position: packet.Size - sizeof(ushort));
 
             if (IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber))
             {
                 _remoteSequenceNumber = sequenceNumber;
-                _connection.Node.Receive(reader, _connection.RemoteEndPoint);
+                _connection.Node.Receive(packet, _connection.RemoteEndPoint);
             }
             else
             {
                 PacketsReceivedOutOfOrder++;
-                BytesReceivedOutOfOrder += reader.Size;
+                BytesReceivedOutOfOrder += packet.Size;
             }
         }
 
-        internal override void ReceiveAcknowledgement(PacketReader reader) =>
+        internal override void ReceiveAcknowledgement(ReadOnlyPacket packet) =>
             Log.Warning($"Acknowledgement packet received on '{nameof(SequencedChannel)}'.");
 
         public override string ToString() =>

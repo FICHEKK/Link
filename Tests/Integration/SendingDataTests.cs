@@ -32,7 +32,7 @@ public class SendingDataTests
     public async Task Sending_string_works_as_intended()
     {
         string stringReceivedOnServer = null;
-        _server.PacketReceived += (reader, _) => stringReceivedOnServer = reader.ReadString();
+        _server.PacketReceived += (packet, _) => stringReceivedOnServer = packet.ReadString();
 
         _client.Send(Packet.Get(Delivery.Reliable).Write(ExampleString));
         await Task.Delay(Config.NetworkDelay);
@@ -46,8 +46,8 @@ public class SendingDataTests
         string stringReceivedByFirstListener = null;
         string stringReceivedBySecondListener = null;
         
-        _server.PacketReceived += (reader, _) => stringReceivedByFirstListener = reader.ReadString();
-        _server.PacketReceived += (reader, _) => stringReceivedBySecondListener = reader.ReadString();
+        _server.PacketReceived += (packet, _) => stringReceivedByFirstListener = packet.ReadString();
+        _server.PacketReceived += (packet, _) => stringReceivedBySecondListener = packet.ReadString();
 
         _client.Send(Packet.Get(Delivery.Reliable).Write(ExampleString));
         await Task.Delay(Config.NetworkDelay);

@@ -14,7 +14,7 @@ public class FragmentedChannelTests
         server.Start(Config.Port);
         
         var receivedArray = (int[]) null;
-        server.PacketReceived += (reader, _) => receivedArray = reader.ReadArray<int>();
+        server.PacketReceived += (packet, _) => receivedArray = packet.ReadArray<int>();
 
         using var client = new Client();
         client.Connect(Config.IpAddress, Config.Port);

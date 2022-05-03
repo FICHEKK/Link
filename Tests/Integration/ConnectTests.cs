@@ -75,10 +75,10 @@ public class ConnectTests
         const string stringToWrite = "Test";
         var sameDataWasReceived = true;
 
-        _server.ConnectionValidator = (connectPacketReader, _) =>
+        _server.ConnectionValidator = (connectPacket, _) =>
         {
-            sameDataWasReceived = sameDataWasReceived && connectPacketReader.Read<int>() == integerToWrite;
-            sameDataWasReceived = sameDataWasReceived && connectPacketReader.ReadString() == stringToWrite;
+            sameDataWasReceived = sameDataWasReceived && connectPacket.Read<int>() == integerToWrite;
+            sameDataWasReceived = sameDataWasReceived && connectPacket.ReadString() == stringToWrite;
             return sameDataWasReceived;
         };
 

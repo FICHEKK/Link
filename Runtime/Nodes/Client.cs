@@ -12,7 +12,7 @@ namespace Link.Nodes
         /// <summary>
         /// Defines a method that handles incoming data-packet from the server.
         /// </summary>
-        public delegate void PacketHandler(PacketReader reader);
+        public delegate void PacketHandler(ReadOnlyPacket packet);
         
         /// <summary>
         /// Raised each time a data-packet is received from the server.
@@ -64,7 +64,7 @@ namespace Link.Nodes
             Connecting?.Invoke();
         }
 
-        protected override void Consume(PacketReader reader, EndPoint senderEndPoint)
+        protected override void Consume(ReadOnlyPacket packet, EndPoint senderEndPoint)
         {
             if (Connection is null)
             {
@@ -78,22 +78,22 @@ namespace Link.Nodes
                 return;
             }
 
-            switch ((HeaderType) reader.Read<byte>())
+            switch ((HeaderType) packet.Read<byte>())
             {
                 case HeaderType.Data:
-                    Connection.ReceiveData(reader);
+                    Connection.ReceiveData(packet);
                     return;
 
                 case HeaderType.Acknowledgement:
-                    Connection.ReceiveAcknowledgement(reader);
+                    Connection.ReceiveAcknowledgement(packet);
                     return;
 
                 case HeaderType.Ping:
-                    Connection.ReceivePing(reader);
+                    Connection.ReceivePing(packet);
                     return;
 
                 case HeaderType.Pong:
-                    Connection.ReceivePong(reader);
+                    Connection.ReceivePong(packet);
                     return;
 
                 case HeaderType.ConnectApproved:
@@ -115,7 +115,7 @@ namespace Link.Nodes
             }
         }
 
-        internal override void Receive(PacketReader reader, EndPoint _) => PacketReceived?.Invoke(reader);
+        internal override void Receive(ReadOnlyPacket packet, EndPoint _) => PacketReceived?.Invoke(packet);
 
         /// <summary>
         /// Sends a packet to the server.

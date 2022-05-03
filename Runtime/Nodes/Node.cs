@@ -183,7 +183,7 @@ namespace Link.Nodes
 
             if (IsAutomatic)
             {
-                Consume(new PacketReader(packet), senderEndPoint);
+                Consume(new ReadOnlyPacket(packet), senderEndPoint);
                 packet.Return();
                 return;
             }
@@ -229,7 +229,7 @@ namespace Link.Nodes
                 while (_consumerPackets.Count > 0)
                 {
                     var (packet, senderEndPoint) = _consumerPackets.Dequeue();
-                    Consume(new PacketReader(packet), senderEndPoint);
+                    Consume(new ReadOnlyPacket(packet), senderEndPoint);
                     packet.Return();
                 }
             }
@@ -238,14 +238,14 @@ namespace Link.Nodes
         /// <summary>
         /// Consumes received packet by performing specific action based on the packet contents.
         /// </summary>
-        /// <param name="reader">Reader used to read packet contents.</param>
+        /// <param name="packet">Read-only view into packet being consumed.</param>
         /// <param name="senderEndPoint">Specifies from where the packet came from.</param>
-        protected abstract void Consume(PacketReader reader, EndPoint senderEndPoint);
+        protected abstract void Consume(ReadOnlyPacket packet, EndPoint senderEndPoint);
 
         /// <summary>
         /// Performs the logic of receiving a data-packet.
         /// </summary>
-        internal abstract void Receive(PacketReader reader, EndPoint senderEndPoint);
+        internal abstract void Receive(ReadOnlyPacket packet, EndPoint senderEndPoint);
 
         /// <summary>
         /// Stop listening for incoming packets.

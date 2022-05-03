@@ -29,22 +29,22 @@ namespace Link.Channels
             }
         }
 
-        protected override void ReceiveData(PacketReader reader)
+        protected override void ReceiveData(ReadOnlyPacket packet)
         {
-            var sequenceNumber = reader.Read<ushort>(position: reader.Size - sizeof(ushort));
+            var sequenceNumber = packet.Read<ushort>(position: packet.Size - sizeof(ushort));
             UpdateRemoteSequenceNumber(sequenceNumber);
 
-            var channelId = reader.Read<byte>(position: 1);
+            var channelId = packet.Read<byte>(position: 1);
             SendAcknowledgement(channelId, sequenceNumber);
 
             if (_receivedPackets[sequenceNumber] is not null)
             {
                 PacketsDuplicated++;
-                BytesDuplicated += reader.Size;
+                BytesDuplicated += packet.Size;
                 return;
             }
 
-            _receivedPackets[sequenceNumber] = Packet.Copy(reader.Packet);
+            _receivedPackets[sequenceNumber] = Packet.Copy(packet.Packet);
             _receivedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
 
             if (!_isOrdered)
@@ -59,11 +59,11 @@ namespace Link.Channels
                 _receiveSequenceNumber++;
             }
 
-            void ReceivePacket(Packet packet)
+            void ReceivePacket(Packet p)
             {
-                var packetReader = new PacketReader(packet, position: HeaderSize);
-                Connection.Node.Receive(packetReader, Connection.RemoteEndPoint);
-                packet.Return();
+                var readOnlyPacket = new ReadOnlyPacket(p, position: HeaderSize);
+                Connection.Node.Receive(readOnlyPacket, Connection.RemoteEndPoint);
+                p.Return();
             }
         }
 
@@ -99,10 +99,10 @@ namespace Link.Channels
             packet.Return();
         }
 
-        internal override void ReceiveAcknowledgement(PacketReader reader)
+        internal override void ReceiveAcknowledgement(ReadOnlyPacket packet)
         {
-            var sequenceNumber = reader.Read<ushort>();
-            var acknowledgeBitField = reader.Read<int>();
+            var sequenceNumber = packet.Read<ushort>();
+            var acknowledgeBitField = packet.Read<int>();
 
             lock (_pendingPackets)
             {

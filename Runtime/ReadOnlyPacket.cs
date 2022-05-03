@@ -3,35 +3,32 @@ using System;
 namespace Link
 {
     /// <summary>
-    /// Component that allows user to easily read data from the packet.
-    /// It can be allocated only on stack to ensure that it is not cached.
+    /// Represents a read-only view into incoming packet.
     /// </summary>
-    public ref struct PacketReader
+    public ref struct ReadOnlyPacket
     {
         /// <summary>
         /// Returns how many more bytes can be read from the packet.
         /// </summary>
         public int BytesLeft => Size - Position;
 
-        /// <summary>
-        /// Returns total number of bytes that this reader can read from the packet.
-        /// </summary>
+        /// <inheritdoc cref="Link.Packet.Size"/>
         public int Size => Packet.Size;
         
         /// <summary>
-        /// Gets or sets the index at which this reader is reading next bytes.
+        /// Gets or sets the index at which next read operation will be performed.
         /// </summary>
         public int Position { get; set; }
         
         /// <summary>
-        /// Underlying packet from which this reader is reading from.
+        /// Underlying packet from which this read-only view is reading from.
         /// </summary>
         internal Packet Packet { get; }
 
         /// <summary>
-        /// Creates a new reader for the given packet, which starts reading at the specified position.
+        /// Creates a new read-only view of the given packet, which starts reading at the specified position.
         /// </summary>
-        internal PacketReader(Packet packet, int position = 0)
+        internal ReadOnlyPacket(Packet packet, int position = 0)
         {
             Packet = packet;
             Position = position;

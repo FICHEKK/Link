@@ -14,7 +14,7 @@ namespace Link.Nodes
         /// <summary>
         /// Defines a method that handles incoming packet from a client.
         /// </summary>
-        public delegate void PacketHandler(PacketReader reader, EndPoint clientEndPoint);
+        public delegate void PacketHandler(ReadOnlyPacket packet, EndPoint clientEndPoint);
         
         /// <summary>
         /// Raised each time a packet is received from a client.
@@ -44,7 +44,7 @@ namespace Link.Nodes
         /// <summary>
         /// Represents a method that is responsible for handling incoming connect packet.
         /// </summary>
-        public delegate bool ConnectPacketHandler(PacketReader connectPacketReader, EndPoint clientEndPoint);
+        public delegate bool ConnectPacketHandler(ReadOnlyPacket connectPacket, EndPoint clientEndPoint);
 
         /// <summary>
         /// Validates incoming connection request and decides whether connection should be accepted or not.
@@ -81,28 +81,28 @@ namespace Link.Nodes
             Started?.Invoke();
         }
 
-        protected override void Consume(PacketReader reader, EndPoint senderEndPoint)
+        protected override void Consume(ReadOnlyPacket packet, EndPoint senderEndPoint)
         {
-            switch ((HeaderType) reader.Read<byte>())
+            switch ((HeaderType) packet.Read<byte>())
             {
                 case HeaderType.Data:
-                    TryGetConnection(senderEndPoint)?.ReceiveData(reader);
+                    TryGetConnection(senderEndPoint)?.ReceiveData(packet);
                     return;
 
                 case HeaderType.Acknowledgement:
-                    TryGetConnection(senderEndPoint)?.ReceiveAcknowledgement(reader);
+                    TryGetConnection(senderEndPoint)?.ReceiveAcknowledgement(packet);
                     return;
 
                 case HeaderType.Ping:
-                    TryGetConnection(senderEndPoint)?.ReceivePing(reader);
+                    TryGetConnection(senderEndPoint)?.ReceivePing(packet);
                     return;
 
                 case HeaderType.Pong:
-                    TryGetConnection(senderEndPoint)?.ReceivePong(reader);
+                    TryGetConnection(senderEndPoint)?.ReceivePong(packet);
                     return;
 
                 case HeaderType.Connect:
-                    HandleConnectPacket(reader, senderEndPoint);
+                    HandleConnectPacket(packet, senderEndPoint);
                     return;
 
                 case HeaderType.Disconnect:
@@ -119,9 +119,9 @@ namespace Link.Nodes
             }
         }
 
-        internal override void Receive(PacketReader reader, EndPoint clientEndPoint) => PacketReceived?.Invoke(reader, clientEndPoint);
+        internal override void Receive(ReadOnlyPacket packet, EndPoint clientEndPoint) => PacketReceived?.Invoke(packet, clientEndPoint);
 
-        private void HandleConnectPacket(PacketReader connectPacketReader, EndPoint senderEndPoint)
+        private void HandleConnectPacket(ReadOnlyPacket connectPacket, EndPoint senderEndPoint)
         {
             if (_connections.TryGetValue(senderEndPoint, out var connection))
             {
@@ -130,7 +130,7 @@ namespace Link.Nodes
                 return;
             }
 
-            if (ConnectionValidator is not null && !ConnectionValidator(connectPacketReader, senderEndPoint))
+            if (ConnectionValidator is not null && !ConnectionValidator(connectPacket, senderEndPoint))
             {
                 Log.Info($"Client connection from {senderEndPoint} was declined as it did not pass the validation test.");
                 return;

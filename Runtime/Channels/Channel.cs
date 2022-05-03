@@ -54,23 +54,23 @@ namespace Link.Channels
         /// <summary>
         /// Receives and processes incoming data-packet.
         /// </summary>
-        internal void Receive(PacketReader reader)
+        internal void Receive(ReadOnlyPacket packet)
         {
             PacketsReceived++;
-            BytesReceived += reader.Size;
-            ReceiveData(reader);
+            BytesReceived += packet.Size;
+            ReceiveData(packet);
         }
 
         /// <summary>
         /// Receives and processes incoming data-packet.
         /// </summary>
-        protected abstract void ReceiveData(PacketReader reader);
+        protected abstract void ReceiveData(ReadOnlyPacket packet);
 
         /// <summary>
         /// Receives and processes acknowledgement packet. This method should be implemented by reliable channels,
         /// but is also useful as a diagnostic tool to write warnings if ack is received on the unreliable channel.
         /// </summary>
-        internal abstract void ReceiveAcknowledgement(PacketReader reader);
+        internal abstract void ReceiveAcknowledgement(ReadOnlyPacket packet);
 
         /// <summary>
         /// Returns statistics of this channel written in textual form.
