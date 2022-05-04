@@ -17,7 +17,7 @@ namespace Link
         /// <summary>
         /// Represents a method that creates connect packet by filling it with required data.
         /// </summary>
-        public delegate void ConnectPacketFactory(PacketWriter connectPacketWriter);
+        public delegate void ConnectPacketFactory(Packet connectPacket);
         
         /// <summary>
         /// Channel slots from 0 to this value are reserved and cannot be changed by the user.
@@ -155,7 +155,7 @@ namespace Link
             void SendConnectPacket()
             {
                 var connectPacket = Packet.Get(HeaderType.Connect);
-                connectPacketFactory?.Invoke(new PacketWriter(connectPacket));
+                connectPacketFactory?.Invoke(connectPacket);
                 Node.Send(connectPacket, RemoteEndPoint);
                 connectPacket.Return();
             }
@@ -178,7 +178,7 @@ namespace Link
         }
 
         internal void SendData(Packet packet) =>
-            RequireChannel(packet.Buffer[1]).Send(packet);
+            RequireChannel(packet.Buffer.Bytes[1]).Send(packet);
 
         internal void ReceiveData(ReadOnlyPacket packet) =>
             RequireChannel(packet.Read<byte>()).Receive(packet);
@@ -234,7 +234,7 @@ namespace Link
         /// </summary>
         internal void Timeout(string timeoutCause)
         {
-            Node.ConsumeOrEnqueuePacket(Packet.Get(HeaderType.Timeout), RemoteEndPoint);
+            Node.ConsumeOrEnqueuePacket(Packet.Get(HeaderType.Timeout).Buffer, RemoteEndPoint);
             Log.Info($"Connection timed-out: {timeoutCause}");
         }
         

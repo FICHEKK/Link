@@ -99,8 +99,8 @@ namespace Link.Nodes
         }
 
         private readonly byte[] _receiveBuffer = new byte[Packet.MaxSize];
-        private Queue<(Packet packet, EndPoint senderEndPoint)> _producerPackets = new();
-        private Queue<(Packet packet, EndPoint senderEndPoint)> _consumerPackets = new();
+        private Queue<(Buffer packet, EndPoint senderEndPoint)> _producerPackets = new();
+        private Queue<(Buffer packet, EndPoint senderEndPoint)> _consumerPackets = new();
 
         private Socket _socket;
         private float _packetLoss;
@@ -167,7 +167,7 @@ namespace Link.Nodes
         {
             if (PacketLoss > 0 && Random.NextDouble() < PacketLoss) return;
 
-            var packet = Packet.From(_receiveBuffer, bytesReceived);
+            var packet = Buffer.From(_receiveBuffer, bytesReceived);
             if (MaxLatency > 0) await Task.Delay(Random.Next(MinLatency, MaxLatency + 1));
 
             ConsumeOrEnqueuePacket(packet, senderEndPoint);
@@ -176,11 +176,8 @@ namespace Link.Nodes
         /// <summary>
         /// Consumes or enqueues a given packet (action is decided by <see cref="IsAutomatic"/>).
         /// </summary>
-        internal void ConsumeOrEnqueuePacket(Packet packet, EndPoint senderEndPoint)
+        internal void ConsumeOrEnqueuePacket(Buffer packet, EndPoint senderEndPoint)
         {
-            if (packet is null) throw new ArgumentNullException(nameof(packet));
-            if (senderEndPoint is null) throw new ArgumentNullException(nameof(senderEndPoint));
-
             if (IsAutomatic)
             {
                 Consume(new ReadOnlyPacket(packet), senderEndPoint);
@@ -205,7 +202,7 @@ namespace Link.Nodes
                 return false;
             }
 
-            _socket.SendTo(packet.Buffer, offset: 0, packet.Size, SocketFlags.None, receiverEndPoint);
+            _socket.SendTo(packet.Buffer.Bytes, offset: 0, packet.Size, SocketFlags.None, receiverEndPoint);
             return true;
         }
 

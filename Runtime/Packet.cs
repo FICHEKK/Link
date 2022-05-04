@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace Link
@@ -7,8 +6,13 @@ namespace Link
     /// <summary>
     /// Represents a single message of arbitrary data that can be sent over the network.
     /// </summary>
-    public sealed class Packet
+    public readonly ref struct Packet
     {
+        /// <summary>
+        /// Sets the default <see cref="Link.Buffer"/> size to <see cref="DefaultMaxSize"/> bytes.
+        /// </summary>
+        static Packet() => Buffer.DefaultSize = DefaultMaxSize;
+
         /// <summary>
         /// Maximum allowed packet size, in bytes. This value must be chosen carefully to avoid
         /// fragmentation on the network layer. Any packets that require bigger size must use a
@@ -20,14 +24,9 @@ namespace Link
         /// </remarks>
         public static int MaxSize
         {
-            get => _maxSize;
-            set => _maxSize = value >= MinSize ? value : throw new ArgumentOutOfRangeException(nameof(MaxSize));
+            get => Buffer.DefaultSize;
+            set => Buffer.DefaultSize = value >= MinSize ? value : throw new ArgumentOutOfRangeException(nameof(MaxSize));
         }
-
-        /// <summary>
-        /// Backing field of <see cref="MaxSize"/> property.
-        /// </summary>
-        private static int _maxSize = DefaultMaxSize;
 
         /// <summary>
         /// Default maximum packet size. If network layer fragmentation occurs when using
@@ -56,116 +55,48 @@ namespace Link
         public const int MinSize = 508;
 
         /// <summary>
-        /// Maximum allowed packet size of a pooled packet. Trying to return a packet with bigger
-        /// buffer to the pool is going to result in packet being rejected by the pool. This is needed
-        /// as a measure to prevent allocating too much memory, which would happen if there we too many
-        /// big packets stored in the pool.
-        /// </summary>
-        private const int MaxSizeInPool = ushort.MaxValue;
-
-        /// <summary>
-        /// Collection of reusable packet instances used to avoid frequent memory allocations.
-        /// </summary>
-        private static readonly Queue<Packet> PacketPool = new();
-
-        /// <summary>
-        /// Represents total number of new packet allocations. This value should eventually stagnate if
-        /// packets are properly returned (unless big packets are created frequently, which will not be
-        /// returned to preserve memory). If this value keeps on increasing, that is a clear sign that
-        /// there is a packet leak - somewhere a packet is taken but not returned to the pool.
-        /// </summary>
-        public static int TotalAllocationCount { get; private set; }
-
-        /// <summary>
-        /// Encoding used for reading and writing <see cref="string"/> values.
+        /// Encoding used for converting <see cref="string"/> to byte-array and vice-versa.
         /// </summary>
         public static Encoding Encoding { get; set; } = Encoding.UTF8;
 
         /// <summary>
         /// Returns the number of bytes currently contained in this packet.
         /// </summary>
-        public int Size { get; private set; }
+        public int Size => Buffer.Size;
 
         /// <summary>
         /// Direct reference to the underlying buffer (defensive copy will <b>not</b> be made).
         /// </summary>
-        internal byte[] Buffer
-        {
-            get => _isInPool ? throw new InvalidOperationException("Cannot get buffer of a packet that is in pool.") : _buffer;
-            private set => _buffer = _isInPool ? throw new InvalidOperationException("Cannot set buffer of a packet that is in pool.") : value;
-        }
-
-        private byte[] _buffer;
-        private bool _isInPool;
+        internal Buffer Buffer { get; }
 
         /// <summary>
         /// Returns a packet that will be sent using specified delivery method.
         /// </summary>
-        public static PacketWriter Get(Delivery delivery) => Get((byte) delivery);
+        public static Packet Get(Delivery delivery) => Get((byte) delivery);
 
         /// <summary>
         /// Returns a packet that will be sent on the specified channel.
         /// </summary>
-        public static PacketWriter Get(byte channelId) => new PacketWriter(Get(HeaderType.Data)).Write(channelId);
+        public static Packet Get(byte channelId) => Get(HeaderType.Data).Write(channelId);
 
         /// <summary>
         /// Returns a packet with specific <see cref="HeaderType"/>.
         /// </summary>
-        internal static Packet Get(HeaderType headerType)
-        {
-            var packet = Get();
-            packet.Write((byte) headerType);
-            return packet;
-        }
-
-        internal static Packet Copy(Packet packet)
-        {
-            // Since packet is provided from the outside source, property
-            // getters need to be used to ensure packet is not in the pool.
-            var copy = Get();
-            Array.Copy(packet.Buffer, copy._buffer, packet.Size);
-            copy.Size = packet.Size;
-            return copy;
-        }
-
-        internal static Packet From(byte[] buffer, int size)
-        {
-            var packet = Get();
-            Array.Copy(buffer, packet._buffer, size);
-            packet.Size = size;
-            return packet;
-        }
-
-        internal static Packet With(byte[] buffer)
-        {
-            var packet = Get();
-            packet.Buffer = buffer;
-            packet.Size = buffer.Length;
-            return packet;
-        }
+        internal static Packet Get(HeaderType headerType) => Get().Write(headerType);
 
         /// <summary>
         /// Returns an empty packet.
         /// </summary>
-        internal static Packet Get()
-        {
-            lock (PacketPool)
-            {
-                if (PacketPool.Count > 0)
-                {
-                    var packet = PacketPool.Dequeue();
-                    packet.Size = 0;
-                    packet._isInPool = false;
-                    return packet;
-                }
-            }
+        internal static Packet Get() => new(Buffer.Get());
 
-            TotalAllocationCount++;
-            return new Packet(MaxSize);
-        }
+        /// <summary>
+        /// Creates a new <see cref="Packet"/> that wraps around specified <see cref="Link.Buffer"/>.
+        /// </summary>
+        internal Packet(Buffer buffer) => Buffer = buffer;
 
-        private Packet(int size) => _buffer = new byte[size];
-
+        /// <summary>
+        /// Writes a <see cref="string"/> to this packet (using encoding defined by <see cref="Encoding"/>).
+        /// </summary>
         public Packet Write(string value)
         {
             if (value is null) throw new InvalidOperationException("Cannot write null string to a packet.");
@@ -174,72 +105,45 @@ namespace Link
             return this;
         }
 
-        public unsafe Packet Write<T>(T value) where T : unmanaged
+        /// <summary>
+        /// Writes a value of specified type to this packet.
+        /// </summary>
+        public Packet Write<T>(T value) where T : unmanaged
         {
-            var bytesToWrite = sizeof(T);
-            EnsureBufferSize(Size + bytesToWrite);
-            Buffer.Write(value, Size);
-            Size += bytesToWrite;
+            Buffer.Write(value);
             return this;
-        }
-
-        public unsafe Packet WriteArray<T>(T[] array) where T : unmanaged
-        {
-            if (array is null) throw new InvalidOperationException("Cannot write null array to a packet.");
-            
-            var bytesToWrite = sizeof(int) + array.Length * sizeof(T);
-            EnsureBufferSize(Size + bytesToWrite);
-            Buffer.WriteArray(array, Size);
-            Size += bytesToWrite;
-            return this;
-        }
-
-        public unsafe Packet WriteSlice<T>(T[] array, int start, int length) where T : unmanaged
-        {
-            if (array is null) throw new InvalidOperationException("Cannot write slice of null array to a packet.");
-            
-            var bytesToWrite = length * sizeof(T);
-            EnsureBufferSize(Size + bytesToWrite);
-            Buffer.WriteSlice(array, start, length, Size);
-            Size += bytesToWrite;
-            return this;
-        }
-
-        private void EnsureBufferSize(int requiredBufferSize)
-        {
-            var currentBuffer = Buffer;
-            if (currentBuffer.Length >= requiredBufferSize) return;
-
-            var expandedBuffer = new byte[Math.Max(currentBuffer.Length * 2, requiredBufferSize)];
-            Array.Copy(currentBuffer, expandedBuffer, Size);
-            Buffer = expandedBuffer;
         }
 
         /// <summary>
-        /// Returns this packet to the pool unless it is already in the pool
-        /// or its size exceeds <see cref="MaxSizeInPool"/> bytes.
+        /// Writes an entire array to this packet.
         /// </summary>
-        /// <returns><c>true</c> if packet was successfully returned to the pool, <c>false</c> otherwise.</returns>
-        public bool Return()
+        /// <param name="array">Array to write.</param>
+        /// <param name="writeLength">
+        /// If <c>true</c>, length of the given array will be written before writing
+        /// array elements, otherwise only array elements will be written.
+        /// </param>
+        public Packet WriteArray<T>(T[] array, bool writeLength = true) where T : unmanaged =>
+            WriteArray(array, start: 0, length: array.Length, writeLength);
+
+        /// <summary>
+        /// Writes the portion of an array to this packet. 
+        /// </summary>
+        /// <param name="array">Array to write.</param>
+        /// <param name="start">Index in the array from which to start writing elements.</param>
+        /// <param name="length">Number of elements to write.</param>
+        /// <param name="writeLength">If <c>true</c>, length will be written before elements, otherwise only elements will be written.</param>
+        public Packet WriteArray<T>(T[] array, int start, int length, bool writeLength = true) where T : unmanaged
         {
-            lock (PacketPool)
-            {
-                if (_isInPool)
-                {
-                    Log.Error("Attempt was made to return a packet that is already in pool.");
-                    return false;
-                }
-
-                if (_buffer.Length > MaxSizeInPool)
-                {
-                    Log.Info($"Big packet ({_buffer.Length} bytes) was not returned to the pool to preserve memory.");
-                    return false;
-                }
-
-                PacketPool.Enqueue(this);
-                _isInPool = true;
-                return true;
-            }
+            if (array is null) throw new InvalidOperationException("Cannot write null array to a packet.");
+            
+            if (writeLength) Buffer.Write(array.Length);
+            Buffer.WriteArray(array, start, length);
+            return this;
         }
+
+        /// <summary>
+        /// Disposes of this packet by returning previously borrowed <see cref="Link.Buffer"/> to the pool.
+        /// </summary>
+        public void Return() => Buffer.Return();
     }
 }

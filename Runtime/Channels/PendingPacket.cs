@@ -18,7 +18,7 @@ namespace Link.Channels
         private readonly Timer _resendTimer;
         private readonly object _lock = new();
 
-        private Packet _packet;
+        private Buffer _packet;
         private ReliableChannel _reliableChannel;
         private int _resendAttempts;
         private double _backoff;
@@ -29,7 +29,7 @@ namespace Link.Channels
             // 1. If same packet is sent to multiple end-points, it would get returned multiple times.
             // 2. We can immediately return original packet to pool as usual, making logic consistent.
             var pendingPacket = Get();
-            pendingPacket._packet = Packet.Copy(packet);
+            pendingPacket._packet = Buffer.Copy(packet.Buffer);
             pendingPacket._reliableChannel = reliableChannel;
             pendingPacket._resendAttempts = 0;
             pendingPacket._backoff = 1;
@@ -60,13 +60,13 @@ namespace Link.Channels
 
                 if (_resendAttempts < _reliableChannel.MaxResendAttempts)
                 {
-                    _reliableChannel.ResendPacket(_packet);
+                    _reliableChannel.ResendPacket(new Packet(_packet));
                     _resendAttempts++;
                     ScheduleResend();
                 }
                 else
                 {
-                    _reliableChannel.HandleLostPacket(_packet);
+                    _reliableChannel.HandleLostPacket(new Packet(_packet));
                     Acknowledge();
                 }
             }

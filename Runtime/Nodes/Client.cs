@@ -120,13 +120,13 @@ namespace Link.Nodes
         /// <summary>
         /// Sends a packet to the server.
         /// </summary>
-        /// <param name="writer">Packet being sent.</param>
-        public void Send(PacketWriter writer)
+        /// <param name="packet">Packet being sent.</param>
+        public void Send(Packet packet)
         {
             if (!IsConnected) throw new InvalidOperationException("Cannot send packet as client is not connected to the server.");
 
-            Connection.SendData(writer.Packet);
-            writer.Packet.Return();
+            Connection.SendData(packet);
+            packet.Return();
         }
 
         /// <summary>

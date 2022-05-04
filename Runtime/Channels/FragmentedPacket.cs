@@ -8,7 +8,7 @@ namespace Link.Channels
     /// </summary>
     internal class FragmentedPacket
     {
-        private readonly Dictionary<int, Packet> _fragments = new();
+        private readonly Dictionary<int, Buffer> _fragments = new();
         private readonly int _headerSize;
         private readonly int _bodySize;
         private readonly int _footerSize;
@@ -17,7 +17,7 @@ namespace Link.Channels
         /// <summary>
         /// Returns reassembled packet if all fragments have been received, <c>null</c> otherwise.
         /// </summary>
-        public Packet ReassembledPacket { get; private set; }
+        public Buffer ReassembledPacket { get; private set; }
 
         /// <summary>
         /// Returns the current number of fragments stored inside this fragmented packet.
@@ -45,7 +45,7 @@ namespace Link.Channels
         /// <param name="fragmentNumber">Fragment number which defines where this packet is located in the full packet.</param>
         /// <param name="isLastFragment">Whether or not this fragment is the last piece of the full packet.</param>
         /// <returns><c>true</c> if fragment was successfully added, <c>false</c> if it already exists.</returns>
-        public bool Add(Packet fragment, int fragmentNumber, bool isLastFragment)
+        public bool Add(Buffer fragment, int fragmentNumber, bool isLastFragment)
         {
             if (fragment is null) throw new InvalidOperationException("Cannot add null fragment to fragmented packet.");
             if (fragmentNumber < 0) throw new InvalidOperationException("Fragment number cannot be a negative value.");
@@ -71,14 +71,14 @@ namespace Link.Channels
         private void Reassemble()
         {
             var lastFragmentByteCount = _fragments[_lastFragmentNumber].Size - _headerSize - _footerSize;
-            ReassembledPacket = Packet.With(new byte[_lastFragmentNumber * _bodySize + lastFragmentByteCount]);
+            ReassembledPacket = Buffer.With(new byte[_lastFragmentNumber * _bodySize + lastFragmentByteCount]);
 
             // Copy data from all of the full fragments.
             for (var i = 0; i < _lastFragmentNumber; i++)
-                Array.Copy(_fragments[i].Buffer, _headerSize, ReassembledPacket.Buffer, i * _bodySize, _bodySize);
+                Array.Copy(_fragments[i].Bytes, _headerSize, ReassembledPacket.Bytes, i * _bodySize, _bodySize);
 
             // Copy data from the last fragment.
-            Array.Copy(_fragments[_lastFragmentNumber].Buffer, _headerSize, ReassembledPacket.Buffer, _lastFragmentNumber * _bodySize, lastFragmentByteCount);
+            Array.Copy(_fragments[_lastFragmentNumber].Bytes, _headerSize, ReassembledPacket.Bytes, _lastFragmentNumber * _bodySize, lastFragmentByteCount);
 
             // Once we have a reassembled packet, we no longer need fragments.
             foreach (var fragment in _fragments.Values) fragment.Return();

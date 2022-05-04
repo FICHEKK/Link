@@ -3,7 +3,7 @@ using System;
 namespace Link
 {
     /// <summary>
-    /// Represents a read-only view into incoming packet.
+    /// Represents a read-only packet view.
     /// </summary>
     public ref struct ReadOnlyPacket
     {
@@ -12,8 +12,10 @@ namespace Link
         /// </summary>
         public int BytesLeft => Size - Position;
 
-        /// <inheritdoc cref="Link.Packet.Size"/>
-        public int Size => Packet.Size;
+        /// <summary>
+        /// Returns total number of bytes contained in the packet.
+        /// </summary>
+        public int Size => Buffer.Size;
         
         /// <summary>
         /// Gets or sets the index at which next read operation will be performed.
@@ -23,14 +25,14 @@ namespace Link
         /// <summary>
         /// Underlying packet from which this read-only view is reading from.
         /// </summary>
-        internal Packet Packet { get; }
+        internal Buffer Buffer { get; }
 
         /// <summary>
         /// Creates a new read-only view of the given packet, which starts reading at the specified position.
         /// </summary>
-        internal ReadOnlyPacket(Packet packet, int position = 0)
+        internal ReadOnlyPacket(Buffer buffer, int position = 0)
         {
-            Packet = packet;
+            Buffer = buffer;
             Position = position;
         }
         
@@ -44,7 +46,7 @@ namespace Link
             if (BytesLeft < stringByteCount)
                 throw new InvalidOperationException("Could not read string (out-of-bounds bytes).");
             
-            var stringValue = Packet.Encoding.GetString(Packet.Buffer, Position, stringByteCount);
+            var stringValue = Packet.Encoding.GetString(Buffer.Bytes, Position, stringByteCount);
             Position += stringByteCount;
             return stringValue;
         }
@@ -57,42 +59,38 @@ namespace Link
             if (BytesLeft < sizeof(T))
                 throw new InvalidOperationException($"Could not read value of type '{typeof(T)}' (out-of-bounds bytes).");
             
-            var value = Packet.Buffer.Read<T>(Position);
+            var value = Buffer.Read<T>(Position);
             Position += sizeof(T);
             return value;
         }
 
         /// <summary>
         /// Reads an array of values of specified type from the packet.
-        /// This method first reads number of elements, then calls <see cref="ReadSlice{T}"/>.
         /// </summary>
-        public T[] ReadArray<T>() where T : unmanaged
-        {
-            var length = Read<int>();
-            return ReadSlice<T>(length);
-        }
-        
-        /// <summary>
-        /// Reads a slice of values of specified type from the packet.
-        /// This method simply reads specified number of elements from the packet.
-        /// </summary>
-        public unsafe T[] ReadSlice<T>(int length) where T : unmanaged
+        /// <param name="length">
+        /// If set to 0 or greater, exactly that many elements will be read from the packet.
+        /// If set to a negative value, length of the array will be read from the packet.
+        /// </param>
+        public unsafe T[] ReadArray<T>(int length = -1) where T : unmanaged
         {
             if (length == 0)
                 return Array.Empty<T>();
             
             if (length < 0)
-                throw new InvalidOperationException($"Cannot read slice of length {length} as it is negative.");
+                length = Read<int>();
+
+            if (length < 0)
+                throw new InvalidOperationException($"Cannot read array of length {length} as it is negative.");
 
             if (length * sizeof(T) < 0)
-                throw new InvalidOperationException($"Cannot read slice of length {length} as it is too big.");
+                throw new InvalidOperationException($"Cannot read array of length {length} as it is too big.");
             
             if (BytesLeft < length * sizeof(T))
-                throw new InvalidOperationException($"Could not read slice of type '{typeof(T)}' (out-of-bounds bytes).");
+                throw new InvalidOperationException($"Could not read array of type '{typeof(T)}' (out-of-bounds bytes).");
 
-            var slice = Packet.Buffer.ReadSlice<T>(length, Position);
+            var array = Buffer.ReadArray<T>(length, Position);
             Position += length * sizeof(T);
-            return slice;
+            return array;
         }
         
         internal T Read<T>(int position) where T : unmanaged

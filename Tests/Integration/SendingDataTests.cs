@@ -59,7 +59,7 @@ public class SendingDataTests
     [Test]
     public void Sending_packet_with_size_greater_than_max_size_should_fail()
     {
-        var packet = Packet.Get().WriteSlice(new byte[1024], start: 0, length: 1024);
+        var packet = Packet.Get().WriteArray(new byte[1024], writeLength: false);
         
         Assert.That(_client.Send(packet, _client.Connection.RemoteEndPoint), Is.True);
         Packet.MaxSize = 1000;

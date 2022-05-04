@@ -8,7 +8,7 @@ namespace Link.Channels
         private const int BitsInAckBitField = sizeof(int) * 8;
 
         private readonly Dictionary<ushort, PendingPacket> _pendingPackets = new();
-        private readonly Packet[] _receivedPackets = new Packet[ReceiveBufferSize];
+        private readonly Buffer[] _receivedPackets = new Buffer[ReceiveBufferSize];
         private readonly bool _isOrdered;
 
         private ushort _localSequenceNumber;
@@ -44,7 +44,7 @@ namespace Link.Channels
                 return;
             }
 
-            _receivedPackets[sequenceNumber] = Packet.Copy(packet.Packet);
+            _receivedPackets[sequenceNumber] = Buffer.Copy(packet.Buffer);
             _receivedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
 
             if (!_isOrdered)
@@ -59,11 +59,11 @@ namespace Link.Channels
                 _receiveSequenceNumber++;
             }
 
-            void ReceivePacket(Packet p)
+            void ReceivePacket(Buffer buffer)
             {
-                var readOnlyPacket = new ReadOnlyPacket(p, position: HeaderSize);
+                var readOnlyPacket = new ReadOnlyPacket(buffer, position: HeaderSize);
                 Connection.Node.Receive(readOnlyPacket, Connection.RemoteEndPoint);
-                p.Return();
+                buffer.Return();
             }
         }
 

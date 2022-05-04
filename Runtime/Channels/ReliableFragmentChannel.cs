@@ -81,10 +81,9 @@ namespace Link.Channels
                 {
                     var fragmentNumber = i < fragmentCount - 1 ? (ushort) i : (ushort) (i | LastFragmentBitmask);
                     var fragmentLength = i < fragmentCount - 1 ? BodySize : dataByteCount - i * BodySize;
-                    var fragment = Packet.Get(HeaderType.Data);
+                    var fragment = Packet.Get(channelId: packet.Buffer.Bytes[1]);
 
-                    fragment.Write(packet.Buffer[1]);
-                    fragment.WriteSlice(packet.Buffer, start: HeaderSize + i * BodySize, length: fragmentLength);
+                    fragment.WriteArray(packet.Buffer.Bytes, start: HeaderSize + i * BodySize, length: fragmentLength, writeLength: false);
                     fragment.Write(_localSequenceNumber);
                     fragment.Write(fragmentNumber);
 
@@ -117,7 +116,7 @@ namespace Link.Channels
                 _fragmentedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
             }
 
-            if (!fragmentedPacket.Add(Packet.Copy(packet.Packet), fragmentNumber & ~LastFragmentBitmask, (fragmentNumber & LastFragmentBitmask) != 0))
+            if (!fragmentedPacket.Add(Buffer.Copy(packet.Buffer), fragmentNumber & ~LastFragmentBitmask, (fragmentNumber & LastFragmentBitmask) != 0))
             {
                 PacketsDuplicated++;
                 BytesDuplicated += packet.Size;
