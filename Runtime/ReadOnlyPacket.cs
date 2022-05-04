@@ -8,11 +8,6 @@ namespace Link
     public ref struct ReadOnlyPacket
     {
         /// <summary>
-        /// Returns how many more bytes can be read from the packet.
-        /// </summary>
-        public int BytesLeft => Size - Position;
-
-        /// <summary>
         /// Returns total number of bytes contained in the packet.
         /// </summary>
         public int Size => Buffer.Size;
@@ -43,7 +38,7 @@ namespace Link
         {
             var stringByteCount = Read<int>();
             
-            if (BytesLeft < stringByteCount)
+            if (Size - Position < stringByteCount)
                 throw new InvalidOperationException("Could not read string (out-of-bounds bytes).");
             
             var stringValue = Packet.Encoding.GetString(Buffer.Bytes, Position, stringByteCount);
@@ -56,7 +51,7 @@ namespace Link
         /// </summary>
         public unsafe T Read<T>() where T : unmanaged
         {
-            if (BytesLeft < sizeof(T))
+            if (Size - Position < sizeof(T))
                 throw new InvalidOperationException($"Could not read value of type '{typeof(T)}' (out-of-bounds bytes).");
             
             var value = Buffer.Read<T>(Position);
@@ -85,7 +80,7 @@ namespace Link
             if (length * sizeof(T) < 0)
                 throw new InvalidOperationException($"Cannot read array of length {length} as it is too big.");
             
-            if (BytesLeft < length * sizeof(T))
+            if (Size - Position < length * sizeof(T))
                 throw new InvalidOperationException($"Could not read array of type '{typeof(T)}' (out-of-bounds bytes).");
 
             var array = Buffer.ReadArray<T>(length, Position);
