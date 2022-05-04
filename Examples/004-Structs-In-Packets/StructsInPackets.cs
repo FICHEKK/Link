@@ -34,7 +34,12 @@ public static class StructsInPackets
         packet.Write(new Point(1, 2, 3));
 
         // We can even write nested structs just as easily.
-        packet.Write(new Line(start: new Point(4, 5, 6), end: new Point(7, 8, 9)));
+        var line = new Line(start: new Point(4, 5, 6), end: new Point(7, 8, 9));
+        packet.Write(line);
+
+        // Even arrays of structs work!
+        packet.WriteArray(new Point[] { new(0, 0, 0), new(1, 1, 1), new(2, 2, 2) });
+        packet.WriteArray(new[] { line, line, line });
         
         // Packet is done, ship it!
         return packet;
@@ -45,9 +50,13 @@ public static class StructsInPackets
         // Read custom structs the same way you should any other primitive.
         var point = packet.Read<Point>();
         var line = packet.Read<Line>();
+        var points = packet.ReadArray<Point>();
+        var lines = packet.ReadArray<Line>();
         
         Console.WriteLine($"Point: {point}");
         Console.WriteLine($"Line: {line}");
+        Console.WriteLine($"Points: {string.Join(", ", points)}");
+        Console.WriteLine($"Lines: {string.Join(", ", lines)}");
     }
 
     // Our custom data structure that we wish to read/write to the packet.

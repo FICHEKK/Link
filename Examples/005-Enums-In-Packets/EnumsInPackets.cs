@@ -36,6 +36,9 @@ public static class EnumsInPackets
         packet.Write(Direction.South);
         packet.Write(Direction.West);
 
+        // Even write arrays of enums!
+        packet.WriteArray(new[] { Direction.East, Direction.West });
+
         // Packet is done, ship it!
         return packet;
     }
@@ -47,6 +50,9 @@ public static class EnumsInPackets
         Console.WriteLine(packet.Read<Direction>());
         Console.WriteLine(packet.Read<Direction>());
         Console.WriteLine(packet.Read<Direction>());
+
+        var directions = packet.ReadArray<Direction>();
+        Console.WriteLine($"Directions: {string.Join(", ", directions)}");
     }
 
     // Our custom enum that we wish to read/write to the packet.
