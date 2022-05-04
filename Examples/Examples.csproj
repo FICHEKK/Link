@@ -7,7 +7,7 @@
         <Nullable>enable</Nullable>
         <AssemblyName>Link.Examples</AssemblyName>
         <RootNamespace>Link.Examples</RootNamespace>
-        <StartupObject>Link.Examples._006_Default_Channels.DefaultChannels</StartupObject>
+        <StartupObject>Link.Examples._007_Custom_Channels.CustomChannels</StartupObject>
     </PropertyGroup>
 
     <ItemGroup>
