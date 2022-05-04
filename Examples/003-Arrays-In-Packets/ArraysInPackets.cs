@@ -1,13 +1,9 @@
-using Link.Examples._002_Complex_Packet;
 using Link.Nodes;
 
 namespace Link.Examples._003_Arrays_In_Packets;
 
 /// <summary>
-/// This example builds on top of <see cref="ComplexPacket"/> example.
-/// <br/><br/>
-/// This example explains and demonstrates all of the ways an array can
-/// be written to and read from the packet.
+/// This example explains and demonstrates all of the ways an array can be written to and read from the packet.
 /// </summary>
 public static class ArraysInPackets
 {

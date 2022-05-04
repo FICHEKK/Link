@@ -1,12 +1,9 @@
-using Link.Examples._001_Hello_World;
 using Link.Nodes;
 
 namespace Link.Examples._002_Complex_Packet;
 
 /// <summary>
-/// This example builds on top of <see cref="HelloWorld"/> example.
-/// <br/><br/>
-/// This example explains and demonstrates how more complex packets are created and handled.
+/// This example explains and demonstrates how more complex packets can be created and handled.
 /// </summary>
 public static class ComplexPacket
 {

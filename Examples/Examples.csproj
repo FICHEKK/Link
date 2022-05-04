@@ -7,7 +7,7 @@
         <Nullable>enable</Nullable>
         <AssemblyName>Link.Examples</AssemblyName>
         <RootNamespace>Link.Examples</RootNamespace>
-        <StartupObject>Link.Examples._005_Enums_In_Packets.EnumsInPackets</StartupObject>
+        <StartupObject>Link.Examples._006_Default_Channels.DefaultChannels</StartupObject>
     </PropertyGroup>
 
     <ItemGroup>

@@ -18,6 +18,11 @@ namespace Link
         public int Position { get; set; }
         
         /// <summary>
+        /// Returns identifier of the channel on which this packet was received on.
+        /// </summary>
+        public byte ChannelId => Buffer.Bytes[1];
+        
+        /// <summary>
         /// Underlying packet from which this read-only view is reading from.
         /// </summary>
         internal Buffer Buffer { get; }

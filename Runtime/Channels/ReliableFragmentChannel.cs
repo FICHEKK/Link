@@ -44,19 +44,13 @@ namespace Link.Channels
             var dataByteCount = packet.Size - HeaderSize;
             var fragmentCount = dataByteCount / BodySize + (dataByteCount % BodySize != 0 ? 1 : 0);
 
-            if (fragmentCount == 0)
-            {
-                Log.Error($"Attempted to send a packet with 0 data bytes on channel '{Name}'.");
-                return (0, 0);
-            }
-
             if (fragmentCount > MaxFragmentCount)
             {
                 Log.Error($"Packet is too large (consists of {fragmentCount} fragments, while maximum is {MaxFragmentCount} fragments).");
                 return (0, 0);
             }
 
-            return fragmentCount == 1 ? SendSingleFragmentPacket(packet) : SendMultiFragmentPacket(packet, fragmentCount, dataByteCount);
+            return fragmentCount > 1 ? SendMultiFragmentPacket(packet, fragmentCount, dataByteCount) : SendSingleFragmentPacket(packet);
         }
 
         private (int packetsSent, int bytesSent) SendSingleFragmentPacket(Packet packet)
