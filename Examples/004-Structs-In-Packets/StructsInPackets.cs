@@ -25,17 +25,29 @@ public static class StructsInPackets
 
     private static Packet CreatePacket()
     {
+        // Packet to write structs to.
+        var packet = Packet.Get(Delivery.Reliable);
+        
         // We can easily write any custom struct to the packet just
         // as we would any other primitive type. The only constraint
         // is that struct must be unmanaged type.
-        return Packet.Get(Delivery.Reliable).Write(new Point(1, 2, 3));
+        packet.Write(new Point(1, 2, 3));
+
+        // We can even write nested structs just as easily.
+        packet.Write(new Line(start: new Point(4, 5, 6), end: new Point(7, 8, 9)));
+        
+        // Packet is done, ship it!
+        return packet;
     }
 
     private static void HandlePacket(ReadOnlyPacket packet)
     {
-        // Read custom struct as if it was any other primitive.
+        // Read custom structs the same way you should any other primitive.
         var point = packet.Read<Point>();
-        Console.WriteLine($"Point: ({point.X}, {point.Y}, {point.Z})");
+        var line = packet.Read<Line>();
+        
+        Console.WriteLine($"Point: {point}");
+        Console.WriteLine($"Line: {line}");
     }
 
     // Our custom data structure that we wish to read/write to the packet.
@@ -51,5 +63,22 @@ public static class StructsInPackets
             Y = y;
             Z = z;
         }
+
+        public override string ToString() => $"({X}, {Y}, {Z})";
+    }
+
+    // We can even have nested structures.
+    private readonly struct Line
+    {
+        public Point Start { get; }
+        public Point End { get; }
+
+        public Line(Point start, Point end)
+        {
+            Start = start;
+            End = end;
+        }
+
+        public override string ToString() => $"{Start} - {End}";
     }
 }
