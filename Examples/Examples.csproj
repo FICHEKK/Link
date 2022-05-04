@@ -7,7 +7,7 @@
         <Nullable>enable</Nullable>
         <AssemblyName>Link.Examples</AssemblyName>
         <RootNamespace>Link.Examples</RootNamespace>
-        <StartupObject>Link.Examples._003_Arrays_In_Packets.ArraysInPackets</StartupObject>
+        <StartupObject>Link.Examples._004_Structs_In_Packets.StructsInPackets</StartupObject>
     </PropertyGroup>
 
     <ItemGroup>
