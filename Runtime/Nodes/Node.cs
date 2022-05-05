@@ -13,6 +13,16 @@ namespace Link.Nodes
     public abstract class Node : IDisposable
     {
         /// <summary>
+        /// Defines a method that handles incoming data-packet.
+        /// </summary>
+        public delegate void PacketHandler(ReadOnlyPacket packet, EndPoint senderEndPoint);
+        
+        /// <summary>
+        /// Raised each time a data-packet is received.
+        /// </summary>
+        public event PacketHandler PacketReceived;
+        
+        /// <summary>
         /// Default socket send and receive buffer size.
         /// </summary>
         private const int DefaultBufferSize = 1024 * 1024;
@@ -242,7 +252,7 @@ namespace Link.Nodes
         /// <summary>
         /// Performs the logic of receiving a data-packet.
         /// </summary>
-        internal abstract void Receive(ReadOnlyPacket packet, EndPoint senderEndPoint);
+        internal void Receive(ReadOnlyPacket packet, EndPoint senderEndPoint) => PacketReceived?.Invoke(packet, senderEndPoint);
 
         /// <summary>
         /// Stop listening for incoming packets.

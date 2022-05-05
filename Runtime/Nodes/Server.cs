@@ -22,16 +22,6 @@ namespace Link.Nodes
         public ConnectPacketHandler ConnectionValidator { get; set; }
         
         /// <summary>
-        /// Defines a method that handles incoming packet from a client.
-        /// </summary>
-        public delegate void PacketHandler(ReadOnlyPacket packet, EndPoint clientEndPoint);
-        
-        /// <summary>
-        /// Raised each time a packet is received from a client.
-        /// </summary>
-        public event PacketHandler PacketReceived;
-        
-        /// <summary>
         /// Invoked each time server starts and begins listening for client connections.
         /// </summary>
         public event Action Started;
@@ -118,8 +108,6 @@ namespace Link.Nodes
                     return;
             }
         }
-
-        internal override void Receive(ReadOnlyPacket packet, EndPoint clientEndPoint) => PacketReceived?.Invoke(packet, clientEndPoint);
 
         private void HandleConnectPacket(ReadOnlyPacket connectPacket, EndPoint senderEndPoint)
         {

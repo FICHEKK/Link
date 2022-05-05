@@ -16,16 +16,6 @@ namespace Link.Nodes
         public delegate void ConnectPacketFactory(Packet connectPacket);
         
         /// <summary>
-        /// Defines a method that handles incoming data-packet from the server.
-        /// </summary>
-        public delegate void PacketHandler(ReadOnlyPacket packet);
-        
-        /// <summary>
-        /// Raised each time a data-packet is received from the server.
-        /// </summary>
-        public event PacketHandler PacketReceived;
-        
-        /// <summary>
         /// Invoked each time client starts the process of establishing connection with the server.
         /// </summary>
         public event Action Connecting;
@@ -160,8 +150,6 @@ namespace Link.Nodes
                     return;
             }
         }
-
-        internal override void Receive(ReadOnlyPacket packet, EndPoint _) => PacketReceived?.Invoke(packet);
 
         /// <summary>
         /// Sends a packet to the server.
