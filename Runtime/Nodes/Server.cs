@@ -202,15 +202,19 @@ namespace Link.Nodes
         /// Stops this server which disconnects all the clients
         /// and prevents any further incoming packets.
         /// </summary>
-        public void Stop() => Dispose();
+        public void Stop()
+        {
+            Dispose();
+            Stopped?.Invoke();
+        }
 
         protected override void Dispose(bool isDisposing)
         {
-            foreach (var connection in _connections.Values) connection.Close();
+            foreach (var connection in _connections.Values)
+                connection.Close();
 
             _connections.Clear();
             base.Dispose(isDisposing);
-            Stopped?.Invoke();
         }
     }
 }

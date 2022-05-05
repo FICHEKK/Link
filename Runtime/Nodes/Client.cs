@@ -87,8 +87,7 @@ namespace Link.Nodes
                 if (!IsConnecting) return;
             }
 
-            Connection?.Close();
-            Connection = null;
+            Dispose();
             ConnectFailed?.Invoke();
 
             void SendConnectPacket()
@@ -166,17 +165,16 @@ namespace Link.Nodes
         /// <summary>
         /// Disconnects from the server and stops listening for incoming packets.
         /// </summary>
-        public void Disconnect() => Dispose();
+        public void Disconnect()
+        {
+            Dispose();
+            Disconnected?.Invoke();
+        }
 
         protected override void Dispose(bool isDisposing)
         {
-            if (Connection is not null)
-            {
-                Connection.Close();
-                Connection = null;
-                Disconnected?.Invoke();
-            }
-
+            Connection?.Close();
+            Connection = null;
             base.Dispose(isDisposing);
         }
     }
