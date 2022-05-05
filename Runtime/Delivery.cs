@@ -10,7 +10,7 @@ namespace Link
         /// <br/><br/>
         /// Useful for inspecting network. Example: ping packets when trying to calculate round-trip-time and packet loss.
         /// </summary>
-        Unreliable,
+        Unreliable = 240,
 
         /// <summary>
         /// Sequence number is attached to each packet. Packets can be lost, but won't be duplicated and will preserve order.

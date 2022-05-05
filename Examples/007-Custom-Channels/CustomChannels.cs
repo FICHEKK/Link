@@ -22,8 +22,10 @@ public static class CustomChannels
     private const string IpAddress = "127.0.0.1";
     private const int Port = 7777;
 
-    // Identifier of our custom channel. Channel identifiers from 0 to 15 are reserved by the library.
-    private const byte TextMessageChannelId = 16;
+    // Identifier of our custom channel.
+    // We can use first 240 byte values (from 0 to 239).
+    // Byte values from 240 to 255 are reserved by the library.
+    private const byte TextMessageChannelId = 0;
 
     public static void Main()
     {

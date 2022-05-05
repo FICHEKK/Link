@@ -14,12 +14,12 @@ namespace Link
     public class Connection
     {
         /// <summary>
-        /// Channel slots from 0 to this value are reserved and cannot be changed by the user.
+        /// Channel slots from this value to 255 are reserved and cannot be changed by the user.
         /// This channel range defines channels for all of the basic delivery methods, which
         /// relieves the user from having to declare any channels (making custom channels an
         /// optional feature).
         /// </summary>
-        private const byte MaxReservedChannelId = 15;
+        private const byte MinReservedChannelId = (byte) Delivery.Unreliable;
         
         /// <summary>
         /// Underlying node that this connection belongs to.
@@ -110,8 +110,8 @@ namespace Link
             get => _channels[channelId];
             set
             {
-                if (channelId <= MaxReservedChannelId)
-                    throw new InvalidOperationException($"Failed to set channel (ID = {channelId}) as slots from 0 to {MaxReservedChannelId} are reserved.");
+                if (channelId >= MinReservedChannelId)
+                    throw new InvalidOperationException($"Failed to set channel (ID = {channelId}) as slots from {MinReservedChannelId} to 255 are reserved.");
 
                 if (_channels[channelId] is not null)
                     throw new InvalidOperationException($"Channel slot (ID = {channelId}) is already filled by channel named '{_channels[channelId].Name}'.");

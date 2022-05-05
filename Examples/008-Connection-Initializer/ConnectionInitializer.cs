@@ -35,9 +35,9 @@ public static class ConnectionInitializer
         connection.DeviationFactor = 0.35;
 
         // Or we can add custom channels:
-        connection[16] = new UnreliableChannel(connection);
-        connection[17] = new SequencedChannel(connection);
-        connection[18] = new ReliablePacketChannel(connection, isOrdered: true);
-        connection[19] = new ReliableFragmentChannel(connection, isOrdered: true);
+        connection[0] = new UnreliableChannel(connection);
+        connection[1] = new SequencedChannel(connection);
+        connection[2] = new ReliablePacketChannel(connection, isOrdered: true);
+        connection[3] = new ReliableFragmentChannel(connection, isOrdered: true);
     }
 }
