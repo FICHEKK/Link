@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Net;
 using System.Threading;
-using System.Threading.Tasks;
 using Link.Channels;
 using Link.Nodes;
 
@@ -15,11 +14,6 @@ namespace Link
     public class Connection
     {
         /// <summary>
-        /// Represents a method that creates connect packet by filling it with required data.
-        /// </summary>
-        public delegate void ConnectPacketFactory(Packet connectPacket);
-        
-        /// <summary>
         /// Channel slots from 0 to this value are reserved and cannot be changed by the user.
         /// This channel range defines channels for all of the basic delivery methods, which
         /// relieves the user from having to declare any channels (making custom channels an
@@ -30,22 +24,12 @@ namespace Link
         /// <summary>
         /// Underlying node that this connection belongs to.
         /// </summary>
-        public Node Node { get; }
+        internal Node Node { get; }
 
         /// <summary>
         /// Remote end-point to which this connection is pointing to.
         /// </summary>
         public EndPoint RemoteEndPoint { get; }
-
-        /// <summary>
-        /// Maximum number of connect attempts before considering remote host as unreachable.
-        /// </summary>
-        public int MaxConnectAttempts { get; set; } = 5;
-
-        /// <summary>
-        /// Delay between consecutive connect attempts, in milliseconds.
-        /// </summary>
-        public int DelayBetweenConnectAttempts { get; set; } = 1000;
 
         /// <summary>
         /// Duration between two consecutive ping packets, in milliseconds.
@@ -95,14 +79,14 @@ namespace Link
         private uint _lastPingResponseId;
         private DateTime _lastPingResponseTime;
 
-        internal Connection(Node node, EndPoint remoteEndPoint)
+        internal Connection(Node node, EndPoint remoteEndPoint, State initialState)
         {
             InitializeReservedChannels();
             _sendPingTimer = new Timer(_ => SendPing());
 
             Node = node;
             RemoteEndPoint = remoteEndPoint;
-            CurrentState = State.Disconnected;
+            CurrentState = initialState;
         }
 
         private void InitializeReservedChannels()
@@ -134,40 +118,6 @@ namespace Link
 
                 _channels[channelId] = value ?? throw new InvalidOperationException("Cannot set null channel.");
             }
-        }
-
-        internal async void Establish(ConnectPacketFactory connectPacketFactory = null)
-        {
-            if (MaxConnectAttempts <= 0) throw new ArgumentException($"'{nameof(MaxConnectAttempts)}' must be a positive value.");
-            if (DelayBetweenConnectAttempts <= 0) throw new ArgumentException($"'{nameof(DelayBetweenConnectAttempts)}' must be a positive value.");
-
-            for (var attempt = 0; attempt < MaxConnectAttempts; attempt++)
-            {
-                SendConnectPacket();
-                CurrentState = State.Connecting;
-
-                await Task.Delay(DelayBetweenConnectAttempts);
-                if (CurrentState != State.Connecting) return;
-            }
-
-            Timeout($"Exceeded maximum connect attempts of {MaxConnectAttempts} while connecting to {RemoteEndPoint}.");
-
-            void SendConnectPacket()
-            {
-                var connectPacket = Packet.Get(HeaderType.Connect);
-                connectPacketFactory?.Invoke(connectPacket);
-                Node.Send(connectPacket, RemoteEndPoint);
-                connectPacket.Return();
-            }
-        }
-
-        internal void ReceiveConnect()
-        {
-            var connectApprovedPacket = Packet.Get(HeaderType.ConnectApproved);
-            Node.Send(connectApprovedPacket, RemoteEndPoint);
-            connectApprovedPacket.Return();
-
-            ReceiveConnectApproved();
         }
 
         internal void ReceiveConnectApproved()

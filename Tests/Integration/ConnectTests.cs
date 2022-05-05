@@ -88,4 +88,20 @@ public class ConnectTests
         await Task.Delay(Config.NetworkDelay);
         Assert.That(sameDataWasReceived);
     }
+    
+    [Test]
+    public async Task Connecting_to_offline_server_raises_connect_failed_event()
+    {
+        _server.Stop();
+        
+        using var client = new Client();
+        var connectFailedWasRaised = false;
+
+        client.ConnectFailed += () => connectFailedWasRaised = true;
+        client.Connect(Config.IpAddress, Config.Port, delayBetweenAttempts: 10);
+
+        await Task.Delay(millisecondsDelay: 100);
+        Assert.That(client.IsConnected, Is.False);
+        Assert.That(connectFailedWasRaised);
+    }
 }

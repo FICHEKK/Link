@@ -12,6 +12,16 @@ namespace Link.Nodes
     public class Server : Node
     {
         /// <summary>
+        /// Represents a method that is responsible for handling incoming connect packet.
+        /// </summary>
+        public delegate bool ConnectPacketHandler(ReadOnlyPacket connectPacket, EndPoint clientEndPoint);
+
+        /// <summary>
+        /// Validates incoming connection request and decides whether connection should be accepted or not.
+        /// </summary>
+        public ConnectPacketHandler ConnectionValidator { get; set; }
+        
+        /// <summary>
         /// Defines a method that handles incoming packet from a client.
         /// </summary>
         public delegate void PacketHandler(ReadOnlyPacket packet, EndPoint clientEndPoint);
@@ -40,16 +50,6 @@ namespace Link.Nodes
         /// Invoked each time server stops and no longer listens for client connections.
         /// </summary>
         public event Action Stopped;
-
-        /// <summary>
-        /// Represents a method that is responsible for handling incoming connect packet.
-        /// </summary>
-        public delegate bool ConnectPacketHandler(ReadOnlyPacket connectPacket, EndPoint clientEndPoint);
-
-        /// <summary>
-        /// Validates incoming connection request and decides whether connection should be accepted or not.
-        /// </summary>
-        public ConnectPacketHandler ConnectionValidator { get; set; }
 
         /// <summary>
         /// Returns current number of client connections.
@@ -126,7 +126,7 @@ namespace Link.Nodes
             if (_connections.TryGetValue(senderEndPoint, out var connection))
             {
                 // Client is connected, but hasn't received the approval.
-                connection.ReceiveConnect();
+                SendConnectApproved();
                 return;
             }
 
@@ -137,12 +137,21 @@ namespace Link.Nodes
             }
 
             Log.Info($"Client from {senderEndPoint} connected.");
-            connection = new Connection(node: this, remoteEndPoint: senderEndPoint);
+            connection = new Connection(node: this, remoteEndPoint: senderEndPoint, initialState: Connection.State.Connected);
             ConnectionInitializer?.Invoke(connection);
-            connection.ReceiveConnect();
+            
+            connection.ReceiveConnectApproved();
+            SendConnectApproved();
 
             _connections.TryAdd(senderEndPoint, connection);
             ClientConnected?.Invoke(connection);
+
+            void SendConnectApproved()
+            {
+                var connectApprovedPacket = Packet.Get(HeaderType.ConnectApproved);
+                Send(connectApprovedPacket, senderEndPoint);
+                connectApprovedPacket.Return();
+            }
         }
 
         /// <summary>
