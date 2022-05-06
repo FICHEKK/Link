@@ -11,9 +11,6 @@ namespace Link.Channels
         /// </summary>
         private const int BufferSize = ushort.MaxValue + 1;
 
-        // TODO - Make this an option that can be tweaked.
-        private const int BitsInAckBitField = sizeof(int) * 8;
-
         /// <summary>
         /// Maximum number of resend attempts before deeming the packet as lost.
         /// </summary>
@@ -31,6 +28,19 @@ namespace Link.Channels
         /// Minimum possible time duration before resending the packet, in milliseconds.
         /// </summary>
         public int MinResendDelay { get; set; } = 100;
+
+        /// <summary>
+        /// The number of additional bytes that will be used in the acknowledgement packet
+        /// to acknowledge multiple previous packets.
+        /// <br/><br/>
+        /// Each acknowledgement packet has specific sequence number that it is acknowledging.
+        /// We can then use additional bytes which are going to indicate (1 per bit) whether
+        /// previous sequence numbers (relative to the "main" sequence number) were acknowledged.
+        /// <br/><br/>
+        /// For example, if this value is set to 1, then 8 previous packet acks will be merged
+        /// into the acknowledgement packet. This way we can fight packet loss using redundancy.
+        /// </summary>
+        public int AckBytes { get; set; } = 2;
 
         /// <summary>
         /// Returns smooth round trip time with added safety margin.
@@ -134,18 +144,21 @@ namespace Link.Channels
 
         private void SendAcknowledgement(byte channelId, ushort sequenceNumber)
         {
-            var ackBitField = 0;
+            var ack = Packet.Get(HeaderType.Acknowledgement).Write(channelId).Write(sequenceNumber);
 
-            for (var i = 0; i < BitsInAckBitField; i++)
+            for (int offset = 0, totalBits = AckBytes * 8; offset < totalBits; offset += 8)
             {
-                var wasReceived = _receivedPackets[(ushort) (sequenceNumber - i - 1)] is not null;
-                if (wasReceived) ackBitField |= 1 << i;
-            }
+                var ackBitField = 0;
 
-            var ack = Packet.Get(HeaderType.Acknowledgement)
-                .Write(channelId)
-                .Write(sequenceNumber)
-                .Write(ackBitField);
+                for (var bit = 0; bit < 8; bit++)
+                {
+                    var seq = (ushort) (sequenceNumber - offset - bit - 1);
+                    if (_receivedPackets[seq] is null) continue;
+                    ackBitField |= 1 << bit;
+                }
+
+                ack.Write((byte) ackBitField);
+            }
 
             _connection.Node.Send(ack, _connection.RemoteEndPoint);
             ack.Return();
@@ -154,19 +167,22 @@ namespace Link.Channels
         internal override void ReceiveAcknowledgement(ReadOnlyPacket packet)
         {
             var sequenceNumber = packet.Read<ushort>();
-            var ackBitField = packet.Read<int>();
-
             _pendingPackets[sequenceNumber]?.Acknowledge();
             _pendingPackets[sequenceNumber] = null;
 
-            for (var i = 0; i < BitsInAckBitField; i++)
+            for (int offset = 0, totalBits = AckBytes * 8; offset < totalBits; offset += 8)
             {
-                var isAcknowledged = (ackBitField & (1 << i)) != 0;
-                if (!isAcknowledged) continue;
-                
-                var seq = (ushort) (sequenceNumber - i - 1);
-                _pendingPackets[seq]?.Acknowledge();
-                _pendingPackets[seq] = null;
+                int ackBitField = packet.Read<byte>();
+
+                for (var bit = 0; bit < 8; bit++)
+                {
+                    var isAcknowledged = (ackBitField & (1 << bit)) != 0;
+                    if (!isAcknowledged) continue;
+                    
+                    var seq = (ushort) (sequenceNumber - offset - bit - 1);
+                    _pendingPackets[seq]?.Acknowledge();
+                    _pendingPackets[seq] = null;
+                }
             }
         }
 
