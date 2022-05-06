@@ -8,24 +8,24 @@ namespace Link
     public ref struct ReadOnlyPacket
     {
         /// <summary>
-        /// Returns total number of bytes contained in the packet.
-        /// </summary>
-        public int Size => Buffer.Size;
-        
-        /// <summary>
-        /// Gets or sets the index at which next read operation will be performed.
-        /// </summary>
-        public int Position { get; set; }
-        
-        /// <summary>
         /// Returns identifier of the channel on which this packet was received on.
         /// </summary>
         public byte ChannelId => Buffer.Bytes[1];
         
         /// <summary>
+        /// Returns total number of bytes contained in the packet.
+        /// </summary>
+        public int Size => Buffer.Size;
+        
+        /// <summary>
         /// Underlying packet from which this read-only view is reading from.
         /// </summary>
         internal Buffer Buffer { get; }
+        
+        /// <summary>
+        /// Index at which next read operation will be performed.
+        /// </summary>
+        private int _position;
 
         /// <summary>
         /// Creates a new read-only view of the given packet, which starts reading at the specified position.
@@ -33,7 +33,7 @@ namespace Link
         internal ReadOnlyPacket(Buffer buffer, int position = 0)
         {
             Buffer = buffer;
-            Position = position;
+            _position = position;
         }
         
         /// <summary>
@@ -43,11 +43,11 @@ namespace Link
         {
             var stringByteCount = Read<int>();
             
-            if (Size - Position < stringByteCount)
+            if (Size - _position < stringByteCount)
                 throw new InvalidOperationException("Could not read string (out-of-bounds bytes).");
             
-            var stringValue = Packet.Encoding.GetString(Buffer.Bytes, Position, stringByteCount);
-            Position += stringByteCount;
+            var stringValue = Packet.Encoding.GetString(Buffer.Bytes, _position, stringByteCount);
+            _position += stringByteCount;
             return stringValue;
         }
 
@@ -56,11 +56,11 @@ namespace Link
         /// </summary>
         public unsafe T Read<T>() where T : unmanaged
         {
-            if (Size - Position < sizeof(T))
+            if (Size - _position < sizeof(T))
                 throw new InvalidOperationException($"Could not read value of type '{typeof(T)}' (out-of-bounds bytes).");
             
-            var value = Buffer.Read<T>(Position);
-            Position += sizeof(T);
+            var value = Buffer.Read<T>(_position);
+            _position += sizeof(T);
             return value;
         }
 
@@ -85,21 +85,21 @@ namespace Link
             if (length * sizeof(T) < 0)
                 throw new InvalidOperationException($"Cannot read array of length {length} as it is too big.");
             
-            if (Size - Position < length * sizeof(T))
+            if (Size - _position < length * sizeof(T))
                 throw new InvalidOperationException($"Could not read array of type '{typeof(T)}' (out-of-bounds bytes).");
 
-            var array = Buffer.ReadArray<T>(length, Position);
-            Position += length * sizeof(T);
+            var array = Buffer.ReadArray<T>(length, _position);
+            _position += length * sizeof(T);
             return array;
         }
         
         internal T Read<T>(int position) where T : unmanaged
         {
-            var currentPosition = Position;
-            Position = position;
+            var currentPosition = _position;
+            _position = position;
             
             var value = Read<T>();
-            Position = currentPosition;
+            _position = currentPosition;
             
             return value;
         }
