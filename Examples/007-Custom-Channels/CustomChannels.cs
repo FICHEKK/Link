@@ -45,7 +45,7 @@ public static class CustomChannels
     private static void AddCustomChannel(Connection connection)
     {
         // Each time a new connection is created, initialize it with our custom channel.
-        connection[TextMessageChannelId] = new ReliablePacketChannel(connection, isOrdered: true)
+        connection[TextMessageChannelId] = new ReliableChannel(connection, isOrdered: true)
         {
             Name = "Text channel",
             MaxResendAttempts = 20,

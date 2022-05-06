@@ -51,14 +51,6 @@ public class BufferTests
     }
 
     [Test]
-    public void Returning_buffer_that_is_too_big_does_not_return()
-    {
-        var buffer = Buffer.Get();
-        buffer.WriteArray(new byte[100_000]);
-        Assert.That(buffer.Return(), Is.False);
-    }
-
-    [Test]
     public void Reading_value_that_was_written_produces_same_value<T>([ValueSource(typeof(TestData), nameof(TestData.Values))] T valueToWrite) where T : unmanaged
     {
         _buffer.Write(valueToWrite);

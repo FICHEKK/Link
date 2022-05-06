@@ -74,8 +74,7 @@ namespace Link.Channels
 
         private void ScheduleResend()
         {
-            var baseDelay = _reliableChannel.Connection.SmoothRoundTripTime + 4 * _reliableChannel.Connection.RoundTripTimeDeviation;
-            var resendDelay = (int) (baseDelay * _backoff);
+            var resendDelay = (int) (_reliableChannel.BaseResendDelay * _backoff);
             _backoff *= _reliableChannel.BackoffFactor;
 
             if (resendDelay < _reliableChannel.MinResendDelay)

@@ -17,13 +17,6 @@ namespace Link
         /// Default size of a newly created <see cref="Buffer"/> instance.
         /// </summary>
         public static int DefaultSize { get; set; } = 1024;
-        
-        /// <summary>
-        /// Maximum allowed size of a pooled buffer. Trying to return a bigger buffer to the pool is going
-        /// to result in rejection by the pool. This is needed as a measure to prevent allocating too much
-        /// memory, which would happen if there we too many big buffers stored in the pool.
-        /// </summary>
-        public static int MaxSize { get; set; } = ushort.MaxValue;
 
         /// <summary>
         /// Represents total number of new buffer allocations. This value should eventually stagnate if
@@ -36,7 +29,7 @@ namespace Link
         /// <summary>
         /// Gets or set the direct reference to the underlying byte-array.
         /// </summary>
-        public byte[] Bytes { get; private set; }
+        public byte[] Bytes { get; }
         
         /// <summary>
         /// Returns the number of bytes currently written to this buffer.
@@ -62,14 +55,6 @@ namespace Link
             var buffer = Get();
             Array.Copy(bytes, buffer.Bytes, size);
             buffer.Size = size;
-            return buffer;
-        }
-        
-        public static Buffer With(byte[] bytes)
-        {
-            var buffer = Get();
-            buffer.Bytes = bytes;
-            buffer.Size = bytes.Length;
             return buffer;
         }
         
@@ -101,16 +86,18 @@ namespace Link
         public void WriteArray<T>(T[] array) where T : unmanaged =>
             WriteArray(array, start: 0, array.Length);
         
-        public void WriteArray<T>(T[] array, int offset) where T : unmanaged =>
-            WriteArray(array, start: 0, array.Length, offset);
-
         public unsafe void WriteArray<T>(T[] array, int start, int length) where T : unmanaged
         {
-            EnsureBufferSize(Size + length * sizeof(T));
+            if (Size + length * sizeof(T) > Bytes.Length)
+                throw new InvalidOperationException($"Not enough space to write '{typeof(T)}' array.");
+            
             WriteArray(array, start, length, Size);
             Size += length * sizeof(T);
         }
         
+        public void WriteArray<T>(T[] array, int offset) where T : unmanaged =>
+            WriteArray(array, start: 0, array.Length, offset);
+
         public unsafe void WriteArray<T>(T[] array, int start, int length, int offset) where T : unmanaged
         {
             fixed (byte* pointer = &Bytes[offset])
@@ -127,7 +114,9 @@ namespace Link
         
         public unsafe void Write<T>(T value) where T : unmanaged
         {
-            EnsureBufferSize(Size + sizeof(T));
+            if (Size + sizeof(T) > Bytes.Length)
+                throw new InvalidOperationException($"Not enough space to write '{typeof(T)}'.");
+            
             Write(value, Size);
             Size += sizeof(T);
         }
@@ -138,15 +127,6 @@ namespace Link
             {
                 *(T*) pointer = value;
             }
-        }
-
-        private void EnsureBufferSize(int requiredBufferSize)
-        {
-            if (Bytes.Length >= requiredBufferSize) return;
-
-            var expandedBuffer = new byte[Math.Max(Bytes.Length * 2, requiredBufferSize)];
-            Array.Copy(Bytes, expandedBuffer, Size);
-            Bytes = expandedBuffer;
         }
 
         public unsafe T Read<T>(int offset) where T : unmanaged
@@ -176,7 +156,7 @@ namespace Link
         }
 
         /// <summary>
-        /// Returns this instance to the pool unless it is already in the pool or its size exceeds <see cref="MaxSize"/> bytes.
+        /// Returns this instance to the pool unless it is already in the pool.
         /// </summary>
         /// <returns><c>true</c> if instance was successfully returned to the pool, <c>false</c> otherwise.</returns>
         public bool Return()
@@ -185,13 +165,7 @@ namespace Link
             {
                 if (_isInPool)
                 {
-                    Log.Error($"Attempt was made to return a '{nameof(Buffer)}' instance that is already in pool.");
-                    return false;
-                }
-
-                if (Bytes.Length > MaxSize)
-                {
-                    Log.Info($"Big '{nameof(Buffer)}' instance ({Bytes.Length} bytes) was rejected by the pool to preserve memory.");
+                    Log.Error($"Attempted to return '{nameof(Buffer)}' instance that is already in pool.");
                     return false;
                 }
 

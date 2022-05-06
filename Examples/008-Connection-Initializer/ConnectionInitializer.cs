@@ -37,7 +37,6 @@ public static class ConnectionInitializer
         // Or we can add custom channels:
         connection[0] = new UnreliableChannel(connection);
         connection[1] = new SequencedChannel(connection);
-        connection[2] = new ReliablePacketChannel(connection, isOrdered: true);
-        connection[3] = new ReliableFragmentChannel(connection, isOrdered: true);
+        connection[2] = new ReliableChannel(connection);
     }
 }

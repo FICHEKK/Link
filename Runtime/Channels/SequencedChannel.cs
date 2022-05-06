@@ -2,20 +2,20 @@ namespace Link.Channels
 {
     public class SequencedChannel : Channel
     {
+        public long PacketsReceivedOutOfOrder { get; private set; }
+        public long BytesReceivedOutOfOrder { get; private set; }
+        
         private readonly Connection _connection;
         private ushort _localSequenceNumber;
         private ushort _remoteSequenceNumber;
 
-        public long PacketsReceivedOutOfOrder { get; private set; }
-        public long BytesReceivedOutOfOrder { get; private set; }
-
         public SequencedChannel(Connection connection) =>
             _connection = connection;
 
-        protected override (int packetsSent, int bytesSent) SendData(Packet packet)
+        protected override void SendData(Packet packet)
         {
             packet.Write(++_localSequenceNumber);
-            return _connection.Node.Send(packet, _connection.RemoteEndPoint) ? (1, packet.Size) : (0, 0);
+            _connection.Node.Send(packet, _connection.RemoteEndPoint);
         }
 
         protected override void ReceiveData(ReadOnlyPacket packet)

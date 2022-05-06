@@ -93,10 +93,7 @@ namespace Link
         {
             InitReservedChannel(Delivery.Unreliable, new UnreliableChannel(connection: this));
             InitReservedChannel(Delivery.Sequenced, new SequencedChannel(connection: this));
-            InitReservedChannel(Delivery.ReliableUnordered, new ReliablePacketChannel(connection: this, isOrdered: false));
-            InitReservedChannel(Delivery.Reliable, new ReliablePacketChannel(connection: this, isOrdered: true));
-            InitReservedChannel(Delivery.FragmentedUnordered, new ReliableFragmentChannel(connection: this, isOrdered: false));
-            InitReservedChannel(Delivery.Fragmented, new ReliableFragmentChannel(connection: this, isOrdered: true));
+            InitReservedChannel(Delivery.Reliable, new ReliableChannel(connection: this));
 
             void InitReservedChannel(Delivery delivery, Channel channel)
             {

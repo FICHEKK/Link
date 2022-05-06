@@ -1,16 +1,10 @@
 namespace Link.Channels
 {
     /// <summary>
-    /// Defines the way data is sent and received.
+    /// Defines the way packets are sent and received.
     /// </summary>
     public abstract class Channel
     {
-        /// <summary>
-        /// Every packet that goes through any channel has the same header
-        /// which consists of header type (1 byte) and channel ID (1 byte).
-        /// </summary>
-        protected const int HeaderSize = 2;
-
         /// <summary>
         /// Name associated with this channel.
         /// </summary>
@@ -41,24 +35,24 @@ namespace Link.Channels
         /// </summary>
         internal void Send(Packet packet)
         {
-            var (packetsSent, bytesSent) = SendData(packet);
-            PacketsSent += packetsSent;
-            BytesSent += bytesSent;
+            SendData(packet);
+            PacketsSent++;
+            BytesSent += packet.Size;
         }
 
         /// <summary>
         /// Processes and sends outgoing data-packet.
         /// </summary>
-        protected abstract (int packetsSent, int bytesSent) SendData(Packet packet);
+        protected abstract void SendData(Packet packet);
 
         /// <summary>
         /// Receives and processes incoming data-packet.
         /// </summary>
         internal void Receive(ReadOnlyPacket packet)
         {
+            ReceiveData(packet);
             PacketsReceived++;
             BytesReceived += packet.Size;
-            ReceiveData(packet);
         }
 
         /// <summary>

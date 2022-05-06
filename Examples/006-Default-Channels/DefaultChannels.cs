@@ -37,9 +37,6 @@ public static class DefaultChannels
     {
         client.Send(Packet.Get(Delivery.Unreliable));
         client.Send(Packet.Get(Delivery.Sequenced));
-        client.Send(Packet.Get(Delivery.ReliableUnordered));
         client.Send(Packet.Get(Delivery.Reliable));
-        client.Send(Packet.Get(Delivery.FragmentedUnordered));
-        client.Send(Packet.Get(Delivery.Fragmented));
     }
 }
