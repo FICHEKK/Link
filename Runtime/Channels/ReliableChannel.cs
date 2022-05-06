@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Link.Channels
 {
     /// <summary>
@@ -9,9 +7,9 @@ namespace Link.Channels
     public class ReliableChannel : Channel
     {
         /// <summary>
-        /// Size of the buffer that stores incoming packets.
+        /// Size of the pending and received packet buffers.
         /// </summary>
-        private const int ReceiveBufferSize = ushort.MaxValue + 1;
+        private const int BufferSize = ushort.MaxValue + 1;
 
         // TODO - Make this an option that can be tweaked.
         private const int BitsInAckBitField = sizeof(int) * 8;
@@ -65,10 +63,8 @@ namespace Link.Channels
         public long BytesDuplicated { get; protected set; }
 
         private readonly Connection _connection;
-        
-        // TODO - Make pending packets an array.
-        private readonly Dictionary<ushort, PendingPacket> _pendingPackets = new();
-        private readonly Buffer[] _receivedPackets = new Buffer[ReceiveBufferSize];
+        private readonly PendingPacket[] _pendingPackets = new PendingPacket[BufferSize];
+        private readonly Buffer[] _receivedPackets = new Buffer[BufferSize];
         private readonly bool _isOrdered;
 
         private ushort _localSequenceNumber;
@@ -83,14 +79,8 @@ namespace Link.Channels
 
         protected override void SendData(Packet packet)
         {
-            packet.Write(_localSequenceNumber);
-            _connection.Node.Send(packet, _connection.RemoteEndPoint);
-
-            lock (_pendingPackets)
-            {
-                var pendingPacket = PendingPacket.Get(packet, reliableChannel: this);
-                _pendingPackets.Add(_localSequenceNumber++, pendingPacket);
-            }
+            _connection.Node.Send(packet.Write(_localSequenceNumber), _connection.RemoteEndPoint);
+            _pendingPackets[_localSequenceNumber++] = PendingPacket.Get(packet, reliableChannel: this);
         }
 
         protected override void ReceiveData(ReadOnlyPacket packet)
@@ -107,7 +97,7 @@ namespace Link.Channels
             }
 
             _receivedPackets[sequenceNumber] = Buffer.Copy(packet.Buffer);
-            _receivedPackets[(ushort) (sequenceNumber - ReceiveBufferSize / 2)] = null;
+            _receivedPackets[(ushort) (sequenceNumber - BufferSize / 2)] = null;
 
             if (!_isOrdered)
             {
@@ -134,10 +124,10 @@ namespace Link.Channels
 
             var sequenceWithWrap = sequenceNumber > _remoteSequenceNumber
                 ? sequenceNumber
-                : sequenceNumber + ReceiveBufferSize;
+                : sequenceNumber + BufferSize;
 
             for (var i = _remoteSequenceNumber + 1; i <= sequenceWithWrap; i++)
-                _receivedPackets[i % ReceiveBufferSize] = null;
+                _receivedPackets[i % BufferSize] = null;
 
             _remoteSequenceNumber = sequenceNumber;
         }
@@ -166,23 +156,17 @@ namespace Link.Channels
             var sequenceNumber = packet.Read<ushort>();
             var ackBitField = packet.Read<int>();
 
-            lock (_pendingPackets)
+            _pendingPackets[sequenceNumber]?.Acknowledge();
+            _pendingPackets[sequenceNumber] = null;
+
+            for (var i = 0; i < BitsInAckBitField; i++)
             {
-                AcknowledgePacket(sequenceNumber);
-
-                for (var i = 0; i < BitsInAckBitField; i++)
-                {
-                    var isAcknowledged = (ackBitField & (1 << i)) != 0;
-                    if (isAcknowledged) AcknowledgePacket((ushort) (sequenceNumber - i - 1));
-                }
-            }
-
-            void AcknowledgePacket(ushort seq)
-            {
-                if (!_pendingPackets.TryGetValue(seq, out var pendingPacket)) return;
-
-                pendingPacket.Acknowledge();
-                _pendingPackets.Remove(seq);
+                var isAcknowledged = (ackBitField & (1 << i)) != 0;
+                if (!isAcknowledged) continue;
+                
+                var seq = (ushort) (sequenceNumber - i - 1);
+                _pendingPackets[seq]?.Acknowledge();
+                _pendingPackets[seq] = null;
             }
         }
 
