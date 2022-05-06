@@ -60,6 +60,21 @@ namespace Link
         public static Encoding Encoding { get; set; } = Encoding.UTF8;
 
         /// <summary>
+        /// Represents total number of internal buffer allocations made. For each packet made,
+        /// there needs to be a buffer that the packet can be write to. These buffers are made
+        /// to be reusable in order to avoid triggering garbage collection.
+        /// <br/><br/>
+        /// However, if a packet is created and not sent, buffer will not get returned to the
+        /// internal buffer pool. In that case, <see cref="Return"/> method should be called
+        /// to manually return used buffer to the pool.
+        /// <br/><br/>
+        /// If buffers are properly returned, this value should eventually stagnate, as all of
+        /// the allocated buffers will get reused and there will be no need for creating new
+        /// ones.
+        /// </summary>
+        public static int AllocationCount => Buffer.AllocationCount;
+
+        /// <summary>
         /// Returns the number of bytes currently contained in this packet.
         /// </summary>
         public int Size => Buffer.Size;
@@ -142,7 +157,7 @@ namespace Link
         }
 
         /// <summary>
-        /// Disposes of this packet by returning previously borrowed <see cref="Link.Buffer"/> to the pool.
+        /// Returns previously borrowed <see cref="Link.Buffer"/> to the pool, making it reusable again.
         /// </summary>
         public void Return() => Buffer.Return();
     }

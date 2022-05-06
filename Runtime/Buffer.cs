@@ -31,7 +31,7 @@ namespace Link
         /// returned to preserve memory). If this value keeps on increasing, that is a clear sign that
         /// there is a buffer leak - somewhere a buffer is taken but not returned to the pool.
         /// </summary>
-        public static int TotalAllocationCount { get; private set; }
+        public static int AllocationCount { get; private set; }
 
         /// <summary>
         /// Gets or set the direct reference to the underlying byte-array.
@@ -89,7 +89,7 @@ namespace Link
                 }
             }
 
-            TotalAllocationCount++;
+            AllocationCount++;
             return new Buffer(DefaultSize);
         }
 
@@ -144,7 +144,6 @@ namespace Link
         {
             if (Bytes.Length >= requiredBufferSize) return;
 
-            // TODO - Recycle old buffer?
             var expandedBuffer = new byte[Math.Max(Bytes.Length * 2, requiredBufferSize)];
             Array.Copy(Bytes, expandedBuffer, Size);
             Bytes = expandedBuffer;
