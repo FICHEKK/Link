@@ -66,11 +66,36 @@ namespace Link
         /// Returns deviation of the round-trip time.
         /// </summary>
         public double RoundTripTimeDeviation { get; private set; }
+        
+        /// <summary>
+        /// Total number of packets sent through this connection.
+        /// </summary>
+        public long PacketsSent { get; private set; }
+
+        /// <summary>
+        /// Total number of bytes sent through this connection.
+        /// </summary>
+        public long BytesSent { get; private set; }
+
+        /// <summary>
+        /// Total number of packets received on this connection.
+        /// </summary>
+        public long PacketsReceived { get; private set; }
+
+        /// <summary>
+        /// Total number of bytes received on this connection.
+        /// </summary>
+        public long BytesReceived { get; private set; }
+        
+        /// <summary>
+        /// Returns the number of channels that this connection currently has.
+        /// </summary>
+        public int ChannelCount { get; private set; }
 
         /// <summary>
         /// Returns current state of this connection.
         /// </summary>
-        public State CurrentState { get; private set; }
+        internal State CurrentState { get; private set; }
 
         private readonly Channel[] _channels = new Channel[byte.MaxValue];
         private readonly Stopwatch _rttStopwatch = new();
@@ -100,6 +125,7 @@ namespace Link
             {
                 channel.Name = delivery.ToString();
                 _channels[(int) delivery] = channel;
+                ChannelCount++;
             }
         }
         
@@ -115,6 +141,7 @@ namespace Link
                     throw new InvalidOperationException($"Channel slot (ID = {channelId}) is already filled by channel named '{_channels[channelId].Name}'.");
 
                 _channels[channelId] = value ?? throw new InvalidOperationException("Cannot set null channel.");
+                ChannelCount++;
             }
         }
 
@@ -125,11 +152,19 @@ namespace Link
             CurrentState = State.Connected;
         }
 
-        internal void SendData(Packet packet) =>
+        internal void SendData(Packet packet)
+        {
             RequireChannel(packet.Buffer.Bytes[1]).Send(packet);
+            PacketsSent++;
+            BytesSent += packet.Size;
+        }
 
-        internal void ReceiveData(ReadOnlyPacket packet) =>
+        internal void ReceiveData(ReadOnlyPacket packet)
+        {
             RequireChannel(packet.Read<byte>()).Receive(packet);
+            PacketsReceived++;
+            BytesReceived += packet.Size;
+        }
 
         internal void ReceiveAcknowledgement(ReadOnlyPacket packet) =>
             RequireChannel(packet.Read<byte>()).ReceiveAcknowledgement(packet);
@@ -204,7 +239,7 @@ namespace Link
         /// <summary>
         /// Enumeration of all the possible states a connection can be found in.
         /// </summary>
-        public enum State
+        internal enum State
         {
             Disconnected,
             Connecting,
