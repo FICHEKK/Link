@@ -39,6 +39,7 @@ namespace Link
         /// <summary>
         /// If ping response is not received for this duration (in milliseconds), connection is going to timeout.
         /// </summary>
+        /// <remarks>If set to a negative value, timeout will be disabled.</remarks>
         public int TimeoutDuration { get; set; } = 10_000;
 
         /// <summary>
@@ -138,7 +139,7 @@ namespace Link
 
         private void SendPing()
         {
-            if ((DateTime.UtcNow - _lastPingResponseTime).TotalMilliseconds > TimeoutDuration)
+            if (TimeoutDuration >= 0 && (DateTime.UtcNow - _lastPingResponseTime).TotalMilliseconds > TimeoutDuration)
             {
                 Timeout($"Valid ping response was not received in over {TimeoutDuration} ms.");
                 return;
