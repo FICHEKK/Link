@@ -15,12 +15,16 @@ namespace Link
 
         /// <summary>
         /// Maximum allowed packet size, in bytes. This value must be chosen carefully to avoid
-        /// fragmentation on the network layer. Any packets that require bigger size must use a
-        /// fragmented channel which will perform fragmentation and reassembly on the application
-        /// layer. Defaults to <see cref="DefaultMaxSize"/> bytes.
+        /// fragmentation on the network layer. Any packets that require bigger size must use
+        /// fragmentation on the application layer. It is advised to only modify this value
+        /// if absolutely needed, as the default value is often times the optimal choice.
+        ///<br/><br/>
+        /// Defaults to <see cref="DefaultMaxSize"/> bytes.
         /// </summary>
         /// <remarks>
-        /// This value cannot be set to a value that is lower than <see cref="MinSize"/> bytes.
+        /// If you choose to modify this value, you should do so only once and at the beginning
+        /// of your application as other components of the library depend on it. Additionally,
+        /// this value cannot be set to a value that is lower than <see cref="MinSize"/> bytes.
         /// </remarks>
         public static int MaxSize
         {
