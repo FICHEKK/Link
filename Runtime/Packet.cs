@@ -151,7 +151,7 @@ namespace Link
         {
             if (array is null) throw new InvalidOperationException("Cannot write null array to a packet.");
             
-            if (writeLength) Buffer.Write(length);
+            if (writeLength) Buffer.WriteVarInt(length);
             Buffer.WriteArray(array, start, length);
             return this;
         }

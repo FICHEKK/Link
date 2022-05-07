@@ -41,7 +41,7 @@ namespace Link
         /// </summary>
         public string ReadString()
         {
-            var stringByteCount = Read<int>();
+            var stringByteCount = ReadVarInt();
             
             if (Size - _position < stringByteCount)
                 throw new InvalidOperationException("Could not read string (out-of-bounds bytes).");
@@ -77,7 +77,7 @@ namespace Link
                 return Array.Empty<T>();
             
             if (length < 0)
-                length = Read<int>();
+                length = ReadVarInt();
 
             if (length < 0)
                 throw new InvalidOperationException($"Cannot read array of length {length} as it is negative.");
@@ -91,6 +91,13 @@ namespace Link
             var array = Buffer.ReadArray<T>(length, _position);
             _position += length * sizeof(T);
             return array;
+        }
+
+        private int ReadVarInt()
+        {
+            var varInt = Buffer.ReadVarInt(_position, out var bytesRead);
+            _position += bytesRead;
+            return varInt;
         }
         
         internal T Read<T>(int position) where T : unmanaged

@@ -83,6 +83,23 @@ namespace Link
         /// </summary>
         private Buffer(int size) => Bytes = new byte[size];
 
+        public unsafe void Write<T>(T value) where T : unmanaged
+        {
+            if (Size + sizeof(T) > Bytes.Length)
+                throw new InvalidOperationException($"Not enough space to write '{typeof(T)}'.");
+
+            Write(value, Size);
+            Size += sizeof(T);
+        }
+
+        public unsafe void Write<T>(T value, int offset) where T : unmanaged
+        {
+            fixed (byte* pointer = &Bytes[offset])
+            {
+                *(T*) pointer = value;
+            }
+        }
+
         public void WriteArray<T>(T[] array) where T : unmanaged =>
             WriteArray(array, start: 0, array.Length);
         
@@ -112,21 +129,43 @@ namespace Link
             }
         }
         
-        public unsafe void Write<T>(T value) where T : unmanaged
+        public void WriteVarInt(int value)
         {
-            if (Size + sizeof(T) > Bytes.Length)
-                throw new InvalidOperationException($"Not enough space to write '{typeof(T)}'.");
+            var bytesNeeded = VarIntBytesNeeded(value);
             
-            Write(value, Size);
-            Size += sizeof(T);
+            if (Size + bytesNeeded > Bytes.Length)
+                throw new InvalidOperationException($"Not enough space to write var-int of value {value}.");
+
+            WriteVarInt(value, Size);
+            Size += bytesNeeded;
         }
         
-        public unsafe void Write<T>(T value, int offset) where T : unmanaged
+        /// <summary>
+        /// Returns the number of bytes needed to encode given integer using variable-length-encoding.
+        /// </summary>
+        public static int VarIntBytesNeeded(int value) => value switch
         {
-            fixed (byte* pointer = &Bytes[offset])
+            // Every negative value has most significant bit set,
+            // therefore it requires maximum number of bytes.
+            < 0 => 5,
+            < 128 => 1,
+            < 16_384 => 2,
+            < 2_097_152 => 3,
+            < 268_435_456 => 4,
+            _ => 5
+        };
+        
+        public void WriteVarInt(int value, int offset)
+        {
+            var v = (uint) value;
+
+            while (v >= 0x80)
             {
-                *(T*) pointer = value;
+                Bytes[offset++] = (byte) (v | 0x80);
+                v >>= 7;
             }
+
+            Bytes[offset] = (byte) v;
         }
 
         public unsafe T Read<T>(int offset) where T : unmanaged
@@ -153,6 +192,28 @@ namespace Link
             }
 
             return array;
+        }
+
+        public int ReadVarInt(int offset, out int bytesRead)
+        {
+            var value = 0;
+            var shift = 0;
+            bytesRead = 0;
+
+            do
+            {
+                if (offset >= Bytes.Length)
+                    throw new InvalidOperationException("Could not read var-int (out-of-bounds bytes).");
+                
+                if (shift == 5 * 7)
+                    throw new InvalidOperationException("Invalid var-int format (requires more than 5 bytes).");
+
+                value |= (Bytes[offset] & 0x7F) << shift;
+                shift += 7;
+                bytesRead++;
+            } while ((Bytes[offset++] & 0x80) != 0);
+
+            return value;
         }
 
         /// <summary>
