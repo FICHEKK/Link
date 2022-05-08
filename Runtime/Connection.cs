@@ -32,15 +32,34 @@ namespace Link
         public EndPoint RemoteEndPoint { get; }
 
         /// <summary>
-        /// Duration between two consecutive ping packets, in milliseconds.
+        /// Duration between sending two consecutive ping packets, in milliseconds.
         /// </summary>
-        public int PeriodDuration { get; set; } = 1000;
+        /// <remarks>This value cannot be negative.</remarks>
+        public int PeriodDuration
+        {
+            get => _periodDuration;
+            set => _periodDuration = value >= 0 ? value : throw new ArgumentOutOfRangeException(nameof(PeriodDuration));
+        }
+
+        /// <summary>
+        /// Backing field of <see cref="PeriodDuration"/> property.
+        /// </summary>
+        private int _periodDuration = 1000;
 
         /// <summary>
         /// If ping response is not received for this duration (in milliseconds), connection is going to timeout.
         /// </summary>
-        /// <remarks>If set to a negative value, timeout will be disabled.</remarks>
-        public int TimeoutDuration { get; set; } = 10_000;
+        /// <remarks>If set to -1, timeout will be disabled.</remarks>
+        public int TimeoutDuration
+        {
+            get => _timeoutDuration;
+            set => _timeoutDuration = value >= -1 ? value : throw new ArgumentOutOfRangeException(nameof(TimeoutDuration));
+        }
+
+        /// <summary>
+        /// Backing field of <see cref="TimeoutDuration"/> property.
+        /// </summary>
+        private int _timeoutDuration = 10_000;
 
         /// <summary>
         /// Weight used for calculating the value of <see cref="SmoothRoundTripTime"/>.

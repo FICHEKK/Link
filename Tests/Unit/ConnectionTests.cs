@@ -37,4 +37,25 @@ public class ConnectionTests
         var deliveryCount = Enum.GetValues(typeof(Delivery)).Length;
         Assert.That(_connection.ChannelCount, Is.EqualTo(deliveryCount));
     }
+    
+    [Test]
+    public void Setting_period_duration_to_less_than_0_throws()
+    {
+        Assert.That(() => _connection.PeriodDuration = 1, Throws.Nothing);
+        Assert.That(() => _connection.PeriodDuration = 0, Throws.Nothing);
+        
+        // However, negative should throw.
+        Assert.That(() => _connection.PeriodDuration = -1, Throws.Exception);
+    }
+    
+    [Test]
+    public void Setting_timeout_duration_to_less_than_minus_1_throws()
+    {
+        Assert.That(() => _connection.TimeoutDuration = 1, Throws.Nothing);
+        Assert.That(() => _connection.TimeoutDuration = 0, Throws.Nothing);
+        Assert.That(() => _connection.TimeoutDuration = -1, Throws.Nothing);
+        
+        // However, less than -1 should throw.
+        Assert.That(() => _connection.TimeoutDuration = -2, Throws.Exception);
+    }
 }
