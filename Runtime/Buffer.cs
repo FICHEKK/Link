@@ -29,7 +29,7 @@ namespace Link
         /// <summary>
         /// Gets the direct reference to the underlying byte-array.
         /// </summary>
-        public byte[] Bytes { get; }
+        public byte[] Bytes => _isInPool ? throw new InvalidOperationException("Cannot get bytes of a buffer that is in pool.") : _bytes;
         
         /// <summary>
         /// Returns the number of bytes currently written to this buffer.
@@ -37,8 +37,14 @@ namespace Link
         public int Size { get; private set; }
 
         /// <summary>
+        /// Underlying byte-array used by this <see cref="Buffer"/> instance.
+        /// </summary>
+        private readonly byte[] _bytes;
+
+        /// <summary>
         /// Indicates whether this instance is currently stored in the <see cref="BufferPool"/>.
-        /// It is used to ensure that the same instance is not returned to the pool more than once.
+        /// It is used to ensure that the same instance is not returned to the pool more than once
+        /// as well as ensuring that instance in pool is not accidentally used.
         /// </summary>
         private bool _isInPool;
         
@@ -81,7 +87,7 @@ namespace Link
         /// <summary>
         /// Creates a new instance with the specified size.
         /// </summary>
-        private Buffer(int size) => Bytes = new byte[size];
+        private Buffer(int size) => _bytes = new byte[size];
 
         public unsafe void Write<T>(T value) where T : unmanaged
         {
@@ -161,11 +167,11 @@ namespace Link
 
             while (v >= 0x80)
             {
-                Bytes[offset++] = (byte) (v | 0x80);
+                _bytes[offset++] = (byte) (v | 0x80);
                 v >>= 7;
             }
 
-            Bytes[offset] = (byte) v;
+            _bytes[offset] = (byte) v;
         }
 
         public unsafe T Read<T>(int offset) where T : unmanaged
@@ -202,16 +208,16 @@ namespace Link
 
             do
             {
-                if (offset >= Bytes.Length)
+                if (offset >= _bytes.Length)
                     throw new InvalidOperationException("Could not read var-int (out-of-bounds bytes).");
                 
                 if (shift == 5 * 7)
                     throw new InvalidOperationException("Invalid var-int format (requires more than 5 bytes).");
 
-                value |= (Bytes[offset] & 0x7F) << shift;
+                value |= (_bytes[offset] & 0x7F) << shift;
                 shift += 7;
                 bytesRead++;
-            } while ((Bytes[offset++] & 0x80) != 0);
+            } while ((_bytes[offset++] & 0x80) != 0);
 
             return value;
         }

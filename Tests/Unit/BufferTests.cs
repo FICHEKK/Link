@@ -49,6 +49,34 @@ public class BufferTests
         buffer.Return();
         Assert.That(buffer.Return(), Is.False);
     }
+    
+    [Test]
+    public void Getting_byte_array_from_buffer_in_pool_throws()
+    {
+        var buffer = Buffer.Get();
+        buffer.Return();
+        Assert.That(() => buffer.Bytes, Throws.Exception);
+    }
+    
+    [Test]
+    public void Writing_to_buffer_in_pool_throws()
+    {
+        var buffer = Buffer.Get();
+        buffer.Return();
+        
+        Assert.That(() => buffer.Write(0), Throws.Exception);
+        Assert.That(() => buffer.WriteArray(new[] { 1, 2, 3 }), Throws.Exception);
+    }
+    
+    [Test]
+    public void Reading_from_buffer_in_pool_throws()
+    {
+        var buffer = Buffer.Get();
+        buffer.Return();
+        
+        Assert.That(() => buffer.Read<int>(offset: 0), Throws.Exception);
+        Assert.That(() => buffer.ReadArray<int>(length: 0, offset: 0), Throws.Exception);
+    }
 
     [Test]
     public void Reading_value_that_was_written_produces_same_value<T>([ValueSource(typeof(TestData), nameof(TestData.Values))] T valueToWrite) where T : unmanaged
