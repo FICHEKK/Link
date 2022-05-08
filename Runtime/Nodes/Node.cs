@@ -148,7 +148,7 @@ namespace Link.Nodes
                 }
                 catch (ObjectDisposedException)
                 {
-                    Log.Info("Socket has been disposed.");
+                    Log.Info($"Socket has been disposed on thread '{Thread.CurrentThread.Name}'.");
                     break;
                 }
                 catch (SocketException e)
@@ -162,11 +162,11 @@ namespace Link.Nodes
                     // be handled as the connection will get cleaned automatically once it times out.
                     if (e.SocketErrorCode == SocketError.ConnectionReset) continue;
 
-                    Log.Warning($"Socket exception {e.ErrorCode}, {e.SocketErrorCode}: {e.Message}");
+                    Log.Warning($"Socket exception {e.ErrorCode}, {e.SocketErrorCode}: '{e.Message}' on thread '{Thread.CurrentThread.Name}'.");
                 }
                 catch (Exception e)
                 {
-                    Log.Error($"Unexpected exception: {e}");
+                    Log.Error($"Unexpected exception: '{e}' on thread '{Thread.CurrentThread.Name}'.");
                 }
             }
 
