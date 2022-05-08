@@ -27,7 +27,7 @@ namespace Link
         public static int AllocationCount { get; private set; }
 
         /// <summary>
-        /// Gets or set the direct reference to the underlying byte-array.
+        /// Gets the direct reference to the underlying byte-array.
         /// </summary>
         public byte[] Bytes { get; }
         
@@ -234,6 +234,15 @@ namespace Link
                 _isInPool = true;
                 return true;
             }
+        }
+        
+        ~Buffer()
+        {
+            // If buffer is in the pool, it was properly returned.
+            if (_isInPool) return;
+            
+            // Otherwise, buffer leak occured.
+            Log.Warning("Buffer leak occured (it wasn't properly returned to the pool).");
         }
     }
 }
