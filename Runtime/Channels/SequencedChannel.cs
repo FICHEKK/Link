@@ -5,8 +5,10 @@ namespace Link.Channels
         public long PacketsReceivedOutOfOrder { get; private set; }
         public long BytesReceivedOutOfOrder { get; private set; }
         
-        private readonly object _receiveLock = new();
         private readonly Connection _connection;
+        private readonly object _sendLock = new();
+        private readonly object _receiveLock = new();
+        
         private ushort _localSequenceNumber;
         private ushort _remoteSequenceNumber;
 
@@ -15,8 +17,11 @@ namespace Link.Channels
 
         protected override void SendData(Packet packet)
         {
-            packet.Write(++_localSequenceNumber);
-            _connection.Node.Send(packet, _connection.RemoteEndPoint);
+            lock (_sendLock)
+            {
+                packet.Write(++_localSequenceNumber);
+                _connection.Node.Send(packet, _connection.RemoteEndPoint);
+            }
         }
 
         protected override void ReceiveData(ReadOnlyPacket packet)
