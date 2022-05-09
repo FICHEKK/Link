@@ -89,8 +89,11 @@ namespace Link.Channels
 
         protected override void SendData(Packet packet)
         {
-            _connection.Node.Send(packet.Write(_localSequenceNumber), _connection.RemoteEndPoint);
-            _pendingPackets[_localSequenceNumber++] = PendingPacket.Get(packet, reliableChannel: this);
+            lock (_pendingPackets)
+            {
+                _connection.Node.Send(packet.Write(_localSequenceNumber), _connection.RemoteEndPoint);
+                _pendingPackets[_localSequenceNumber++] = PendingPacket.Get(packet, reliableChannel: this);
+            }
         }
 
         protected override void ReceiveData(ReadOnlyPacket packet)
@@ -121,8 +124,7 @@ namespace Link.Channels
                 while (_receivedPackets[_receiveSequenceNumber] is not null)
                 {
                     _connection.Node.Receive(new ReadOnlyPacket(_receivedPackets[_receiveSequenceNumber], position: 2), _connection.RemoteEndPoint);
-                    _receivedPackets[_receiveSequenceNumber].Return();
-                    _receiveSequenceNumber++;
+                    _receivedPackets[_receiveSequenceNumber++].Return();
                 }
             }
         }
