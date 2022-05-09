@@ -51,6 +51,7 @@ public static class CustomChannels
             MaxResendAttempts = 20,
             MinResendDelay = 10,
             BackoffFactor = 1.5,
+            AckBytes = 4,
         };
     }
     

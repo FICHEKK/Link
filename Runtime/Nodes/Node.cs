@@ -82,7 +82,7 @@ namespace Link.Nodes
         /// This property should only be used only for testing purposes.
         /// </summary>
         /// <remarks>Value must be in range from 0 to 1.</remarks>
-        public float PacketLoss
+        public double PacketLoss
         {
             get => _packetLoss;
             set => _packetLoss = value is >= 0 and <= 1 ? value : throw new ArgumentOutOfRangeException(nameof(PacketLoss));
@@ -131,7 +131,7 @@ namespace Link.Nodes
         private Queue<(Buffer packet, EndPoint senderEndPoint)> _consumerPackets = new();
 
         private Socket _socket;
-        private float _packetLoss;
+        private double _packetLoss;
         private int _minLatency;
         private int _maxLatency;
 

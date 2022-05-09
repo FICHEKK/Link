@@ -69,6 +69,22 @@ public class NodeTests
         Assert.That(() => node.MaxLatency = -1, Throws.Exception);
     
     [Test]
+    public void Setting_packet_loss_to_less_than_0_throws([ValueSource(nameof(Nodes))] Node node) =>
+        Assert.That(() => node.PacketLoss = -0.01, Throws.Exception);
+    
+    [Test]
+    public void Setting_packet_loss_to_0_does_not_throw([ValueSource(nameof(Nodes))] Node node) =>
+        Assert.That(() => node.PacketLoss = 0, Throws.Nothing);
+    
+    [Test]
+    public void Setting_packet_loss_to_1_does_not_throw([ValueSource(nameof(Nodes))] Node node) =>
+        Assert.That(() => node.PacketLoss = 1, Throws.Nothing);
+    
+    [Test]
+    public void Setting_packet_loss_to_greater_than_1_throws([ValueSource(nameof(Nodes))] Node node) =>
+        Assert.That(() => node.PacketLoss = 1.01, Throws.Exception);
+    
+    [Test]
     public void Setting_min_latency_to_greater_than_max_latency_does_not_throw([ValueSource(nameof(Nodes))] Node node) =>
         Assert.That(() => node.MinLatency = node.MaxLatency + 1, Throws.Nothing);
     
