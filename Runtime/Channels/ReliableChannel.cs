@@ -95,36 +95,35 @@ namespace Link.Channels
 
         protected override void ReceiveData(ReadOnlyPacket packet)
         {
-            var sequenceNumber = packet.Read<ushort>(position: packet.Size - sizeof(ushort));
-            UpdateRemoteSequenceNumber(sequenceNumber);
-            SendAcknowledgement(packet.ChannelId, sequenceNumber);
-
-            if (_receivedPackets[sequenceNumber] is not null)
+            lock (_receivedPackets)
             {
-                PacketsDuplicated++;
-                BytesDuplicated += packet.Size;
-                return;
-            }
+                var sequenceNumber = packet.Read<ushort>(position: packet.Size - sizeof(ushort));
+                UpdateRemoteSequenceNumber(sequenceNumber);
+                SendAcknowledgement(packet.ChannelId, sequenceNumber);
 
-            _receivedPackets[sequenceNumber] = Buffer.Copy(packet.Buffer);
-            _receivedPackets[(ushort) (sequenceNumber - BufferSize / 2)] = null;
+                if (_receivedPackets[sequenceNumber] is not null)
+                {
+                    PacketsDuplicated++;
+                    BytesDuplicated += packet.Size;
+                    return;
+                }
 
-            if (!_isOrdered)
-            {
-                ReceivePacket(_receivedPackets[sequenceNumber]);
-                return;
-            }
+                _receivedPackets[sequenceNumber] = Buffer.Copy(packet.Buffer);
+                _receivedPackets[(ushort) (sequenceNumber - BufferSize / 2)] = null;
 
-            while (_receivedPackets[_receiveSequenceNumber] is not null)
-            {
-                ReceivePacket(_receivedPackets[_receiveSequenceNumber]);
-                _receiveSequenceNumber++;
-            }
+                if (!_isOrdered)
+                {
+                    _connection.Node.Receive(new ReadOnlyPacket(_receivedPackets[sequenceNumber], position: 2), _connection.RemoteEndPoint);
+                    _receivedPackets[sequenceNumber].Return();
+                    return;
+                }
 
-            void ReceivePacket(Buffer buffer)
-            {
-                _connection.Node.Receive(new ReadOnlyPacket(buffer, position: 2), _connection.RemoteEndPoint);
-                buffer.Return();
+                while (_receivedPackets[_receiveSequenceNumber] is not null)
+                {
+                    _connection.Node.Receive(new ReadOnlyPacket(_receivedPackets[_receiveSequenceNumber], position: 2), _connection.RemoteEndPoint);
+                    _receivedPackets[_receiveSequenceNumber].Return();
+                    _receiveSequenceNumber++;
+                }
             }
         }
 
