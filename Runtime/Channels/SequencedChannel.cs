@@ -5,6 +5,7 @@ namespace Link.Channels
         public long PacketsReceivedOutOfOrder { get; private set; }
         public long BytesReceivedOutOfOrder { get; private set; }
         
+        private readonly object _receiveLock = new();
         private readonly Connection _connection;
         private ushort _localSequenceNumber;
         private ushort _remoteSequenceNumber;
@@ -20,17 +21,19 @@ namespace Link.Channels
 
         protected override void ReceiveData(ReadOnlyPacket packet)
         {
-            var sequenceNumber = packet.Read<ushort>(position: packet.Size - sizeof(ushort));
-
-            if (IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber))
+            lock (_receiveLock)
             {
+                var sequenceNumber = packet.Read<ushort>(position: packet.Size - sizeof(ushort));
+
+                if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber))
+                {
+                    PacketsReceivedOutOfOrder++;
+                    BytesReceivedOutOfOrder += packet.Size;
+                    return;
+                }
+
                 _remoteSequenceNumber = sequenceNumber;
                 _connection.Node.Receive(packet, _connection.RemoteEndPoint);
-            }
-            else
-            {
-                PacketsReceivedOutOfOrder++;
-                BytesReceivedOutOfOrder += packet.Size;
             }
         }
 
