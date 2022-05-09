@@ -90,22 +90,40 @@ namespace Link.Nodes
 
         /// <summary>
         /// Minimum additional delay (in ms) before processing received packet.
+        /// If set to greater than <see cref="MaxLatency"/>, <see cref="MaxLatency"/> is also going to be set to that value.
         /// </summary>
-        /// <remarks>Value must be non-negative and less or equal to <see cref="MaxLatency"/>.</remarks>
         public int MinLatency
         {
             get => _minLatency;
-            set => _minLatency = value >= 0 && value <= _maxLatency ? value : throw new ArgumentOutOfRangeException(nameof(MinLatency));
+            set
+            {
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException(nameof(MinLatency), $"{nameof(MinLatency)} must be positive.");
+
+                if (value > MaxLatency)
+                    _maxLatency = value;
+
+                _minLatency = value;
+            }
         }
 
         /// <summary>
         /// Maximum additional delay (in ms) before processing received packet.
+        /// If set to lower than <see cref="MinLatency"/>, <see cref="MinLatency"/> is also going to be set to that value.
         /// </summary>
-        /// <remarks>Value must be non-negative and greater or equal to <see cref="MinLatency"/>.</remarks>
         public int MaxLatency
         {
             get => _maxLatency;
-            set => _maxLatency = value >= 0 && value >= _minLatency ? value : throw new ArgumentOutOfRangeException(nameof(MaxLatency));
+            set
+            {
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException(nameof(MaxLatency), $"{nameof(MaxLatency)} must be positive.");
+
+                if (value < MinLatency)
+                    _minLatency = value;
+
+                _maxLatency = value;
+            }
         }
 
         private readonly byte[] _receiveBuffer = new byte[Packet.MaxSize];
