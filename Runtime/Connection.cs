@@ -72,7 +72,7 @@ namespace Link
         public double DeviationFactor { get; set; } = 0.25;
 
         /// <summary>
-        /// Returns round-trip time with applied exponential smoothing.
+        /// Returns round-trip time with applied exponential smoothing, in milliseconds.
         /// </summary>
         public double SmoothRoundTripTime { get; private set; }
 
@@ -253,6 +253,8 @@ namespace Link
 
             _sendPingTimer.Dispose();
             CurrentState = State.Disconnected;
+            
+            foreach (var channel in _channels) channel?.Close();
         }
 
         /// <summary>

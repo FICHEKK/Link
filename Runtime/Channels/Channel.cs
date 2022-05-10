@@ -65,6 +65,11 @@ namespace Link.Channels
         /// but is also useful as a diagnostic tool to write warnings if ack is received on the unreliable channel.
         /// </summary>
         internal abstract void ReceiveAcknowledgement(ReadOnlyPacket packet);
+        
+        /// <summary>
+        /// Closes this channel which releases all of the used resources.
+        /// </summary>
+        internal virtual void Close() { }
 
         /// <summary>
         /// Returns statistics of this channel written in textual form.

@@ -58,17 +58,22 @@ namespace Link.Channels
                 // Other thread has already acknowledged this packet.
                 if (_packet is null) return;
 
-                if (_resendAttempts < _reliableChannel.MaxResendAttempts)
-                {
-                    _reliableChannel.ResendPacket(new Packet(_packet));
-                    _resendAttempts++;
-                    ScheduleResend();
-                }
-                else
+                if (_resendAttempts >= _reliableChannel.MaxResendAttempts)
                 {
                     _reliableChannel.HandleLostPacket(new Packet(_packet));
                     Acknowledge();
+                    return;
                 }
+
+                if (!_reliableChannel.ResendPacket(new Packet(_packet)))
+                {
+                    // Channel has been closed, this packet's job is done.
+                    Acknowledge();
+                    return;
+                }
+
+                _resendAttempts++;
+                ScheduleResend();
             }
         }
 

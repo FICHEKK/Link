@@ -80,6 +80,7 @@ namespace Link.Channels
         private ushort _localSequenceNumber;
         private ushort _remoteSequenceNumber;
         private ushort _receiveSequenceNumber;
+        private bool _isClosed;
         
         public ReliableChannel(Connection connection, bool isOrdered = true)
         {
@@ -91,6 +92,8 @@ namespace Link.Channels
         {
             lock (_pendingPackets)
             {
+                if (_isClosed) return;
+                
                 _connection.Node.Send(packet.Write(_localSequenceNumber), _connection.RemoteEndPoint);
                 _pendingPackets[_localSequenceNumber++] = PendingPacket.Get(packet, reliableChannel: this);
             }
@@ -100,6 +103,8 @@ namespace Link.Channels
         {
             lock (_receivedPackets)
             {
+                if (_isClosed) return;
+                
                 var sequenceNumber = packet.Read<ushort>(position: packet.Size - sizeof(ushort));
                 UpdateRemoteSequenceNumber(sequenceNumber);
                 SendAcknowledgement(packet.ChannelId, sequenceNumber);
@@ -191,15 +196,21 @@ namespace Link.Channels
         /// Retries sending packet as acknowledgement wasn't received in time.
         /// </summary>
         /// <param name="packet">Packet being resent.</param>
-        internal void ResendPacket(Packet packet)
+        /// <returns><c>true</c> if resend was executed, <c>false</c> if channel is closed.</returns>
+        internal bool ResendPacket(Packet packet)
         {
-            _connection.Node.Send(packet, _connection.RemoteEndPoint);
+            lock (_pendingPackets)
+            {
+                if (_isClosed) return false;
+                
+                _connection.Node.Send(packet, _connection.RemoteEndPoint);
+                PacketsResent++;
+                BytesResent += packet.Size;
             
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Size - sizeof(ushort));
-            Log.Info($"Packet [sequence: {sequenceNumber}] re-sent.");
-
-            PacketsResent++;
-            BytesResent += packet.Size;
+                var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Size - sizeof(ushort));
+                Log.Info($"Packet [sequence: {sequenceNumber}] re-sent.");
+                return true;
+            }
         }
 
         /// <summary>
@@ -208,8 +219,35 @@ namespace Link.Channels
         /// <param name="packet">Packet that was lost.</param>
         internal void HandleLostPacket(Packet packet)
         {
-            var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Size - sizeof(ushort));
-            _connection.Timeout($"Packet [sequence: {sequenceNumber}] exceeded maximum resend attempts of {MaxResendAttempts}.");
+            lock (_pendingPackets)
+            {
+                if (_isClosed) return;
+
+                var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Size - sizeof(ushort));
+                _connection.Timeout($"Packet [sequence: {sequenceNumber}] exceeded maximum resend attempts of {MaxResendAttempts}.");
+            }
+        }
+
+        internal override void Close()
+        {
+            lock (_pendingPackets)
+            lock (_receivedPackets)
+            {
+                _isClosed = true;
+                
+                // There is nothing to clean-up as packets don't get buffered.
+                if (!_isOrdered) return;
+                
+                // There are 0 buffered packets.
+                if (IsFirstSequenceNumberGreater(_receiveSequenceNumber, _remoteSequenceNumber)) return;
+                
+                // Account for sequence number wrapping.
+                var sequenceWithWrap = _remoteSequenceNumber >= _receiveSequenceNumber ? _remoteSequenceNumber : _remoteSequenceNumber + BufferSize;
+
+                // Return all of the buffered packets that haven't been received.
+                for (int i = _receiveSequenceNumber; i <= sequenceWithWrap; i++)
+                    _receivedPackets[i % BufferSize]?.Return();
+            }
         }
 
         public override string ToString() =>
