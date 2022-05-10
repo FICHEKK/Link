@@ -18,7 +18,7 @@ namespace Link.Nodes
         public delegate void PacketHandler(ReadOnlyPacket packet, EndPoint senderEndPoint);
         
         /// <summary>
-        /// Raised each time a data-packet is received.
+        /// Invoked each time a data-packet is received.
         /// </summary>
         public event PacketHandler PacketReceived;
         
