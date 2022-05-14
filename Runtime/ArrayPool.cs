@@ -9,6 +9,12 @@ namespace Link
     internal static class ArrayPool
     {
         /// <summary>
+        /// Maximum number of arrays that can be in a single bucket.
+        /// This is a measure which prevents infinite memory consumption in case of an error.
+        /// </summary>
+        private const int MaxArraysPerBucket = 8;
+        
+        /// <summary>
         /// Initializes buckets that contain array instances.
         /// </summary>
         static ArrayPool()
@@ -65,7 +71,18 @@ namespace Link
             if (array.Length == 0)
                 return;
             
-            lock (Buckets) Buckets[CalculateBucketIndex(array.Length)].Enqueue(array);
+            lock (Buckets)
+            {
+                var bucket = Buckets[CalculateBucketIndex(array.Length)];
+
+                if (bucket.Count >= MaxArraysPerBucket)
+                {
+                    Log.Warning("Array could not be returned to the pool as bucket is full.");
+                    return;
+                }
+                
+                bucket.Enqueue(array);
+            }
         }
 
         /// <summary>
