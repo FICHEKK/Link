@@ -12,11 +12,6 @@ namespace Link
         /// Collection of reusable <see cref="Buffer"/> instances used to avoid frequent memory allocations.
         /// </summary>
         private static readonly Queue<Buffer> BufferPool = new();
-        
-        /// <summary>
-        /// Default size of a newly created <see cref="Buffer"/> instance.
-        /// </summary>
-        public static int DefaultSize { get; set; } = 1024;
 
         /// <summary>
         /// Represents total number of new buffer allocations. This value should eventually stagnate if
@@ -35,11 +30,16 @@ namespace Link
         /// Returns the number of bytes currently written to this buffer.
         /// </summary>
         public int Size { get; private set; }
+        
+        /// <summary>
+        /// Returns the number of bytes that can be written to this buffer.
+        /// </summary>
+        public int Capacity => _bytes.Length;
 
         /// <summary>
         /// Underlying byte-array used by this <see cref="Buffer"/> instance.
         /// </summary>
-        private readonly byte[] _bytes;
+        private byte[] _bytes;
 
         /// <summary>
         /// Indicates whether this instance is currently stored in the <see cref="BufferPool"/>.
@@ -63,6 +63,15 @@ namespace Link
             buffer.Size = size;
             return buffer;
         }
+
+        public static Buffer OfSize(int size)
+        {
+            var buffer = Get();
+            ArrayPool.Return(buffer._bytes);
+            buffer._bytes = ArrayPool.Get(size);
+            buffer.Size = size;
+            return buffer;
+        }
         
         /// <summary>
         /// Returns a <see cref="Buffer"/> instance from the pool (or creates new if pool is empty).
@@ -81,7 +90,7 @@ namespace Link
             }
 
             AllocationCount++;
-            return new Buffer(DefaultSize);
+            return new Buffer(Packet.MaxSize);
         }
 
         /// <summary>
@@ -91,9 +100,7 @@ namespace Link
 
         public unsafe void Write<T>(T value) where T : unmanaged
         {
-            if (Size + sizeof(T) > Bytes.Length)
-                throw new InvalidOperationException($"Not enough space to write '{typeof(T)}'.");
-
+            EnsureSize(Size + sizeof(T));
             Write(value, Size);
             Size += sizeof(T);
         }
@@ -111,11 +118,10 @@ namespace Link
         
         public unsafe void WriteArray<T>(T[] array, int start, int length) where T : unmanaged
         {
-            if (Size + length * sizeof(T) > Bytes.Length)
-                throw new InvalidOperationException($"Not enough space to write '{typeof(T)}' array.");
-            
+            var bytesToWrite = length * sizeof(T);
+            EnsureSize(Size + bytesToWrite);
             WriteArray(array, start, length, Size);
-            Size += length * sizeof(T);
+            Size += bytesToWrite;
         }
         
         public void WriteArray<T>(T[] array, int offset) where T : unmanaged =>
@@ -138,10 +144,7 @@ namespace Link
         public void WriteVarInt(int value)
         {
             var bytesNeeded = VarIntBytesNeeded(value);
-            
-            if (Size + bytesNeeded > Bytes.Length)
-                throw new InvalidOperationException($"Not enough space to write var-int of value {value}.");
-
+            EnsureSize(Size + bytesNeeded);
             WriteVarInt(value, Size);
             Size += bytesNeeded;
         }
@@ -172,6 +175,16 @@ namespace Link
             }
 
             _bytes[offset] = (byte) v;
+        }
+        
+        private void EnsureSize(int requiredSize)
+        {
+            if (Bytes.Length >= requiredSize) return;
+            
+            var biggerBuffer = ArrayPool.Get(requiredSize);
+            Array.Copy(_bytes, biggerBuffer, Size);
+            ArrayPool.Return(_bytes);
+            _bytes = biggerBuffer;
         }
 
         public unsafe T Read<T>(int offset) where T : unmanaged
@@ -234,6 +247,12 @@ namespace Link
                 {
                     Log.Error($"Attempted to return '{nameof(Buffer)}' instance that is already in pool.");
                     return false;
+                }
+
+                if (_bytes.Length > Packet.MaxSize)
+                {
+                    ArrayPool.Return(_bytes);
+                    _bytes = ArrayPool.Get(Packet.MaxSize);
                 }
 
                 BufferPool.Enqueue(this);

@@ -9,11 +9,6 @@ namespace Link
     public readonly ref struct Packet
     {
         /// <summary>
-        /// Sets the default <see cref="Link.Buffer"/> size to <see cref="DefaultMaxSize"/> bytes.
-        /// </summary>
-        static Packet() => Buffer.DefaultSize = DefaultMaxSize;
-
-        /// <summary>
         /// Maximum allowed packet size, in bytes. This value must be chosen carefully to avoid
         /// fragmentation on the network layer. Any packets that require bigger size must use
         /// fragmentation on the application layer. It is advised to only modify this value
@@ -28,9 +23,14 @@ namespace Link
         /// </remarks>
         public static int MaxSize
         {
-            get => Buffer.DefaultSize;
-            set => Buffer.DefaultSize = value >= MinSize ? value : throw new ArgumentOutOfRangeException(nameof(MaxSize));
+            get => _maxSize;
+            set => _maxSize = value >= MinSize ? value : throw new ArgumentOutOfRangeException(nameof(MaxSize));
         }
+
+        /// <summary>
+        /// Backing field of <see cref="MaxSize"/> property.
+        /// </summary>
+        private static int _maxSize = DefaultMaxSize;
 
         /// <summary>
         /// Default maximum packet size. If network layer fragmentation occurs when using
