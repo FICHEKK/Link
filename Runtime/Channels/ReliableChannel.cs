@@ -92,18 +92,14 @@ namespace Link.Channels
         private readonly Connection _connection;
         private readonly PendingPacket[] _pendingPackets = new PendingPacket[BufferSize];
         private readonly Buffer[] _receivedPackets = new Buffer[BufferSize];
-        private readonly bool _isOrdered;
 
         private ushort _localSequenceNumber;
         private ushort _remoteSequenceNumber;
         private ushort _receiveSequenceNumber;
         private bool _isClosed;
         
-        public ReliableChannel(Connection connection, bool isOrdered = true)
-        {
+        public ReliableChannel(Connection connection) =>
             _connection = connection;
-            _isOrdered = isOrdered;
-        }
 
         protected override void SendData(Packet packet)
         {
@@ -171,12 +167,6 @@ namespace Link.Channels
 
                 _receivedPackets[sequenceNumber] = Buffer.Copy(packet.Buffer);
                 _receivedPackets[(ushort) (sequenceNumber - BufferSize / 2)] = null;
-
-                if (!_isOrdered)
-                {
-                    ReceiveIfPossible(sequenceNumber);
-                    return;
-                }
 
                 while (true)
                 {
@@ -313,7 +303,7 @@ namespace Link.Channels
                 PacketsResent++;
                 BytesResent += packet.Size;
             
-                var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Size - sizeof(ushort));
+                var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Size - FooterSize);
                 Log.Info($"Packet [sequence: {sequenceNumber}] re-sent.");
                 return true;
             }
@@ -329,7 +319,7 @@ namespace Link.Channels
             {
                 if (_isClosed) return;
 
-                var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Size - sizeof(ushort));
+                var sequenceNumber = packet.Buffer.Read<ushort>(offset: packet.Size - FooterSize);
                 _connection.Timeout($"Packet [sequence: {sequenceNumber}] exceeded maximum resend attempts of {MaxResendAttempts}.");
             }
         }
@@ -339,16 +329,16 @@ namespace Link.Channels
             lock (_pendingPackets)
             lock (_receivedPackets)
             {
+                // Prevent any further send/receive operations.
                 _isClosed = true;
                 
-                // There is nothing to clean-up as packets don't get buffered.
-                if (!_isOrdered) return;
-                
-                // There are 0 buffered packets.
+                // There are 0 buffered packets, nothing to release.
                 if (IsFirstSequenceNumberGreater(_receiveSequenceNumber, _remoteSequenceNumber)) return;
                 
                 // Account for sequence number wrapping.
-                var sequenceWithWrap = _remoteSequenceNumber >= _receiveSequenceNumber ? _remoteSequenceNumber : _remoteSequenceNumber + BufferSize;
+                var sequenceWithWrap = _remoteSequenceNumber >= _receiveSequenceNumber
+                    ? _remoteSequenceNumber
+                    : _remoteSequenceNumber + BufferSize;
 
                 // Return all of the buffered packets that haven't been received.
                 for (int i = _receiveSequenceNumber; i <= sequenceWithWrap; i++)
