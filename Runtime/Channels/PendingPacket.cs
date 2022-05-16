@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -79,13 +80,10 @@ namespace Link.Channels
 
         private void ScheduleResend()
         {
-            var resendDelay = (int) (_reliableChannel.BaseResendDelay * _backoff);
+            var resendDelay = Math.Max(_reliableChannel.BaseResendDelay, _reliableChannel.MinResendDelay) * _backoff;
             _backoff *= _reliableChannel.BackoffFactor;
 
-            if (resendDelay < _reliableChannel.MinResendDelay)
-                resendDelay = _reliableChannel.MinResendDelay;
-
-            _resendTimer.Change(dueTime: resendDelay, period: Timeout.Infinite);
+            _resendTimer.Change(dueTime: (int) resendDelay, period: Timeout.Infinite);
         }
 
         public void Acknowledge()
