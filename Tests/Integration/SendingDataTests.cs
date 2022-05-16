@@ -13,7 +13,7 @@ public class SendingDataTests
     private Client _client;
 
     [SetUp]
-    public void Start_default_server()
+    public void Start_server_and_connect_client()
     {
         (_server = new Server()).Start(Config.Port);
         (_client = new Client()).Connect(Config.IpAddress, Config.Port);
@@ -22,7 +22,7 @@ public class SendingDataTests
     }
 
     [TearDown]
-    public void Stop_default_server()
+    public void Disconnect_client_and_stop_server()
     {
         _client.Disconnect();
         _server.Stop();
@@ -59,10 +59,8 @@ public class SendingDataTests
     [Test]
     public void Sending_packet_with_size_greater_than_max_size_should_fail()
     {
-        var packet = Packet.Get().WriteArray(new byte[1024], writeLength: false);
-        
-        Assert.That(_client.Send(packet, _client.Connection.RemoteEndPoint), Is.True);
+        Assert.That(() => _client.Send(Packet.Get().WriteArray(new byte[1024]), _client.Connection.RemoteEndPoint), Throws.Nothing);
         Packet.MaxSize = 1000;
-        Assert.That(_client.Send(packet, _client.Connection.RemoteEndPoint), Is.False);
+        Assert.That(() => _client.Send(Packet.Get().WriteArray(new byte[1024]), _client.Connection.RemoteEndPoint), Throws.Exception);
     }
 }

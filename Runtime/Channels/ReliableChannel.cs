@@ -1,3 +1,5 @@
+using System;
+
 namespace Link.Channels
 {
     /// <summary>
@@ -10,6 +12,21 @@ namespace Link.Channels
         /// Size of the pending and received packet buffers.
         /// </summary>
         private const int BufferSize = ushort.MaxValue + 1;
+
+        /// <summary>
+        /// Consists of header type (1 byte) and channel ID (1 byte).
+        /// </summary>
+        private const int HeaderSize = 2;
+
+        /// <summary>
+        /// Defines how many data-bytes can be stored in a single fragment.
+        /// </summary>
+        private static readonly int BodySize = Packet.MaxSize - HeaderSize - FooterSize;
+        
+        /// <summary>
+        /// Consists of sequence number (2 bytes), fragment index (1 byte) and fragment count (1 byte).
+        /// </summary>
+        private const int FooterSize = 4;
 
         /// <summary>
         /// Maximum number of resend attempts before deeming the packet as lost.
@@ -94,9 +111,45 @@ namespace Link.Channels
             {
                 if (_isClosed) return;
                 
-                _connection.Node.Send(packet.Write(_localSequenceNumber), _connection.RemoteEndPoint);
-                _pendingPackets[_localSequenceNumber++] = PendingPacket.Get(packet, reliableChannel: this);
+                var dataByteCount = packet.Size - HeaderSize;
+                var fragmentCount = dataByteCount / BodySize + (dataByteCount % BodySize != 0 ? 1 : 0);
+
+                if (fragmentCount > byte.MaxValue)
+                {
+                    Log.Error($"Packet is too big: consists of {fragmentCount} fragments (max is {byte.MaxValue}).");
+                    return;
+                }
+
+                if (fragmentCount <= 1)
+                {
+                    SendFragment(packet, fragmentIndex: 0, fragmentCount: 1);
+                    return;
+                }
+                
+                for (var fragmentIndex = 0; fragmentIndex < fragmentCount; fragmentIndex++)
+                {
+                    var fragment = Packet.Get(channelId: packet.Buffer.Bytes[1]).WriteArray
+                    (
+                        array: packet.Buffer.Bytes,
+                        start: HeaderSize + fragmentIndex * BodySize,
+                        length: fragmentIndex < fragmentCount - 1 ? BodySize : dataByteCount - fragmentIndex * BodySize,
+                        writeLength: false
+                    );
+
+                    SendFragment(fragment, (byte) fragmentIndex, (byte) fragmentCount);
+                    fragment.Return();
+                }
             }
+        }
+        
+        private void SendFragment(Packet fragment, byte fragmentIndex, byte fragmentCount)
+        {
+            fragment.Write(_localSequenceNumber);
+            fragment.Write(fragmentIndex);
+            fragment.Write(fragmentCount);
+                    
+            _connection.Node.Send(fragment, _connection.RemoteEndPoint);
+            _pendingPackets[_localSequenceNumber++] = PendingPacket.Get(fragment, reliableChannel: this);
         }
 
         protected override void ReceiveData(ReadOnlyPacket packet)
@@ -105,7 +158,7 @@ namespace Link.Channels
             {
                 if (_isClosed) return;
                 
-                var sequenceNumber = packet.Read<ushort>(position: packet.Size - sizeof(ushort));
+                var sequenceNumber = packet.Read<ushort>(position: packet.Size - FooterSize);
                 UpdateRemoteSequenceNumber(sequenceNumber);
                 SendAcknowledgement(packet.ChannelId, sequenceNumber);
 
@@ -121,17 +174,70 @@ namespace Link.Channels
 
                 if (!_isOrdered)
                 {
-                    _connection.Node.Receive(new ReadOnlyPacket(_receivedPackets[sequenceNumber], position: 2), _connection.RemoteEndPoint);
-                    _receivedPackets[sequenceNumber].Return();
+                    ReceiveIfPossible(sequenceNumber);
                     return;
                 }
 
-                while (_receivedPackets[_receiveSequenceNumber] is not null)
+                while (true)
                 {
-                    _connection.Node.Receive(new ReadOnlyPacket(_receivedPackets[_receiveSequenceNumber], position: 2), _connection.RemoteEndPoint);
-                    _receivedPackets[_receiveSequenceNumber++].Return();
+                    var packetsReassembled = ReceiveIfPossible(_receiveSequenceNumber);
+                    if (packetsReassembled == 0) return;
+                    
+                    _receiveSequenceNumber += packetsReassembled;
                 }
             }
+        }
+
+        private byte ReceiveIfPossible(ushort sequenceNumber)
+        {
+            var fragment = _receivedPackets[sequenceNumber];
+            if (fragment is null) return 0;
+            
+            var fragmentIndex = fragment.Read<byte>(offset: fragment.Size - 2);
+            var fragmentCount = fragment.Read<byte>(offset: fragment.Size - 1);
+            
+            var reassembled = ReassembleIfPossible(sequenceNumber, fragmentIndex, fragmentCount);
+            if (reassembled is null) return 0;
+            
+            _connection.Node.Receive(new ReadOnlyPacket(reassembled, position: HeaderSize), _connection.RemoteEndPoint);
+            reassembled.Return();
+            return fragmentCount;
+        }
+
+        private Buffer ReassembleIfPossible(ushort sequenceNumber, byte fragmentIndex, byte fragmentCount)
+        {
+            // Single fragment packets are a trivial, but the most common case.
+            if (fragmentCount == 1) return _receivedPackets[sequenceNumber];
+            
+            // Range of sequence numbers that contain full packet.
+            var startSequenceNumber = sequenceNumber - fragmentIndex;
+            var endSequenceNumber = startSequenceNumber + fragmentCount - 1;
+            
+            // Start iterating from end as newer fragments are more likely to not be received.
+            for (var i = endSequenceNumber; i >= startSequenceNumber; i--)
+            {
+                // If at least one fragment is not received, we cannot reassemble the packet.
+                if (_receivedPackets[(ushort) i] is null) return null;
+            }
+            
+            // If we reached this point, all of the fragments have been received, so we can reassemble it.
+            var lastFragmentByteCount = _receivedPackets[(ushort) endSequenceNumber].Size - HeaderSize - FooterSize;
+            var reassembled = Buffer.OfSize(HeaderSize + (fragmentCount - 1) * BodySize + lastFragmentByteCount);
+
+            // Copy data from all of the full fragments.
+            for (var seq = startSequenceNumber; seq < endSequenceNumber; seq++)
+            {
+                var fullFragment = _receivedPackets[(ushort) seq];
+                Array.Copy(fullFragment.Bytes, HeaderSize, reassembled.Bytes, HeaderSize + (seq - startSequenceNumber) * BodySize, BodySize);
+                fullFragment.Return();
+            }
+
+            // Copy data from the last fragment.
+            var lastFragment = _receivedPackets[(ushort) endSequenceNumber];
+            Array.Copy(lastFragment.Bytes, HeaderSize, reassembled.Bytes, HeaderSize + (endSequenceNumber - startSequenceNumber) * BodySize, lastFragmentByteCount);
+            lastFragment.Return();
+
+            return reassembled;
         }
 
         private void UpdateRemoteSequenceNumber(ushort sequenceNumber)

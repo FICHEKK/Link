@@ -22,7 +22,7 @@ namespace Link
         Sequenced,
 
         /// <summary>
-        /// Each packet is guaranteed to be delivered, won't be duplicated and will arrive in order.
+        /// Each packet is guaranteed to be delivered, won't be duplicated, will arrive in order and can be fragmented.
         /// <br/><br/>
         /// This is an expensive delivery method as every packet needs to be acknowledged by the receiving end-point.
         /// Any data that must be delivered reliably should use this delivery method (example: chat messages).

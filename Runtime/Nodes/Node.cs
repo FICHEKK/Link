@@ -221,17 +221,12 @@ namespace Link.Nodes
         /// </summary>
         /// <param name="packet">Packet being sent.</param>
         /// <param name="receiverEndPoint">Where to send the packet to.</param>
-        /// <returns><c>true</c> if packet was successfully sent, <c>false</c> otherwise.</returns>
-        internal bool Send(Packet packet, EndPoint receiverEndPoint)
+        internal void Send(Packet packet, EndPoint receiverEndPoint)
         {
             if (packet.Size > Packet.MaxSize)
-            {
-                Log.Error($"Packet exceeded maximum size of {Packet.MaxSize} bytes (has {packet.Size} bytes).");
-                return false;
-            }
+                throw new InvalidOperationException($"Packet exceeded maximum size of {Packet.MaxSize} bytes (has {packet.Size} bytes).");
 
             _socket.SendTo(packet.Buffer.Bytes, offset: 0, packet.Size, SocketFlags.None, receiverEndPoint);
-            return true;
         }
 
         /// <summary>
