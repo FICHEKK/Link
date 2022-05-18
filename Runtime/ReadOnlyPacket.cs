@@ -18,9 +18,10 @@ namespace Link
         public int Size => Buffer.Size - Packet.HeaderSize;
 
         /// <summary>
-        /// Returns the number of bytes that haven't been read from this packet.
+        /// Returns how many more bytes can be read from this packet. Attempting to
+        /// read more is going to result in the exception being thrown.
         /// </summary>
-        private int UnreadBytes => Buffer.Size - (_start + _position);
+        public int UnreadBytes => Buffer.Size - (_start + _position);
         
         /// <summary>
         /// Underlying packet from which this read-only view is reading from.

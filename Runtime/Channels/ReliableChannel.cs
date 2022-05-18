@@ -103,25 +103,33 @@ namespace Link.Channels
                 if (fragmentCount <= 1)
                 {
                     SendFragment(packet, fragmentIndex: 0, fragmentCount: 1);
-                    return;
                 }
-                
-                for (var fragmentIndex = 0; fragmentIndex < fragmentCount; fragmentIndex++)
+                else
                 {
-                    var fragment = Packet.Get(channelId: packet.Buffer.Bytes[1]).WriteArray
-                    (
-                        array: packet.Buffer.Bytes,
-                        start: Packet.HeaderSize + fragmentIndex * Packet.MaxSize,
-                        length: fragmentIndex < fragmentCount - 1 ? Packet.MaxSize : packet.Size - fragmentIndex * Packet.MaxSize,
-                        writeLength: false
-                    );
-
-                    SendFragment(fragment, (byte) fragmentIndex, (byte) fragmentCount);
-                    fragment.Return();
+                    SendMultiFragmentPacket(packet, fragmentCount);
                 }
             }
         }
         
+        private void SendMultiFragmentPacket(Packet packet, int fragmentCount)
+        {
+            var bytes = packet.Buffer.Bytes;
+            var channelId = bytes[1];
+            var offset = Packet.HeaderSize;
+            var lastIndex = fragmentCount - 1;
+
+            for (var fragmentIndex = 0; fragmentIndex < lastIndex; fragmentIndex++, offset += Packet.MaxSize)
+            {
+                var fullFragment = Packet.Get(channelId).WriteArray(bytes, offset, length: Packet.MaxSize, writeLength: false);
+                SendFragment(fullFragment, (byte) fragmentIndex, (byte) fragmentCount);
+                fullFragment.Return();
+            }
+            
+            var lastFragment = Packet.Get(channelId).WriteArray(bytes, offset, length: packet.Size - lastIndex * Packet.MaxSize, writeLength: false);
+            SendFragment(lastFragment, (byte) lastIndex, (byte) fragmentCount);
+            lastFragment.Return();
+        }
+
         private void SendFragment(Packet fragment, byte fragmentIndex, byte fragmentCount)
         {
             fragment.Buffer.Write(_localSequenceNumber, offset: Packet.DataHeaderSize);

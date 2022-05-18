@@ -65,6 +65,14 @@ namespace Link
         public int Size => Buffer.Size - HeaderSize;
 
         /// <summary>
+        /// Returns how many more bytes can be written to this packet. If positive value is
+        /// returned, that many bytes are still left. If zero is returned, packet is full.
+        /// If negative value is returned, packet must be sent over a channel that performs
+        /// fragmentation and reassembly.
+        /// </summary>
+        public int UnwrittenBytes => MaxSize - Size;
+
+        /// <summary>
         /// Direct reference to the underlying buffer (defensive copy will <b>not</b> be made).
         /// </summary>
         internal Buffer Buffer { get; }
