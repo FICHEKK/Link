@@ -90,7 +90,7 @@ namespace Link
             }
 
             AllocationCount++;
-            return new Buffer(Packet.MaxSize);
+            return new Buffer(Packet.BufferSize);
         }
 
         /// <summary>
@@ -249,10 +249,10 @@ namespace Link
                     return false;
                 }
 
-                if (_bytes.Length > Packet.MaxSize)
+                if (_bytes.Length > Packet.BufferSize)
                 {
                     ArrayPool.Return(_bytes);
-                    _bytes = ArrayPool.Get(Packet.MaxSize);
+                    _bytes = ArrayPool.Get(Packet.BufferSize);
                 }
 
                 BufferPool.Enqueue(this);

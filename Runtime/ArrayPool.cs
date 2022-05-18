@@ -28,14 +28,14 @@ namespace Link
         /// <summary>
         /// Buckets that store array instances. Each subsequent bucket stores arrays 
         /// that have double the size of previous bucket. First bucket contains arrays
-        /// of size <see cref="Packet.MaxSize"/>.
+        /// of size <see cref="Packet.BufferSize"/>.
         /// </summary>
         private static readonly Queue<byte[]>[] Buckets = new Queue<byte[]>[9];
         
         /// <summary>
         /// Maximum possible array size that can be requested from the pool or returned to the pool.
         /// </summary>
-        internal static int MaxSize => Packet.MaxSize * 256;
+        internal static int MaxSize => Packet.BufferSize * 256;
 
         /// <summary>
         /// Gets an array that will have size of at least <see cref="size"/> bytes.
@@ -54,7 +54,7 @@ namespace Link
             var bucketIndex = CalculateBucketIndex(size);
             var bucket = Buckets[CalculateBucketIndex(size)];
             
-            lock (Buckets) return bucket.Count > 0 ? bucket.Dequeue() : new byte[Packet.MaxSize * (1 << bucketIndex)];
+            lock (Buckets) return bucket.Count > 0 ? bucket.Dequeue() : new byte[Packet.BufferSize * (1 << bucketIndex)];
         }
 
         /// <summary>
@@ -92,7 +92,7 @@ namespace Link
         internal static int CalculateBucketIndex(int minimalLength)
         {
             // This minus 1 at the end is a bitwise trick, which allows fast calculations of base 2 logarithms.
-            var packetsRequired = minimalLength / Packet.MaxSize + (minimalLength % Packet.MaxSize != 0 ? 1 : 0) - 1;
+            var packetsRequired = minimalLength / Packet.BufferSize + (minimalLength % Packet.BufferSize != 0 ? 1 : 0) - 1;
             var bucketIndex = 0;
 
             // Counts the number of leading zeros.

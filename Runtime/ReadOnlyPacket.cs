@@ -13,9 +13,14 @@ namespace Link
         public byte ChannelId => Buffer.Bytes[1];
         
         /// <summary>
-        /// Returns total number of bytes contained in the packet.
+        /// Returns the number of bytes contained in this packet.
         /// </summary>
-        public int Size => Buffer.Size;
+        public int Size => Buffer.Size - Packet.HeaderSize;
+
+        /// <summary>
+        /// Returns the number of bytes that haven't been read from this packet.
+        /// </summary>
+        private int UnreadBytes => Buffer.Size - (_start + _position);
         
         /// <summary>
         /// Underlying packet from which this read-only view is reading from.
@@ -23,17 +28,24 @@ namespace Link
         internal Buffer Buffer { get; }
         
         /// <summary>
-        /// Index at which next read operation will be performed.
+        /// Index at which data that can be read starts. This value is used to hide header bytes
+        /// which are an implementation detail and should not be accessed by the user. 
+        /// </summary>
+        private readonly int _start;
+        
+        /// <summary>
+        /// Index at which next read operation will be performed, relative to start index.
         /// </summary>
         private int _position;
 
         /// <summary>
         /// Creates a new read-only view of the given packet, which starts reading at the specified position.
         /// </summary>
-        internal ReadOnlyPacket(Buffer buffer, int position = 0)
+        internal ReadOnlyPacket(Buffer buffer, int start = 0)
         {
             Buffer = buffer;
-            _position = position;
+            _start = start;
+            _position = 0;
         }
         
         /// <summary>
@@ -43,10 +55,10 @@ namespace Link
         {
             var stringByteCount = ReadVarInt();
             
-            if (Size - _position < stringByteCount)
+            if (UnreadBytes < stringByteCount)
                 throw new InvalidOperationException("Could not read string (out-of-bounds bytes).");
             
-            var stringValue = Packet.Encoding.GetString(Buffer.Bytes, _position, stringByteCount);
+            var stringValue = Packet.Encoding.GetString(Buffer.Bytes, _start + _position, stringByteCount);
             _position += stringByteCount;
             return stringValue;
         }
@@ -56,10 +68,10 @@ namespace Link
         /// </summary>
         public unsafe T Read<T>() where T : unmanaged
         {
-            if (Size - _position < sizeof(T))
+            if (UnreadBytes < sizeof(T))
                 throw new InvalidOperationException($"Could not read value of type '{typeof(T)}' (out-of-bounds bytes).");
             
-            var value = Buffer.Read<T>(_position);
+            var value = Buffer.Read<T>(_start + _position);
             _position += sizeof(T);
             return value;
         }
@@ -85,30 +97,19 @@ namespace Link
             if (length * sizeof(T) < 0)
                 throw new InvalidOperationException($"Cannot read array of length {length} as it is too big.");
             
-            if (Size - _position < length * sizeof(T))
+            if (UnreadBytes < length * sizeof(T))
                 throw new InvalidOperationException($"Could not read array of type '{typeof(T)}' (out-of-bounds bytes).");
 
-            var array = Buffer.ReadArray<T>(length, _position);
+            var array = Buffer.ReadArray<T>(length, _start + _position);
             _position += length * sizeof(T);
             return array;
         }
 
         private int ReadVarInt()
         {
-            var varInt = Buffer.ReadVarInt(_position, out var bytesRead);
+            var varInt = Buffer.ReadVarInt(_start + _position, out var bytesRead);
             _position += bytesRead;
             return varInt;
-        }
-        
-        internal T Read<T>(int position) where T : unmanaged
-        {
-            var currentPosition = _position;
-            _position = position;
-            
-            var value = Read<T>();
-            _position = currentPosition;
-            
-            return value;
         }
     }
 }

@@ -38,10 +38,10 @@ public class ArrayPoolTests
         Assert.That(() => ArrayPool.Return(new byte[ArrayPool.MaxSize + 1]), Throws.Exception);
     
     [Test]
-    public void Getting_array_always_returns_multiple_of_packet_max_size([Values(1, 10, 100, 1000, 10_000, 100_000)] int size)
+    public void Getting_array_always_returns_multiple_of_packet_buffer_size([Values(1, 10, 100, 1000, 10_000, 100_000)] int size)
     {
         var array = ArrayPool.Get(size);
-        Assert.That(array.Length % Packet.MaxSize == 0);
+        Assert.That(array.Length % Packet.BufferSize == 0);
     }
     
     [Test]
@@ -58,8 +58,8 @@ public class ArrayPoolTests
         
         for (var i = 0; i <= 8; i++)
         {
-            Assert.That(ArrayPool.CalculateBucketIndex(minimalLength: Packet.MaxSize * (powerOfTwo / 2) + 1), Is.EqualTo(i));
-            Assert.That(ArrayPool.CalculateBucketIndex(minimalLength: Packet.MaxSize * powerOfTwo), Is.EqualTo(i));
+            Assert.That(ArrayPool.CalculateBucketIndex(minimalLength: Packet.BufferSize * (powerOfTwo / 2) + 1), Is.EqualTo(i));
+            Assert.That(ArrayPool.CalculateBucketIndex(minimalLength: Packet.BufferSize * powerOfTwo), Is.EqualTo(i));
             
             powerOfTwo *= 2;
         }

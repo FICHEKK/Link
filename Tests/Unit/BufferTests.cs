@@ -54,10 +54,10 @@ public class BufferTests
     public void Returning_buffer_should_return_big_buffer_to_array_pool()
     {
         var buffer = Buffer.Get();
-        buffer.WriteArray(new byte[Packet.MaxSize + 1]);
+        buffer.WriteArray(new byte[Packet.BufferSize + 1]);
         buffer.Return();
         
-        Assert.That(buffer.Capacity, Is.Not.GreaterThan(Packet.MaxSize));
+        Assert.That(buffer.Capacity, Is.Not.GreaterThan(Packet.BufferSize));
     }
     
     [Test]
@@ -82,8 +82,8 @@ public class BufferTests
     public void Writing_out_of_bounds_should_increase_buffer_size()
     {
         var buffer = Buffer.Get();
-        buffer.WriteArray(new byte[Packet.MaxSize + 1]);
-        Assert.That(buffer.Capacity, Is.GreaterThan(Packet.MaxSize));
+        buffer.WriteArray(new byte[Packet.BufferSize + 1]);
+        Assert.That(buffer.Capacity, Is.GreaterThan(Packet.BufferSize));
     }
 
     [Test]

@@ -19,7 +19,7 @@ namespace Link.Channels
         {
             lock (_sendLock)
             {
-                packet.Write(++_localSequenceNumber);
+                packet.Buffer.Write(++_localSequenceNumber, offset: Packet.DataHeaderSize);
                 _connection.Node.Send(packet, _connection.RemoteEndPoint);
             }
         }
@@ -28,7 +28,7 @@ namespace Link.Channels
         {
             lock (_receiveLock)
             {
-                var sequenceNumber = packet.Read<ushort>(position: packet.Size - sizeof(ushort));
+                var sequenceNumber = packet.Read<ushort>();
 
                 if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber))
                 {
@@ -38,7 +38,7 @@ namespace Link.Channels
                 }
 
                 _remoteSequenceNumber = sequenceNumber;
-                _connection.Node.Receive(packet, _connection.RemoteEndPoint);
+                _connection.Node.Receive(packet.Buffer, _connection.RemoteEndPoint);
             }
         }
 

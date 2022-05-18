@@ -126,7 +126,7 @@ namespace Link.Nodes
             }
         }
 
-        private readonly byte[] _receiveBuffer = new byte[Packet.MaxSize];
+        private readonly byte[] _receiveBuffer = new byte[Packet.BufferSize];
         private Queue<(Buffer packet, EndPoint senderEndPoint)> _producerPackets = new();
         private Queue<(Buffer packet, EndPoint senderEndPoint)> _consumerPackets = new();
 
@@ -226,7 +226,7 @@ namespace Link.Nodes
             if (packet.Size > Packet.MaxSize)
                 throw new InvalidOperationException($"Packet exceeded maximum size of {Packet.MaxSize} bytes (has {packet.Size} bytes).");
 
-            _socket.SendTo(packet.Buffer.Bytes, offset: 0, packet.Size, SocketFlags.None, receiverEndPoint);
+            _socket.SendTo(packet.Buffer.Bytes, offset: 0, packet.Buffer.Size, SocketFlags.None, receiverEndPoint);
         }
 
         /// <summary>
@@ -265,7 +265,8 @@ namespace Link.Nodes
         /// <summary>
         /// Performs the logic of receiving a data-packet.
         /// </summary>
-        internal void Receive(ReadOnlyPacket packet, EndPoint senderEndPoint) => PacketReceived?.Invoke(packet, senderEndPoint);
+        internal void Receive(Buffer packet, EndPoint senderEndPoint) =>
+            PacketReceived?.Invoke(new ReadOnlyPacket(packet, start: Packet.HeaderSize), senderEndPoint);
 
         /// <summary>
         /// Stop listening for incoming packets.

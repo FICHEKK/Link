@@ -9,54 +9,35 @@ namespace Link
     public readonly ref struct Packet
     {
         /// <summary>
-        /// Maximum allowed packet size, in bytes. This value must be chosen carefully to avoid
-        /// fragmentation on the network layer. Any packets that require bigger size must use
-        /// fragmentation on the application layer. It is advised to only modify this value
-        /// if absolutely needed, as the default value is often times the optimal choice.
-        ///<br/><br/>
-        /// Defaults to <see cref="DefaultMaxSize"/> bytes.
+        /// Packet buffer size, in bytes. This value maximum number of bytes that can be
+        /// written to a single packet. It includes both header and data-bytes.
         /// </summary>
-        /// <remarks>
-        /// If you choose to modify this value, you should do so only once and at the beginning
-        /// of your application as other components of the library depend on it. Additionally,
-        /// this value cannot be set to a value that is lower than <see cref="MinSize"/> bytes.
-        /// </remarks>
-        public static int MaxSize
-        {
-            get => _maxSize;
-            set => _maxSize = value >= MinSize ? value : throw new ArgumentOutOfRangeException(nameof(MaxSize));
-        }
-
-        /// <summary>
-        /// Backing field of <see cref="MaxSize"/> property.
-        /// </summary>
-        private static int _maxSize = DefaultMaxSize;
-
-        /// <summary>
-        /// Default maximum packet size. If network layer fragmentation occurs when using
-        /// this buffer size, consider lowering the value stored in <see cref="MaxSize"/>.
-        /// </summary>
-        private const int DefaultMaxSize = EthernetMtu - IpHeaderSize - UdpHeaderSize;
-
-        /// <summary>
-        /// Maximum number of data bytes that can be transferred in a single Ethernet frame.
-        /// </summary>
-        private const int EthernetMtu = 1500;
-
-        /// <summary>
-        /// Internet Protocol (IP) standard header size, in bytes.
-        /// </summary>
-        private const int IpHeaderSize = 20;
-
-        /// <summary>
-        /// User Datagram Protocol (UDP) header size, in bytes.
-        /// </summary>
-        private const int UdpHeaderSize = 8;
+        internal const int BufferSize = HeaderSize + MaxSize;
         
         /// <summary>
-        /// Minimum safe UDP payload size (in bytes) that will not cause fragmentation.
+        /// Consists of header type (1 byte), channel ID (1 byte) and channel header (4 bytes).
         /// </summary>
-        public const int MinSize = 508;
+        internal const int HeaderSize = DataHeaderSize + 4;
+        
+        /// <summary>
+        /// Consists of header type (1 byte) and channel ID (1 byte).
+        /// </summary>
+        internal const int DataHeaderSize = 2;
+        
+        /// <summary>
+        /// Dummy value that is written to data-packet in order to fill channel header.
+        /// </summary>
+        private const int ChannelHeaderFill = 0;
+        
+        /// <summary>
+        /// Maximum number of data-bytes that can be written to a packet. Any packets that
+        /// require bigger size must use a channel that supports fragmentation and reassembly.
+        /// <br/><br/>
+        /// This value was chosen carefully in order to avoid fragmentation on the network
+        /// layer. It is equal to: Ethernet MTU (1500 bytes) - IP header size (20 bytes) -
+        /// UDP header size (8 bytes) - packet header size (6 bytes) = 1466 bytes.
+        /// </summary>
+        public const int MaxSize = 1466;
 
         /// <summary>
         /// Encoding used for converting <see cref="string"/> to byte-array and vice-versa.
@@ -79,9 +60,9 @@ namespace Link
         public static int AllocationCount => Buffer.AllocationCount;
 
         /// <summary>
-        /// Returns the number of bytes currently contained in this packet.
+        /// Returns the number of bytes currently written in this packet.
         /// </summary>
-        public int Size => Buffer.Size;
+        public int Size => Buffer.Size - HeaderSize;
 
         /// <summary>
         /// Direct reference to the underlying buffer (defensive copy will <b>not</b> be made).
@@ -96,7 +77,7 @@ namespace Link
         /// <summary>
         /// Returns a packet that will be sent on the specified channel.
         /// </summary>
-        public static Packet Get(byte channelId) => Get(HeaderType.Data).Write(channelId);
+        public static Packet Get(byte channelId) => Get(HeaderType.Data).Write(channelId).Write(ChannelHeaderFill);
 
         /// <summary>
         /// Returns a packet with specific <see cref="HeaderType"/>.
