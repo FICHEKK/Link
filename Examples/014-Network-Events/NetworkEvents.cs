@@ -30,7 +30,7 @@ public static class NetworkEvents
         server.PacketReceived += (packet, clientEndPoint) => Console.WriteLine($"Client from {clientEndPoint} sent packet of size {packet.Size}.");
         
         // Invoked each time an already connected client disconnects from the server.
-        server.ClientDisconnected += connection => Console.WriteLine($"Client from {connection.RemoteEndPoint} has disconnected.");
+        server.ClientDisconnected += (connection, cause) => Console.WriteLine($"Client from {connection.RemoteEndPoint} has disconnected (cause: {cause}).");
 
         // Invoked each time server stops and no longer listens for client connections.
         server.Stopped += () => Console.WriteLine("Server stopped.");
@@ -53,6 +53,6 @@ public static class NetworkEvents
         client.ConnectFailed += () => Console.WriteLine("Client failed to connect to the server.");
         
         // Invoked each time client disconnects from the server.
-        client.Disconnected += () => Console.WriteLine("Client has disconnected from the server.");
+        client.Disconnected += cause => Console.WriteLine($"Client has disconnected from the server (cause: {cause}).");
     }
 }

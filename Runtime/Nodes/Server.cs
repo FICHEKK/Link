@@ -34,7 +34,7 @@ namespace Link.Nodes
         /// <summary>
         /// Invoked each time an already connected client disconnects from the server.
         /// </summary>
-        public event Action<Connection> ClientDisconnected;
+        public event Action<Connection, DisconnectCause> ClientDisconnected;
 
         /// <summary>
         /// Invoked each time server stops and no longer listens for client connections.
@@ -96,11 +96,11 @@ namespace Link.Nodes
                     return;
 
                 case HeaderType.Disconnect:
-                    DisconnectClient(senderEndPoint, "disconnected");
+                    DisconnectClient(senderEndPoint, DisconnectCause.ClientLogic);
                     return;
                 
                 case HeaderType.Timeout:
-                    DisconnectClient(senderEndPoint, "timed-out");
+                    DisconnectClient(senderEndPoint, DisconnectCause.Timeout);
                     return;
 
                 default:
@@ -145,18 +145,18 @@ namespace Link.Nodes
         /// <summary>
         /// Deliberately disconnects specific client.
         /// </summary>
-        public void Kick(EndPoint clientEndPoint) => DisconnectClient(clientEndPoint, "kicked");
+        public void Kick(EndPoint clientEndPoint) => DisconnectClient(clientEndPoint, DisconnectCause.ServerLogic);
 
         /// <summary>
-        /// Disconnects client at specific end-point and logs the reason client was disconnected.
+        /// Disconnects client at specific end-point and logs the cause of the disconnection.
         /// </summary>
-        private void DisconnectClient(EndPoint clientEndPoint, string disconnectMethod)
+        private void DisconnectClient(EndPoint clientEndPoint, DisconnectCause disconnectCause)
         {
             if (!_connections.TryRemove(clientEndPoint, out var connection)) return;
 
-            Log.Info($"Client from {clientEndPoint} {disconnectMethod}.");
+            Log.Info($"Client from {clientEndPoint} disconnected (cause: {disconnectCause}).");
             connection.Close();
-            ClientDisconnected?.Invoke(connection);
+            ClientDisconnected?.Invoke(connection, disconnectCause);
         }
 
         /// <summary>

@@ -36,7 +36,7 @@ namespace Link.Nodes
         /// <summary>
         /// Invoked each time client disconnects from the server.
         /// </summary>
-        public event Action Disconnected;
+        public event Action<DisconnectCause> Disconnected;
 
         /// <summary>
         /// Returns <c>true</c> if this client is currently attempting to connect to the server.
@@ -137,11 +137,11 @@ namespace Link.Nodes
                     return;
 
                 case HeaderType.Disconnect:
-                    Disconnect();
+                    Disconnect(DisconnectCause.ServerLogic);
                     return;
                 
                 case HeaderType.Timeout:
-                    Disconnect();
+                    Disconnect(DisconnectCause.Timeout);
                     return;
 
                 default:
@@ -165,10 +165,12 @@ namespace Link.Nodes
         /// <summary>
         /// Disconnects from the server and stops listening for incoming packets.
         /// </summary>
-        public void Disconnect()
+        public void Disconnect() => Disconnect(DisconnectCause.ClientLogic);
+
+        private void Disconnect(DisconnectCause cause)
         {
             Dispose();
-            Disconnected?.Invoke();
+            Disconnected?.Invoke(cause);
         }
 
         protected override void Dispose(bool isDisposing)
