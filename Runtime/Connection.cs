@@ -70,21 +70,23 @@ namespace Link
         /// Weight used for calculating the value of <see cref="RoundTripTimeDeviation"/>.
         /// </summary>
         public double DeviationFactor { get; set; } = 0.25;
+        
+        /// <summary>
+        /// Returns the most recently measured round-trip time (in milliseconds) or -1
+        /// if not yet measured.
+        /// </summary>
+        public double RoundTripTime { get; private set; } = -1;
 
         /// <summary>
-        /// Returns round-trip time with applied exponential smoothing, in milliseconds.
+        /// Returns round-trip time (in milliseconds) with applied exponential smoothing
+        /// or -1 if round-trip time hasn't been measured yet.
         /// </summary>
-        public double SmoothRoundTripTime { get; private set; }
+        public double SmoothRoundTripTime { get; private set; } = -1;
 
         /// <summary>
-        /// Returns the most recently calculated round-trip time, in milliseconds.
+        /// Returns deviation of the round-trip time or -1 if not yet measured.
         /// </summary>
-        public double RoundTripTime { get; private set; }
-
-        /// <summary>
-        /// Returns deviation of the round-trip time.
-        /// </summary>
-        public double RoundTripTimeDeviation { get; private set; }
+        public double RoundTripTimeDeviation { get; private set; } = -1;
         
         /// <summary>
         /// Total number of packets sent through this connection.
@@ -223,9 +225,19 @@ namespace Link
             _lastPingResponseId = responseId;
             _lastPingResponseTime = DateTime.UtcNow;
 
+            var isFirstMeasuring = RoundTripTime < 0;
             RoundTripTime = (_lastPingRequestId - _lastPingResponseId) * PeriodDuration + _rttStopwatch.Elapsed.TotalMilliseconds;
-            SmoothRoundTripTime = (1 - SmoothingFactor) * SmoothRoundTripTime + SmoothingFactor * RoundTripTime;
-            RoundTripTimeDeviation = (1 - DeviationFactor) * RoundTripTimeDeviation + DeviationFactor * Math.Abs(RoundTripTime - SmoothRoundTripTime);
+
+            if (isFirstMeasuring)
+            {
+                SmoothRoundTripTime = RoundTripTime;
+                RoundTripTimeDeviation = 0;
+            }
+            else
+            {
+                SmoothRoundTripTime = (1 - SmoothingFactor) * SmoothRoundTripTime + SmoothingFactor * RoundTripTime;
+                RoundTripTimeDeviation = (1 - DeviationFactor) * RoundTripTimeDeviation + DeviationFactor * Math.Abs(RoundTripTime - SmoothRoundTripTime);
+            }
         }
 
         /// <summary>

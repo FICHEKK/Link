@@ -53,6 +53,14 @@ namespace Link.Channels
 
         private void Resend()
         {
+            // Round-trip time hasn't been measured yet - do not resend.
+            if (_reliableChannel.BaseResendDelay < 0)
+            {
+                _backoff /= _reliableChannel.BackoffFactor;
+                ScheduleResend();
+                return;
+            }
+            
             // At the time we are resending, other thread could be acknowledging.
             lock (_lock)
             {
