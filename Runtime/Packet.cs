@@ -103,6 +103,33 @@ namespace Link
         internal Packet(Buffer buffer) => Buffer = buffer;
 
         /// <summary>
+        /// Gets or sets byte at specified index. Index must be in range from 0 (inclusive) to <see cref="Size"/> (exclusive).
+        /// </summary>
+        public byte this[int index]
+        {
+            get
+            {
+                if (index < 0)
+                    throw new InvalidOperationException($"Cannot get byte at index {index}.");
+                
+                if (index >= Size)
+                    throw new InvalidOperationException($"Cannot get byte at index {index} as it is equal to or exceeds current packet size of {Size}.");
+                
+                return Buffer.Bytes[HeaderSize + index];
+            }
+            set
+            {
+                if (index < 0)
+                    throw new InvalidOperationException($"Cannot set byte at index {index}.");
+                
+                if (index >= Size)
+                    throw new InvalidOperationException($"Cannot set byte at index {index} as it is equal to or exceeds current packet size of {Size}.");
+
+                Buffer.Bytes[HeaderSize + index] = value;
+            }
+        }
+
+        /// <summary>
         /// Writes a <see cref="string"/> to this packet (using encoding defined by <see cref="Encoding"/>).
         /// </summary>
         public Packet Write(string value)
