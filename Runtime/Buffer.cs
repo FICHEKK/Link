@@ -260,14 +260,5 @@ namespace Link
                 return true;
             }
         }
-        
-        ~Buffer()
-        {
-            // If buffer is in the pool, it was properly returned.
-            if (_isInPool) return;
-            
-            // Otherwise, buffer leak occured.
-            Log.Warning("Buffer leak occured (it wasn't properly returned to the pool).");
-        }
     }
 }
