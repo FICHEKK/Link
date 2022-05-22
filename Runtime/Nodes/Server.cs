@@ -192,11 +192,18 @@ namespace Link.Nodes
 
         private Connection TryGetConnection(EndPoint clientEndPoint)
         {
-            if (_connections.TryGetValue(clientEndPoint, out var connection)) return connection;
+            if (TryGetConnection(clientEndPoint, out var connection)) return connection;
 
             Log.Warning($"Could not get connection for client end-point {clientEndPoint}.");
             return null;
         }
+
+        /// <summary>
+        /// Attempts to get connection associated with the specified client end-point.
+        /// </summary>
+        /// <returns><c>true</c> if connection was found, <c>false</c> otherwise.</returns>
+        public bool TryGetConnection(EndPoint clientEndPoint, out Connection connection) =>
+            _connections.TryGetValue(clientEndPoint, out connection);
 
         /// <summary>
         /// Stops this server which disconnects all the clients
