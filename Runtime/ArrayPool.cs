@@ -12,7 +12,7 @@ namespace Link
         /// Maximum number of arrays that can be in a single bucket.
         /// This is a measure which prevents infinite memory consumption in case of an error.
         /// </summary>
-        private const int MaxArraysPerBucket = 8;
+        public const int MaxArraysPerBucket = 8;
         
         /// <summary>
         /// Initializes buckets that contain array instances.
@@ -60,7 +60,8 @@ namespace Link
         /// <summary>
         /// Returns given array to the pool so it can be reused later.
         /// </summary>
-        public static void Return(byte[] array)
+        /// <returns><c>true</c> if given array was successfully returned, <c>false</c> if bucket was full.</returns>
+        public static bool Return(byte[] array)
         {
             if (array is null)
                 throw new ArgumentNullException(nameof(array));
@@ -69,7 +70,7 @@ namespace Link
                 throw new InvalidOperationException($"Cannot return array with size that exceeds {MaxSize} bytes.");
 
             if (array.Length == 0)
-                return;
+                return true;
             
             lock (Buckets)
             {
@@ -78,10 +79,19 @@ namespace Link
                 if (bucket.Count >= MaxArraysPerBucket)
                 {
                     Log.Warning("Array could not be returned to the pool as bucket is full.");
-                    return;
+                    return false;
+                }
+
+                foreach (var pooledArray in bucket)
+                {
+                    if (pooledArray != array) continue;
+                    
+                    Log.Error("Attempted to return array instance that is already in pool.");
+                    return false;
                 }
                 
                 bucket.Enqueue(array);
+                return true;
             }
         }
 

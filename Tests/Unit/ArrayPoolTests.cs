@@ -1,3 +1,4 @@
+using System;
 using NUnit.Framework;
 
 namespace Link.Tests.Unit;
@@ -34,9 +35,31 @@ public class ArrayPoolTests
         Assert.That(() => ArrayPool.Return(new byte[ArrayPool.MaxSize]), Throws.Nothing);
     
     [Test]
+    public void Returning_empty_array_should_always_succeed() =>
+        Assert.That(ArrayPool.Return(Array.Empty<byte>()), Is.True);
+    
+    [Test]
     public void Returning_array_with_size_greater_than_max_throws() =>
         Assert.That(() => ArrayPool.Return(new byte[ArrayPool.MaxSize + 1]), Throws.Exception);
     
+    [Test]
+    public void Returning_same_array_should_fail()
+    {
+        var array = new byte[1];
+        ArrayPool.Return(array);
+        Assert.That(ArrayPool.Return(array), Is.False);
+    }
+    
+    [Test]
+    public void Returning_array_to_full_bucket_should_fail()
+    {
+        // Fill up the bucket.
+        for (var i = 0; i < ArrayPool.MaxArraysPerBucket; i++)
+            ArrayPool.Return(new byte[10_000]);
+
+        Assert.That(ArrayPool.Return(new byte[10_000]), Is.False);
+    }
+
     [Test]
     public void Getting_array_always_returns_multiple_of_packet_buffer_size([Values(1, 10, 100, 1000, 10_000, 100_000)] int size)
     {
