@@ -42,7 +42,16 @@ namespace Link
         /// <summary>
         /// Encoding used for converting <see cref="string"/> to byte-array and vice-versa.
         /// </summary>
-        public static Encoding Encoding { get; set; } = Encoding.UTF8;
+        public static Encoding Encoding
+        {
+            get => _encoding;
+            set => _encoding = value ?? throw new InvalidOperationException("Encoding cannot be set to null.");
+        }
+
+        /// <summary>
+        /// Backing field of <see cref="Encoding"/> property.
+        /// </summary>
+        private static Encoding _encoding = Encoding.UTF8;
 
         /// <summary>
         /// Represents total number of internal buffer allocations made. For each packet made,
@@ -157,8 +166,13 @@ namespace Link
         /// If <c>true</c>, length of the given array will be written before writing
         /// array elements, otherwise only array elements will be written.
         /// </param>
-        public Packet WriteArray<T>(T[] array, bool writeLength = true) where T : unmanaged =>
-            WriteArray(array, start: 0, length: array.Length, writeLength);
+        public Packet WriteArray<T>(T[] array, bool writeLength = true) where T : unmanaged
+        {
+            if (array is null)
+                throw new InvalidOperationException("Cannot write null array to a packet.");
+            
+            return WriteArray(array, start: 0, length: array.Length, writeLength);
+        }
 
         /// <summary>
         /// Writes the portion of an array to this packet. 
@@ -169,9 +183,12 @@ namespace Link
         /// <param name="writeLength">If <c>true</c>, length will be written before elements, otherwise only elements will be written.</param>
         public Packet WriteArray<T>(T[] array, int start, int length, bool writeLength = true) where T : unmanaged
         {
-            if (array is null) throw new InvalidOperationException("Cannot write null array to a packet.");
+            if (array is null)
+                throw new InvalidOperationException("Cannot write null array to a packet.");
             
-            if (writeLength) Buffer.WriteVarInt(length);
+            if (writeLength)
+                Buffer.WriteVarInt(length);
+            
             Buffer.WriteArray(array, start, length);
             return this;
         }
