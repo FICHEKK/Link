@@ -52,4 +52,11 @@ public static class TestData
         int.MinValue,
         -1,
     };
+
+    public static readonly IEnumerable<string> Strings = new[]
+    {
+        string.Empty,
+        "Test",
+        "Hello world!"
+    };
 }

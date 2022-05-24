@@ -22,7 +22,7 @@ public class PacketTests
     }
     
     [Test]
-    public void Reading_string_that_was_written_produces_same_string([Values("", "Test")] string stringToWrite)
+    public void Reading_string_that_was_written_produces_same_string([ValueSource(typeof(TestData), nameof(TestData.Strings))] string stringToWrite)
     {
         var packet = Packet.Get().Write(stringToWrite);
         var @string = new ReadOnlyPacket(packet.Buffer).ReadString();
