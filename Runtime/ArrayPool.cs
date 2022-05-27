@@ -13,6 +13,12 @@ namespace Link
         /// This is a measure which prevents infinite memory consumption in case of an error.
         /// </summary>
         public const int MaxArraysPerBucket = 8;
+
+        /// <summary>
+        /// Total number of buckets, which equals to the number of values in range from 0 to 8.
+        /// That range covers all powers of 2 from 1 to 256.
+        /// </summary>
+        private const int BucketCount = 9;
         
         /// <summary>
         /// Initializes buckets that contain array instances.
@@ -30,7 +36,7 @@ namespace Link
         /// that have double the size of previous bucket. First bucket contains arrays
         /// of size <see cref="Packet.BufferSize"/>.
         /// </summary>
-        private static readonly Queue<byte[]>[] Buckets = new Queue<byte[]>[9];
+        private static readonly Queue<byte[]>[] Buckets = new Queue<byte[]>[BucketCount];
         
         /// <summary>
         /// Maximum possible array size that can be requested from the pool or returned to the pool.
