@@ -31,6 +31,11 @@ namespace Link.Channels
         public long BytesReceived { get; private set; }
 
         /// <summary>
+        /// Constructs a new <see cref="Channel"/> instance.
+        /// </summary>
+        protected Channel() => Name = GetType().Name;
+
+        /// <summary>
         /// Processes and sends given data-packet to the remote end-point.
         /// </summary>
         internal void Send(Packet packet)

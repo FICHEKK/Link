@@ -14,6 +14,6 @@ namespace Link.Channels
             _connection.Node.Receive(packet.Buffer, _connection.RemoteEndPoint);
 
         internal override void ReceiveAcknowledgement(ReadOnlyPacket packet) =>
-            Log.Warning($"Acknowledgement packet received on '{nameof(UnreliableChannel)}'.");
+            Log.Warning($"Acknowledgement packet received on channel '{Name}'.");
     }
 }

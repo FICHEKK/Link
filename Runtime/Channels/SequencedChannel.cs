@@ -43,7 +43,7 @@ namespace Link.Channels
         }
 
         internal override void ReceiveAcknowledgement(ReadOnlyPacket packet) =>
-            Log.Warning($"Acknowledgement packet received on '{nameof(SequencedChannel)}'.");
+            Log.Warning($"Acknowledgement packet received on channel '{Name}'.");
 
         public override string ToString() =>
             base.ToString() + $" | Received out-of-order: {PacketsReceivedOutOfOrder}, {BytesReceivedOutOfOrder}";
