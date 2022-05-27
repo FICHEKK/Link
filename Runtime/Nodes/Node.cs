@@ -20,7 +20,7 @@ namespace Link.Nodes
         /// <summary>
         /// Invoked each time a data-packet is received.
         /// </summary>
-        public event PacketHandler PacketReceived;
+        public event PacketHandler? PacketReceived;
         
         /// <summary>
         /// Default socket send and receive buffer size.
@@ -52,7 +52,7 @@ namespace Link.Nodes
         /// <summary>
         /// Returns port on which this node is listening on, or <c>-1</c> if not currently listening.
         /// </summary>
-        public int Port => IsListening ? ((IPEndPoint) _socket.LocalEndPoint).Port : -1;
+        public int Port => IsListening ? ((IPEndPoint) _socket!.LocalEndPoint).Port : -1;
 
         /// <summary>
         /// Returns <c>true</c> if this node is currently listening for incoming packets.
@@ -75,7 +75,7 @@ namespace Link.Nodes
         /// Initializes newly created connections. Can be used to define custom channels or
         /// to set connection settings to values that differ from the default ones.
         /// </summary>
-        public Action<Connection> ConnectionInitializer { get; set; }
+        public Action<Connection>? ConnectionInitializer { get; set; }
 
         /// <summary>
         /// Defines the probability of a packet being lost.
@@ -130,7 +130,7 @@ namespace Link.Nodes
         private Queue<(Buffer packet, EndPoint senderEndPoint)> _producerPackets = new();
         private Queue<(Buffer packet, EndPoint senderEndPoint)> _consumerPackets = new();
 
-        private Socket _socket;
+        private Socket? _socket;
         private double _packetLoss;
         private int _minLatency;
         private int _maxLatency;
@@ -226,6 +226,9 @@ namespace Link.Nodes
             if (packet.Size > Packet.MaxSize)
                 throw new InvalidOperationException($"Packet exceeded maximum size of {Packet.MaxSize} bytes (has {packet.Size} bytes).");
 
+            if (_socket is null)
+                throw new InvalidOperationException("Cannot send packet as socket has not been initialized.");
+
             _socket.SendTo(packet.Buffer.Bytes, offset: 0, packet.Buffer.Size, SocketFlags.None, receiverEndPoint);
         }
 
@@ -283,9 +286,8 @@ namespace Link.Nodes
         protected virtual void Dispose(bool isDisposing)
         {
             if (!isDisposing) return;
-            if (!IsListening) return;
         
-            _socket.Dispose();
+            _socket?.Dispose();
             _socket = null;
         }
     }

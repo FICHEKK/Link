@@ -75,8 +75,8 @@ namespace Link.Channels
         public long BytesDuplicated { get; protected set; }
 
         private readonly Connection _connection;
-        private readonly PendingPacket[] _pendingPackets = new PendingPacket[BufferSize];
-        private readonly Buffer[] _receivedPackets = new Buffer[BufferSize];
+        private readonly PendingPacket?[] _pendingPackets = new PendingPacket[BufferSize];
+        private readonly Buffer?[] _receivedPackets = new Buffer[BufferSize];
 
         private ushort _localSequenceNumber;
         private ushort _remoteSequenceNumber;
@@ -186,7 +186,7 @@ namespace Link.Channels
             return fragmentCount;
         }
 
-        private Buffer ReassembleIfPossible(ushort sequenceNumber, byte fragmentIndex, byte fragmentCount)
+        private Buffer? ReassembleIfPossible(ushort sequenceNumber, byte fragmentIndex, byte fragmentCount)
         {
             // Single fragment packets are a trivial, but the most common case.
             if (fragmentCount == 1) return _receivedPackets[sequenceNumber];
@@ -203,19 +203,19 @@ namespace Link.Channels
             }
             
             // If we reached this point, all of the fragments have been received, so we can reassemble it.
-            var lastFragmentByteCount = _receivedPackets[(ushort) endSeq].Size;
+            var lastFragmentByteCount = _receivedPackets[(ushort) endSeq]!.Size;
             var reassembled = Buffer.OfSize(Packet.HeaderSize + (fragmentCount - 1) * Packet.MaxSize + lastFragmentByteCount);
 
             // Copy data from all of the full fragments.
             for (var seq = startSeq; seq < endSeq; seq++)
             {
-                var fullFragment = _receivedPackets[(ushort) seq];
+                var fullFragment = _receivedPackets[(ushort) seq]!;
                 Array.Copy(fullFragment.Bytes, Packet.HeaderSize, reassembled.Bytes, Packet.HeaderSize + (seq - startSeq) * Packet.MaxSize, Packet.MaxSize);
                 fullFragment.Return();
             }
 
             // Copy data from the last fragment.
-            var lastFragment = _receivedPackets[(ushort) endSeq];
+            var lastFragment = _receivedPackets[(ushort) endSeq]!;
             Array.Copy(lastFragment.Bytes, Packet.HeaderSize, reassembled.Bytes, Packet.HeaderSize + (endSeq - startSeq) * Packet.MaxSize, lastFragmentByteCount);
             lastFragment.Return();
 

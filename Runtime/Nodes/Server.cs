@@ -19,27 +19,27 @@ namespace Link.Nodes
         /// <summary>
         /// Validates incoming connection request and decides whether connection should be accepted or not.
         /// </summary>
-        public ConnectPacketHandler ConnectionValidator { get; set; }
+        public ConnectPacketHandler? ConnectionValidator { get; set; }
         
         /// <summary>
         /// Invoked each time server starts and begins listening for client connections.
         /// </summary>
-        public event Action Started;
+        public event Action? Started;
 
         /// <summary>
         /// Invoked each time a new client connects to the server.
         /// </summary>
-        public event Action<Connection> ClientConnected;
+        public event Action<Connection>? ClientConnected;
 
         /// <summary>
         /// Invoked each time an already connected client disconnects from the server.
         /// </summary>
-        public event Action<Connection, DisconnectCause> ClientDisconnected;
+        public event Action<Connection, DisconnectCause>? ClientDisconnected;
 
         /// <summary>
         /// Invoked each time server stops and no longer listens for client connections.
         /// </summary>
-        public event Action Stopped;
+        public event Action? Stopped;
 
         /// <summary>
         /// Returns current number of client connections.
@@ -190,7 +190,7 @@ namespace Link.Nodes
             packet.Return();
         }
 
-        private Connection TryGetConnection(EndPoint clientEndPoint)
+        private Connection? TryGetConnection(EndPoint clientEndPoint)
         {
             if (TryGetConnection(clientEndPoint, out var connection)) return connection;
 
@@ -202,7 +202,7 @@ namespace Link.Nodes
         /// Attempts to get connection associated with the specified client end-point.
         /// </summary>
         /// <returns><c>true</c> if connection was found, <c>false</c> otherwise.</returns>
-        public bool TryGetConnection(EndPoint clientEndPoint, out Connection connection) =>
+        public bool TryGetConnection(EndPoint clientEndPoint, out Connection? connection) =>
             _connections.TryGetValue(clientEndPoint, out connection);
 
         /// <summary>

@@ -19,8 +19,8 @@ namespace Link.Channels
         private readonly Timer _resendTimer;
         private readonly object _lock = new();
 
-        private Buffer _packet;
-        private ReliableChannel _reliableChannel;
+        private Buffer? _packet;
+        private ReliableChannel? _reliableChannel;
         private int _resendAttempts;
         private double _backoff;
 
@@ -54,7 +54,7 @@ namespace Link.Channels
         private void Resend()
         {
             // Round-trip time hasn't been measured yet - do not resend.
-            if (_reliableChannel.BaseResendDelay < 0)
+            if (_reliableChannel!.BaseResendDelay < 0)
             {
                 _backoff /= _reliableChannel.BackoffFactor;
                 ScheduleResend();
@@ -88,7 +88,7 @@ namespace Link.Channels
 
         private void ScheduleResend()
         {
-            var resendDelay = Math.Max(_reliableChannel.BaseResendDelay, _reliableChannel.MinResendDelay) * _backoff;
+            var resendDelay = Math.Max(_reliableChannel!.BaseResendDelay, _reliableChannel.MinResendDelay) * _backoff;
             _backoff *= _reliableChannel.BackoffFactor;
 
             _resendTimer.Change(dueTime: (int) resendDelay, period: Timeout.Infinite);

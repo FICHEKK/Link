@@ -118,7 +118,7 @@ namespace Link
         /// </summary>
         internal State CurrentState { get; private set; }
 
-        private readonly Channel[] _channels = new Channel[byte.MaxValue];
+        private readonly Channel?[] _channels = new Channel[byte.MaxValue];
         private readonly Stopwatch _rttStopwatch = new();
         private readonly Timer _sendPingTimer;
 
@@ -150,16 +150,18 @@ namespace Link
             }
         }
         
-        public Channel this[byte channelId]
+        public Channel? this[byte channelId]
         {
             get => _channels[channelId];
             set
             {
+                var channel = _channels[channelId];
+                
+                if (channel is not null)
+                    throw new InvalidOperationException($"Channel slot (ID = {channelId}) is already filled by channel named '{channel.Name}'.");
+                
                 if (channelId >= MinReservedChannelId)
                     throw new InvalidOperationException($"Failed to set channel (ID = {channelId}) as slots from {MinReservedChannelId} to 255 are reserved.");
-
-                if (_channels[channelId] is not null)
-                    throw new InvalidOperationException($"Channel slot (ID = {channelId}) is already filled by channel named '{_channels[channelId].Name}'.");
 
                 _channels[channelId] = value ?? throw new InvalidOperationException("Cannot set null channel.");
                 ChannelCount++;

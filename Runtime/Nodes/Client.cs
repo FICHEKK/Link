@@ -18,7 +18,7 @@ namespace Link.Nodes
         /// <summary>
         /// Invoked each time client starts the process of establishing connection with the server.
         /// </summary>
-        public event Action Connecting;
+        public event Action? Connecting;
 
         /// <summary>
         /// Invoked each time client fails to establish a connection with the server as maximum number
@@ -26,17 +26,17 @@ namespace Link.Nodes
         /// server is offline or all of the packets were lost in transit (due to firewall, congestion or
         /// any other possible packet loss reason).
         /// </summary>
-        public event Action ConnectFailed;
+        public event Action? ConnectFailed;
 
         /// <summary>
         /// Invoked each time client successfully connects to the server.
         /// </summary>
-        public event Action Connected;
+        public event Action? Connected;
 
         /// <summary>
         /// Invoked each time client disconnects from the server.
         /// </summary>
-        public event Action<DisconnectCause> Disconnected;
+        public event Action<DisconnectCause>? Disconnected;
 
         /// <summary>
         /// Returns <c>true</c> if this client is currently attempting to connect to the server.
@@ -51,7 +51,7 @@ namespace Link.Nodes
         /// <summary>
         /// Connection to the server.
         /// </summary>
-        public Connection Connection { get; private set; }
+        public Connection? Connection { get; private set; }
 
         /// <summary>
         /// Attempts to establish a connection with the server.
@@ -61,7 +61,7 @@ namespace Link.Nodes
         /// <param name="maxAttempts">Maximum number of connect attempts before considering server as unreachable.</param>
         /// <param name="delayBetweenAttempts">Delay between consecutive connect attempts, in milliseconds.</param>
         /// <param name="connectPacketFactory">Allows additional data to be written to the connect packet.</param>
-        public void Connect(string ipAddress, int port, int maxAttempts = 5, int delayBetweenAttempts = 1000, ConnectPacketFactory connectPacketFactory = null)
+        public void Connect(string ipAddress, int port, int maxAttempts = 5, int delayBetweenAttempts = 1000, ConnectPacketFactory? connectPacketFactory = null)
         {
             Listen(port: 0);
             Connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port), initialState: Connection.State.Connecting);
@@ -71,7 +71,7 @@ namespace Link.Nodes
             Connecting?.Invoke();
         }
         
-        private async void Establish(int maxAttempts, int delayBetweenAttempts, ConnectPacketFactory connectPacketFactory = null)
+        private async void Establish(int maxAttempts, int delayBetweenAttempts, ConnectPacketFactory? connectPacketFactory = null)
         {
             if (maxAttempts <= 0)
                 throw new ArgumentException($"'{nameof(maxAttempts)}' must be a positive value.");
@@ -94,7 +94,7 @@ namespace Link.Nodes
             {
                 var connectPacket = Packet.Get(HeaderType.Connect);
                 connectPacketFactory?.Invoke(connectPacket);
-                Send(connectPacket, Connection.RemoteEndPoint);
+                Send(connectPacket, Connection!.RemoteEndPoint);
                 connectPacket.Return();
             }
         }
@@ -156,9 +156,10 @@ namespace Link.Nodes
         /// <param name="packet">Packet being sent.</param>
         public void Send(Packet packet)
         {
-            if (!IsConnected) throw new InvalidOperationException("Cannot send packet as client is not connected to the server.");
+            if (!IsConnected)
+                throw new InvalidOperationException("Cannot send packet as client is not connected to the server.");
 
-            Connection.SendData(packet);
+            Connection!.SendData(packet);
             packet.Return();
         }
 
