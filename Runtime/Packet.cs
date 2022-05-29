@@ -143,10 +143,10 @@ namespace Link
         /// </summary>
         public Packet Write(string value)
         {
-            if (value is null) throw new InvalidOperationException("Cannot write null string to a packet.");
+            if (value is null)
+                throw new InvalidOperationException("Cannot write null string to a packet.");
             
-            WriteArray(Encoding.GetBytes(value));
-            return this;
+            return value.Length == 0 ? Write<byte>(0) : WriteArray(Encoding.GetBytes(value));
         }
 
         /// <summary>

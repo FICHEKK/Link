@@ -55,6 +55,9 @@ namespace Link
         public string ReadString()
         {
             var stringByteCount = ReadVarInt();
+
+            if (stringByteCount == 0)
+                return string.Empty;
             
             if (UnreadBytes < stringByteCount)
                 throw new InvalidOperationException("Could not read string (out-of-bounds bytes).");
