@@ -28,11 +28,6 @@ namespace Link.Nodes
         private const int DefaultBufferSize = 1024 * 1024;
 
         /// <summary>
-        /// Cached end-point instance used for <see cref="Socket.ReceiveFrom(byte[],ref System.Net.EndPoint)"/> calls.
-        /// </summary>
-        private static readonly EndPoint AnyEndPoint = new IPEndPoint(IPAddress.Any, 0);
-
-        /// <summary>
         /// Random instance used for network simulation purposes.
         /// </summary>
         private static readonly Random Random = new();
@@ -126,7 +121,6 @@ namespace Link.Nodes
             }
         }
 
-        private readonly byte[] _receiveBuffer = new byte[Packet.BufferSize];
         private Queue<(Buffer packet, EndPoint senderEndPoint)> _producerPackets = new();
         private Queue<(Buffer packet, EndPoint senderEndPoint)> _consumerPackets = new();
 
@@ -153,6 +147,9 @@ namespace Link.Nodes
         private void Listen()
         {
             Log.Info($"Starting thread '{Thread.CurrentThread.Name}'...");
+            
+            var receiveBuffer = new byte[Packet.BufferSize];
+            var senderEndPoint = (EndPoint) new IPEndPoint(IPAddress.Any, 0);
 
             while (true)
             {
@@ -160,9 +157,8 @@ namespace Link.Nodes
                 {
                     if (_socket is null) break;
 
-                    var senderEndPoint = AnyEndPoint;
-                    var bytesReceived = _socket.ReceiveFrom(_receiveBuffer, ref senderEndPoint);
-                    if (bytesReceived > 0) ReceiveAsync(bytesReceived, senderEndPoint);
+                    var bytesReceived = _socket.ReceiveFrom(receiveBuffer, ref senderEndPoint);
+                    if (bytesReceived > 0) ReceiveAsync(receiveBuffer, bytesReceived, senderEndPoint);
                 }
                 catch (ObjectDisposedException)
                 {
@@ -191,11 +187,11 @@ namespace Link.Nodes
             Log.Info($"Stopping thread '{Thread.CurrentThread.Name}'...");
         }
 
-        private async void ReceiveAsync(int bytesReceived, EndPoint senderEndPoint)
+        private async void ReceiveAsync(byte[] receiveBuffer, int bytesReceived, EndPoint senderEndPoint)
         {
             if (PacketLoss > 0 && Random.NextDouble() < PacketLoss) return;
 
-            var packet = Buffer.From(_receiveBuffer, bytesReceived);
+            var packet = Buffer.From(receiveBuffer, bytesReceived);
             if (MaxLatency > 0) await Task.Delay(Random.Next(MinLatency, MaxLatency + 1));
 
             ConsumeOrEnqueuePacket(packet, senderEndPoint);
