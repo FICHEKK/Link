@@ -9,10 +9,22 @@ namespace Link
     public readonly ref struct Packet
     {
         /// <summary>
-        /// Packet buffer size, in bytes. This value maximum number of bytes that can be
-        /// written to a single packet. It includes both header and data-bytes.
+        /// Maximum number of data-bytes that can be written to a packet. Any packets that
+        /// require bigger size must use a channel that supports fragmentation and reassembly.
+        /// <br/><br/>
+        /// This value was chosen carefully in order to avoid fragmentation on the network
+        /// layer. It is equal to: <see cref="BufferSize"/> - <see cref="HeaderSize"/>.
         /// </summary>
-        internal const int BufferSize = HeaderSize + MaxSize;
+        public const int MaxSize = BufferSize - HeaderSize;
+        
+        /// <summary>
+        /// Packet buffer size, in bytes. This value represents maximum number of bytes that
+        /// can be written to a single packet.
+        /// <br/><br/>
+        /// It includes both header and data bytes and is equal to: Ethernet MTU (1500 bytes)
+        /// - IP header size (20 bytes) - UDP header size (8 bytes) = 1472 bytes.
+        /// </summary>
+        internal const int BufferSize = 1472;
         
         /// <summary>
         /// Consists of header type (1 byte), channel ID (1 byte) and channel header (4 bytes).
@@ -28,16 +40,6 @@ namespace Link
         /// Dummy value that is written to data-packet in order to fill channel header.
         /// </summary>
         private const int ChannelHeaderFill = 0;
-        
-        /// <summary>
-        /// Maximum number of data-bytes that can be written to a packet. Any packets that
-        /// require bigger size must use a channel that supports fragmentation and reassembly.
-        /// <br/><br/>
-        /// This value was chosen carefully in order to avoid fragmentation on the network
-        /// layer. It is equal to: Ethernet MTU (1500 bytes) - IP header size (20 bytes) -
-        /// UDP header size (8 bytes) - packet header size (6 bytes) = 1466 bytes.
-        /// </summary>
-        public const int MaxSize = 1466;
 
         /// <summary>
         /// Encoding used for converting <see cref="string"/> to byte-array and vice-versa.

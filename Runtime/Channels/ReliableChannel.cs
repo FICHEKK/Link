@@ -169,6 +169,42 @@ namespace Link.Channels
                 }
             }
         }
+        
+        private void UpdateRemoteSequenceNumber(ushort sequenceNumber)
+        {
+            if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber)) return;
+
+            var sequenceWithWrap = sequenceNumber > _remoteSequenceNumber
+                ? sequenceNumber
+                : sequenceNumber + BufferSize;
+
+            for (var i = _remoteSequenceNumber + 1; i <= sequenceWithWrap; i++)
+                _receivedPackets[i % BufferSize] = null;
+
+            _remoteSequenceNumber = sequenceNumber;
+        }
+
+        private void SendAcknowledgement(byte channelId, ushort sequenceNumber)
+        {
+            var ack = Packet.Get(HeaderType.Acknowledgement).Write(channelId).Write(sequenceNumber);
+
+            for (int offset = 0, totalBits = AckBytes * 8; offset < totalBits; offset += 8)
+            {
+                var ackBitField = 0;
+
+                for (var bit = 0; bit < 8; bit++)
+                {
+                    var seq = (ushort) (sequenceNumber - offset - bit - 1);
+                    if (_receivedPackets[seq] is null) continue;
+                    ackBitField |= 1 << bit;
+                }
+
+                ack.Write((byte) ackBitField);
+            }
+
+            _connection.Node.Send(ack, _connection.RemoteEndPoint);
+            ack.Return();
+        }
 
         private byte ReceiveIfPossible(ushort sequenceNumber)
         {
@@ -220,42 +256,6 @@ namespace Link.Channels
             lastFragment.Return();
 
             return reassembled;
-        }
-
-        private void UpdateRemoteSequenceNumber(ushort sequenceNumber)
-        {
-            if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber)) return;
-
-            var sequenceWithWrap = sequenceNumber > _remoteSequenceNumber
-                ? sequenceNumber
-                : sequenceNumber + BufferSize;
-
-            for (var i = _remoteSequenceNumber + 1; i <= sequenceWithWrap; i++)
-                _receivedPackets[i % BufferSize] = null;
-
-            _remoteSequenceNumber = sequenceNumber;
-        }
-
-        private void SendAcknowledgement(byte channelId, ushort sequenceNumber)
-        {
-            var ack = Packet.Get(HeaderType.Acknowledgement).Write(channelId).Write(sequenceNumber);
-
-            for (int offset = 0, totalBits = AckBytes * 8; offset < totalBits; offset += 8)
-            {
-                var ackBitField = 0;
-
-                for (var bit = 0; bit < 8; bit++)
-                {
-                    var seq = (ushort) (sequenceNumber - offset - bit - 1);
-                    if (_receivedPackets[seq] is null) continue;
-                    ackBitField |= 1 << bit;
-                }
-
-                ack.Write((byte) ackBitField);
-            }
-
-            _connection.Node.Send(ack, _connection.RemoteEndPoint);
-            ack.Return();
         }
 
         internal override void ReceiveAcknowledgement(ReadOnlyPacket packet)

@@ -19,6 +19,11 @@ namespace Link.Nodes
         /// Invoked each time client starts the process of establishing connection with the server.
         /// </summary>
         public event Action? Connecting;
+        
+        /// <summary>
+        /// Invoked each time client successfully connects to the server.
+        /// </summary>
+        public event Action? Connected;
 
         /// <summary>
         /// Invoked each time client fails to establish a connection with the server as maximum number
@@ -27,11 +32,6 @@ namespace Link.Nodes
         /// any other possible packet loss reason).
         /// </summary>
         public event Action? ConnectFailed;
-
-        /// <summary>
-        /// Invoked each time client successfully connects to the server.
-        /// </summary>
-        public event Action? Connected;
 
         /// <summary>
         /// Invoked each time client disconnects from the server.
