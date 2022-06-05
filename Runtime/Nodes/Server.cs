@@ -228,17 +228,27 @@ namespace Link.Nodes
 
         public readonly struct ClientConnectedEventArgs
         {
+            /// <summary>
+            /// Connection of the client that has connected.
+            /// </summary>
             public Connection Connection { get; }
             
-            public ClientConnectedEventArgs(Connection connection) => Connection = connection;
+            internal ClientConnectedEventArgs(Connection connection) => Connection = connection;
         }
 
         public readonly struct ClientDisconnectedEventArgs
         {
+            /// <summary>
+            /// Connection of the client that has disconnected.
+            /// </summary>
             public Connection Connection { get; }
+            
+            /// <summary>
+            /// Reason that the client has disconnected.
+            /// </summary>
             public DisconnectCause Cause { get; }
             
-            public ClientDisconnectedEventArgs(Connection connection, DisconnectCause cause)
+            internal ClientDisconnectedEventArgs(Connection connection, DisconnectCause cause)
             {
                 Connection = connection;
                 Cause = cause;

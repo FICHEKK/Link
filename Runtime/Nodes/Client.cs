@@ -187,9 +187,12 @@ namespace Link.Nodes
 
         public readonly struct DisconnectedEventArgs
         {
+            /// <summary>
+            /// Reason that the client has disconnected.
+            /// </summary>
             public DisconnectCause Cause { get; }
             
-            public DisconnectedEventArgs(DisconnectCause cause) => Cause = cause;
+            internal DisconnectedEventArgs(DisconnectCause cause) => Cause = cause;
         }
     }
 }
