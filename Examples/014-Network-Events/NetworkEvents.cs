@@ -21,19 +21,19 @@ public static class NetworkEvents
         var server = new Server();
 
         // Invoked each time server starts and begins listening for client connections.
-        server.Started += () => Console.WriteLine("Server started.");
+        server.Started += (s, _) => Console.WriteLine($"Server started on port {s.Port}.");
 
         // Invoked each time a new client connects to the server.
-        server.ClientConnected += connection => Console.WriteLine($"Client from {connection.RemoteEndPoint} has connected.");
+        server.ClientConnected += (_, args) => Console.WriteLine($"Client from {args.Connection.RemoteEndPoint} has connected.");
         
         // Invoked each time a packet is received from a client.
         server.PacketReceived += (packet, clientEndPoint) => Console.WriteLine($"Client from {clientEndPoint} sent packet of size {packet.Size}.");
         
         // Invoked each time an already connected client disconnects from the server.
-        server.ClientDisconnected += (connection, cause) => Console.WriteLine($"Client from {connection.RemoteEndPoint} has disconnected (cause: {cause}).");
+        server.ClientDisconnected += (_, args) => Console.WriteLine($"Client from {args.Connection.RemoteEndPoint} has disconnected (cause: {args.Cause}).");
 
         // Invoked each time server stops and no longer listens for client connections.
-        server.Stopped += () => Console.WriteLine("Server stopped.");
+        server.Stopped += (_, _) => Console.WriteLine("Server stopped.");
     }
 
     private static void ListClientEvents()
@@ -41,18 +41,18 @@ public static class NetworkEvents
         var client = new Client();
 
         // Invoked each time client starts the process of establishing connection with the server.
-        client.Connecting += () => Console.WriteLine("Client is connecting to the server.");
+        client.Connecting += (_, _) => Console.WriteLine("Client is connecting to the server.");
         
         // Invoked each time client successfully connects to the server.
-        client.Connected += () => Console.WriteLine("Client has connected to the server.");
+        client.Connected += (_, _) => Console.WriteLine("Client has connected to the server.");
         
         // Invoked each time a packet is received from the server.
         client.PacketReceived += (packet, serverEndPoint) => Console.WriteLine($"Server from {serverEndPoint} sent packet of size {packet.Size}.");
         
         // Invoked each time client fails to establish a connection with the server.
-        client.ConnectFailed += () => Console.WriteLine("Client failed to connect to the server.");
+        client.ConnectFailed += (_, _) => Console.WriteLine("Client failed to connect to the server.");
         
         // Invoked each time client disconnects from the server.
-        client.Disconnected += cause => Console.WriteLine($"Client has disconnected from the server (cause: {cause}).");
+        client.Disconnected += (_, args) => Console.WriteLine($"Client has disconnected from the server (cause: {args.Cause}).");
     }
 }

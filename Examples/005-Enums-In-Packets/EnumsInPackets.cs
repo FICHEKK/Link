@@ -19,7 +19,7 @@ public static class EnumsInPackets
         server.Start(Port);
 
         using var client = new Client();
-        client.Connected += () => client.Send(CreatePacket());
+        client.Connected += (c, _) => c.Send(CreatePacket());
         client.Connect(IpAddress, Port);
 
         Console.ReadKey();

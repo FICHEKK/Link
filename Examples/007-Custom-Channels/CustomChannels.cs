@@ -35,7 +35,7 @@ public static class CustomChannels
         server.Start(Port);
 
         using var client = new Client();
-        client.Connected += () => SendPacketOnCustomChannel(client);
+        client.Connected += (c, _) => SendPacketOnCustomChannel(c);
         client.ConnectionInitializer = AddCustomChannel;
         client.Connect(IpAddress, Port);
 

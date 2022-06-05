@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
@@ -24,22 +23,22 @@ namespace Link.Nodes
         /// <summary>
         /// Invoked each time server starts and begins listening for client connections.
         /// </summary>
-        public event Action? Started;
+        public event EventHandler<Server, StartedEventArgs>? Started;
 
         /// <summary>
         /// Invoked each time a new client connects to the server.
         /// </summary>
-        public event Action<Connection>? ClientConnected;
+        public event EventHandler<Server, ClientConnectedEventArgs>? ClientConnected;
 
         /// <summary>
         /// Invoked each time an already connected client disconnects from the server.
         /// </summary>
-        public event Action<Connection, DisconnectCause>? ClientDisconnected;
+        public event EventHandler<Server, ClientDisconnectedEventArgs>? ClientDisconnected;
 
         /// <summary>
         /// Invoked each time server stops and no longer listens for client connections.
         /// </summary>
-        public event Action? Stopped;
+        public event EventHandler<Server, StoppedEventArgs>? Stopped;
 
         /// <summary>
         /// Returns current number of client connections.
@@ -68,7 +67,7 @@ namespace Link.Nodes
         public void Start(int port)
         {
             Listen(port);
-            Started?.Invoke();
+            Started?.Invoke(this, new StartedEventArgs());
         }
 
         protected override void Consume(ReadOnlyPacket packet, EndPoint senderEndPoint)
@@ -132,7 +131,7 @@ namespace Link.Nodes
             SendConnectApproved();
 
             _connections.TryAdd(senderEndPoint, connection);
-            ClientConnected?.Invoke(connection);
+            ClientConnected?.Invoke(this, new ClientConnectedEventArgs(connection));
 
             void SendConnectApproved()
             {
@@ -150,13 +149,13 @@ namespace Link.Nodes
         /// <summary>
         /// Disconnects client at specific end-point and logs the cause of the disconnection.
         /// </summary>
-        private void DisconnectClient(EndPoint clientEndPoint, DisconnectCause disconnectCause)
+        private void DisconnectClient(EndPoint clientEndPoint, DisconnectCause cause)
         {
             if (!_connections.TryRemove(clientEndPoint, out var connection)) return;
 
-            Log.Info($"Client from {clientEndPoint} disconnected (cause: {disconnectCause}).");
+            Log.Info($"Client from {clientEndPoint} disconnected (cause: {cause}).");
             connection.Close();
-            ClientDisconnected?.Invoke(connection, disconnectCause);
+            ClientDisconnected?.Invoke(this, new ClientDisconnectedEventArgs(connection, cause));
         }
 
         /// <summary>
@@ -212,7 +211,7 @@ namespace Link.Nodes
         public void Stop()
         {
             Dispose();
-            Stopped?.Invoke();
+            Stopped?.Invoke(this, new StoppedEventArgs());
         }
 
         protected override void Dispose(bool isDisposing)
@@ -222,6 +221,28 @@ namespace Link.Nodes
 
             _connections.Clear();
             base.Dispose(isDisposing);
+        }
+        
+        public readonly struct StartedEventArgs { }
+        public readonly struct StoppedEventArgs { }
+
+        public readonly struct ClientConnectedEventArgs
+        {
+            public Connection Connection { get; }
+            
+            public ClientConnectedEventArgs(Connection connection) => Connection = connection;
+        }
+
+        public readonly struct ClientDisconnectedEventArgs
+        {
+            public Connection Connection { get; }
+            public DisconnectCause Cause { get; }
+            
+            public ClientDisconnectedEventArgs(Connection connection, DisconnectCause cause)
+            {
+                Connection = connection;
+                Cause = cause;
+            }
         }
     }
 }

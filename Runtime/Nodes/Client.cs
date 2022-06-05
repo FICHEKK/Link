@@ -18,12 +18,12 @@ namespace Link.Nodes
         /// <summary>
         /// Invoked each time client starts the process of establishing connection with the server.
         /// </summary>
-        public event Action? Connecting;
+        public event EventHandler<Client, ConnectingEventArgs>? Connecting;
         
         /// <summary>
         /// Invoked each time client successfully connects to the server.
         /// </summary>
-        public event Action? Connected;
+        public event EventHandler<Client, ConnectedEventArgs>? Connected;
 
         /// <summary>
         /// Invoked each time client fails to establish a connection with the server as maximum number
@@ -31,12 +31,12 @@ namespace Link.Nodes
         /// server is offline or all of the packets were lost in transit (due to firewall, congestion or
         /// any other possible packet loss reason).
         /// </summary>
-        public event Action? ConnectFailed;
+        public event EventHandler<Client, ConnectFailedEventArgs>? ConnectFailed;
 
         /// <summary>
         /// Invoked each time client disconnects from the server.
         /// </summary>
-        public event Action<DisconnectCause>? Disconnected;
+        public event EventHandler<Client, DisconnectedEventArgs>? Disconnected;
 
         /// <summary>
         /// Returns <c>true</c> if this client is currently attempting to connect to the server.
@@ -68,7 +68,7 @@ namespace Link.Nodes
             ConnectionInitializer?.Invoke(Connection);
             
             Establish(maxAttempts, delayBetweenAttempts, connectPacketFactory);
-            Connecting?.Invoke();
+            Connecting?.Invoke(this, new ConnectingEventArgs());
         }
         
         private async void Establish(int maxAttempts, int delayBetweenAttempts, ConnectPacketFactory? connectPacketFactory = null)
@@ -88,7 +88,7 @@ namespace Link.Nodes
             }
 
             Dispose();
-            ConnectFailed?.Invoke();
+            ConnectFailed?.Invoke(this, new ConnectFailedEventArgs());
 
             void SendConnectPacket()
             {
@@ -133,7 +133,7 @@ namespace Link.Nodes
 
                 case HeaderType.ConnectApproved:
                     Connection.ReceiveConnectApproved();
-                    Connected?.Invoke();
+                    Connected?.Invoke(this, new ConnectedEventArgs());
                     return;
 
                 case HeaderType.Disconnect:
@@ -171,7 +171,7 @@ namespace Link.Nodes
         private void Disconnect(DisconnectCause cause)
         {
             Dispose();
-            Disconnected?.Invoke(cause);
+            Disconnected?.Invoke(this, new DisconnectedEventArgs(cause));
         }
 
         protected override void Dispose(bool isDisposing)
@@ -179,6 +179,17 @@ namespace Link.Nodes
             Connection?.Close();
             Connection = null;
             base.Dispose(isDisposing);
+        }
+
+        public readonly struct ConnectingEventArgs { }
+        public readonly struct ConnectedEventArgs { }
+        public readonly struct ConnectFailedEventArgs { }
+
+        public readonly struct DisconnectedEventArgs
+        {
+            public DisconnectCause Cause { get; }
+            
+            public DisconnectedEventArgs(DisconnectCause cause) => Cause = cause;
         }
     }
 }

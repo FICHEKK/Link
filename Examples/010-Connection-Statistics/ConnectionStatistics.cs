@@ -20,7 +20,7 @@ public static class ConnectionStatistics
         server.Start(Port);
 
         using var client = new Client();
-        client.Connected += () => SendMessages(client);
+        client.Connected += (c, _) => SendMessages(c);
         client.Connect(IpAddress, Port);
 
         Console.ReadKey();
@@ -54,7 +54,7 @@ public static class ConnectionStatistics
         client.Send(Packet.Get(delivery).Write(message));
 
         await Task.Delay(millisecondsDelay: 1000);
-        PrintConnectionStatistics(client.Connection);
+        PrintConnectionStatistics(client.Connection!);
     }
 
     private static void PrintConnectionStatistics(Connection connection)
@@ -67,9 +67,9 @@ public static class ConnectionStatistics
         Console.WriteLine();
 
         // We can also get information of any channel that connection has.
-        var unreliableChannel = connection[(byte) Delivery.Unreliable];
-        var sequencedChannel = connection[(byte) Delivery.Sequenced];
-        var reliableChannel = connection[(byte) Delivery.Reliable];
+        var unreliableChannel = connection[(byte) Delivery.Unreliable]!;
+        var sequencedChannel = connection[(byte) Delivery.Sequenced]!;
+        var reliableChannel = connection[(byte) Delivery.Reliable]!;
 
         Console.WriteLine($"Connection has {connection.ChannelCount} channels:");
         Console.WriteLine($"{nameof(Delivery.Unreliable)} channel sent {unreliableChannel.PacketsSent} packets.");

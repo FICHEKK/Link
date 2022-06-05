@@ -13,6 +13,15 @@ namespace Link.Nodes
     public abstract class Node : IDisposable
     {
         /// <summary>
+        /// Defines a method that handles an event that was raised by an instance of <see cref="Node"/>.
+        /// </summary>
+        /// <typeparam name="TNode">Type of node that is raising the event.</typeparam>
+        /// <typeparam name="TEventArgs">Type of data associated with the event.</typeparam>
+        public delegate void EventHandler<in TNode, in TEventArgs>(TNode node, TEventArgs eventArgs)
+            where TNode : Node
+            where TEventArgs : struct;
+        
+        /// <summary>
         /// Defines a method that handles incoming data-packet.
         /// </summary>
         public delegate void PacketHandler(ReadOnlyPacket packet, EndPoint senderEndPoint);

@@ -34,7 +34,7 @@ public static class NetworkSimulation
         server.PacketLoss = 0.3;
 
         using var client = new Client();
-        client.Connected += () => SendPacketsForEachDelivery(client, count: 10);
+        client.Connected += (c, _) => SendPacketsForEachDelivery(c, count: 10);
         client.Connect(IpAddress, Port);
 
         Console.ReadKey();

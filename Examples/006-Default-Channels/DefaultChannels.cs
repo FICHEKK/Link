@@ -18,7 +18,7 @@ public static class DefaultChannels
         server.Start(Port);
 
         using var client = new Client();
-        client.Connected += () => SendPacketOnEachDefaultChannel(client);
+        client.Connected += (c, _) => SendPacketOnEachDefaultChannel(c);
         client.Connect(IpAddress, Port);
 
         Console.ReadKey();

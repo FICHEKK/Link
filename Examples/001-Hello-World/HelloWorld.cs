@@ -29,7 +29,7 @@ public static class HelloWorld
         server.Start(Port);
 
         using var client = new Client();
-        client.Connected += () => client.Send(Packet.Get(Delivery.Reliable).Write(Message));
+        client.Connected += (c, _) => c.Send(Packet.Get(Delivery.Reliable).Write(Message));
         client.Connect(IpAddress, Port);
 
         Console.ReadKey();
