@@ -4,7 +4,7 @@ using NUnit.Framework;
 namespace Link.Tests.Unit;
 
 [TestFixture]
-public class SequenceNumberComparisonTests
+public class SequenceNumberTests
 {
     [TestCase(0, 0, ExpectedResult = false)]
     [TestCase(0, 1, ExpectedResult = false)]

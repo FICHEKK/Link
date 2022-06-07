@@ -111,6 +111,57 @@ public class ReadOnlyPacketTests
     }
     
     [Test]
+    public void Packet_id_returns_id_that_was_originally_defined()
+    {
+        const ushort packetId = ushort.MaxValue - 1;
+        var packet = Packet.Get(Delivery.Unreliable, packetId);
+        
+        Assert.That(new ReadOnlyPacket(packet.Buffer).Id, Is.EqualTo(packetId));
+    }
+    
+    [Test]
+    public void Unread_bytes_returns_correct_value()
+    {
+        var buffer = Buffer.Get();
+        buffer.Write(1);
+        buffer.Write(2);
+        buffer.Write(3);
+
+        var packet = new ReadOnlyPacket(buffer);
+        Assert.That(packet.UnreadBytes, Is.EqualTo(sizeof(int) * 3));
+
+        packet.Read<int>();
+        Assert.That(packet.UnreadBytes, Is.EqualTo(sizeof(int) * 2));
+        
+        packet.Read<int>();
+        Assert.That(packet.UnreadBytes, Is.EqualTo(sizeof(int) * 1));
+        
+        packet.Read<int>();
+        Assert.That(packet.UnreadBytes, Is.EqualTo(sizeof(int) * 0));
+    }
+    
+    [Test]
+    public void Passing_packet_to_method_and_returning_does_not_break_reading_flow()
+    {
+        var buffer = Buffer.Get();
+        buffer.Write(1);
+        buffer.Write(2);
+        buffer.Write(3);
+        buffer.Write(4);
+        
+        var packet = new ReadOnlyPacket(buffer);
+        Assert.That(packet.Read<int>(), Is.EqualTo(1));
+        MethodThatReadsFromPacket(packet);
+        Assert.That(packet.Read<int>(), Is.EqualTo(4));
+
+        void MethodThatReadsFromPacket(ReadOnlyPacket packet)
+        {
+            Assert.That(packet.Read<int>(), Is.EqualTo(2));
+            Assert.That(packet.Read<int>(), Is.EqualTo(3));
+        }
+    }
+    
+    [Test]
     public void Reading_string_works_properly([ValueSource(typeof(TestData), nameof(TestData.Strings))] string stringToWrite)
     {
         var packet = Packet.Get().Write(stringToWrite);

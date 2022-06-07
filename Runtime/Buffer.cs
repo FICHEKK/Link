@@ -32,6 +32,11 @@ namespace Link
         public int Size { get; private set; }
         
         /// <summary>
+        /// Index at which next read operation will be performed.
+        /// </summary>
+        public int ReadPosition { get; set; }
+        
+        /// <summary>
         /// Returns the number of bytes that can be written to this buffer.
         /// </summary>
         public int Capacity => _bytes.Length;

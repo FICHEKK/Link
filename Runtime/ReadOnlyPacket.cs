@@ -5,7 +5,7 @@ namespace Link
     /// <summary>
     /// Represents a read-only packet view.
     /// </summary>
-    public ref struct ReadOnlyPacket
+    public readonly ref struct ReadOnlyPacket
     {
         /// <summary>
         /// Returns identifier of the channel on which this packet was received on.
@@ -26,23 +26,12 @@ namespace Link
         /// Returns how many more bytes can be read from this packet. Attempting to
         /// read more is going to result in the exception being thrown.
         /// </summary>
-        public int UnreadBytes => Buffer.Size - (_start + _position);
+        public int UnreadBytes => Buffer.Size - Buffer.ReadPosition;
         
         /// <summary>
         /// Underlying packet from which this read-only view is reading from.
         /// </summary>
         internal Buffer Buffer { get; }
-        
-        /// <summary>
-        /// Index at which data that can be read starts. This value is used to hide header bytes
-        /// which are an implementation detail and should not be accessed by the user. 
-        /// </summary>
-        private readonly int _start;
-        
-        /// <summary>
-        /// Index at which next read operation will be performed, relative to start index.
-        /// </summary>
-        private int _position;
 
         /// <summary>
         /// Creates a new read-only view of the given packet, which starts reading at the specified position.
@@ -50,8 +39,7 @@ namespace Link
         internal ReadOnlyPacket(Buffer buffer, int start = 0)
         {
             Buffer = buffer;
-            _start = start;
-            _position = 0;
+            Buffer.ReadPosition = start;
         }
         
         /// <summary>
@@ -67,8 +55,8 @@ namespace Link
             if (UnreadBytes < stringByteCount)
                 throw new InvalidOperationException("Could not read string (out-of-bounds bytes).");
             
-            var stringValue = Packet.Encoding.GetString(Buffer.Bytes, _start + _position, stringByteCount);
-            _position += stringByteCount;
+            var stringValue = Packet.Encoding.GetString(Buffer.Bytes, Buffer.ReadPosition, stringByteCount);
+            Buffer.ReadPosition += stringByteCount;
             return stringValue;
         }
 
@@ -80,8 +68,8 @@ namespace Link
             if (UnreadBytes < sizeof(T))
                 throw new InvalidOperationException($"Could not read value of type '{typeof(T)}' (out-of-bounds bytes).");
             
-            var value = Buffer.Read<T>(_start + _position);
-            _position += sizeof(T);
+            var value = Buffer.Read<T>(Buffer.ReadPosition);
+            Buffer.ReadPosition += sizeof(T);
             return value;
         }
 
@@ -109,15 +97,15 @@ namespace Link
             if (UnreadBytes < length * sizeof(T))
                 throw new InvalidOperationException($"Could not read array of type '{typeof(T)}' (out-of-bounds bytes).");
 
-            var array = Buffer.ReadArray<T>(length, _start + _position);
-            _position += length * sizeof(T);
+            var array = Buffer.ReadArray<T>(length, Buffer.ReadPosition);
+            Buffer.ReadPosition += length * sizeof(T);
             return array;
         }
 
         private int ReadVarInt()
         {
-            var varInt = Buffer.ReadVarInt(_start + _position, out var bytesRead);
-            _position += bytesRead;
+            var varInt = Buffer.ReadVarInt(Buffer.ReadPosition, out var bytesRead);
+            Buffer.ReadPosition += bytesRead;
             return varInt;
         }
     }
