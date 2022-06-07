@@ -11,6 +11,11 @@ namespace Link
         /// Returns identifier of the channel on which this packet was received on.
         /// </summary>
         public byte ChannelId => Buffer.Bytes[1];
+
+        /// <summary>
+        /// Returns identifier of the packet.
+        /// </summary>
+        public ushort Id => Buffer.Read<ushort>(offset: 2);
         
         /// <summary>
         /// Returns the number of bytes contained in this packet.

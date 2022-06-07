@@ -32,28 +32,12 @@ public class SendingDataTests
     public async Task Sending_string_works_as_intended()
     {
         string stringReceivedOnServer = null;
-        _server.PacketReceived += (packet, _) => stringReceivedOnServer = packet.ReadString();
+        _server.AddHandler((_, packet, _) => stringReceivedOnServer = packet.ReadString());
 
         _client.Send(Packet.Get(Delivery.Reliable).Write(ExampleString));
         await Task.Delay(Config.NetworkDelay);
         
         Assert.That(stringReceivedOnServer, Is.EqualTo(ExampleString));
-    }
-    
-    [Test]
-    public async Task All_packet_listeners_should_be_called_and_get_same_packet_data()
-    {
-        string stringReceivedByFirstListener = null;
-        string stringReceivedBySecondListener = null;
-        
-        _server.PacketReceived += (packet, _) => stringReceivedByFirstListener = packet.ReadString();
-        _server.PacketReceived += (packet, _) => stringReceivedBySecondListener = packet.ReadString();
-
-        _client.Send(Packet.Get(Delivery.Reliable).Write(ExampleString));
-        await Task.Delay(Config.NetworkDelay);
-        
-        Assert.That(stringReceivedByFirstListener, Is.EqualTo(ExampleString));
-        Assert.That(stringReceivedBySecondListener, Is.EqualTo(ExampleString));
     }
     
     [Test]

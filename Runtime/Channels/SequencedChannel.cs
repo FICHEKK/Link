@@ -28,7 +28,7 @@ namespace Link.Channels
         {
             lock (_receiveLock)
             {
-                var sequenceNumber = packet.Read<ushort>();
+                var sequenceNumber = packet.Buffer.Read<ushort>(offset: Packet.DataHeaderSize);
 
                 if (!IsFirstSequenceNumberGreater(sequenceNumber, _remoteSequenceNumber))
                 {

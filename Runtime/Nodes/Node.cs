@@ -22,16 +22,6 @@ namespace Link.Nodes
             where TEventArgs : struct;
         
         /// <summary>
-        /// Defines a method that handles incoming data-packet.
-        /// </summary>
-        public delegate void PacketHandler(ReadOnlyPacket packet, EndPoint senderEndPoint);
-        
-        /// <summary>
-        /// Invoked each time a data-packet is received.
-        /// </summary>
-        public event PacketHandler? PacketReceived;
-        
-        /// <summary>
         /// Default socket send and receive buffer size.
         /// </summary>
         private const int DefaultBufferSize = 1024 * 1024;
@@ -273,8 +263,7 @@ namespace Link.Nodes
         /// <summary>
         /// Performs the logic of receiving a data-packet.
         /// </summary>
-        internal void Receive(Buffer packet, EndPoint senderEndPoint) =>
-            PacketReceived?.Invoke(new ReadOnlyPacket(packet, start: Packet.HeaderSize), senderEndPoint);
+        internal abstract void Receive(Buffer packet, EndPoint senderEndPoint);
 
         /// <summary>
         /// Stop listening for incoming packets.

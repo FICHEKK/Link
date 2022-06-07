@@ -31,7 +31,7 @@ public class FragmentationTests
     public async Task Fragmented_packet_should_be_delivered_fully()
     {
         var receivedArray = (int[]) null;
-        _server.PacketReceived += (packet, _) => receivedArray = packet.ReadArray<int>();
+        _server.AddHandler((_, packet, _) => receivedArray = packet.ReadArray<int>());
 
         var sentArray = CreateIntArray(size: 1024);
         _client.Send(Packet.Get(Delivery.Reliable).WriteArray(sentArray));
@@ -44,7 +44,7 @@ public class FragmentationTests
     public async Task Multiple_fragmented_packets_should_be_delivered_fully()
     {
         var receivedArrays = new List<int[]>();
-        _server.PacketReceived += (packet, _) => receivedArrays.Add(packet.ReadArray<int>());
+        _server.AddHandler((_, packet, _) => receivedArrays.Add(packet.ReadArray<int>()));
 
         var sentArray0 = CreateIntArray(size: 256);
         var sentArray1 = CreateIntArray(size: 512);

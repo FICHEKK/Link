@@ -114,18 +114,19 @@ namespace Link.Channels
         private void SendMultiFragmentPacket(Packet packet, int fragmentCount)
         {
             var bytes = packet.Buffer.Bytes;
-            var channelId = bytes[1];
+            var channelId = packet.Buffer.Read<byte>(offset: 1);
+            var packetId = packet.Buffer.Read<ushort>(offset: 2);
             var offset = Packet.HeaderSize;
             var lastIndex = fragmentCount - 1;
 
             for (var fragmentIndex = 0; fragmentIndex < lastIndex; fragmentIndex++, offset += Packet.MaxSize)
             {
-                var fullFragment = Packet.Get(channelId).WriteArray(bytes, offset, length: Packet.MaxSize, writeLength: false);
+                var fullFragment = Packet.Get(channelId, packetId).WriteArray(bytes, offset, length: Packet.MaxSize, writeLength: false);
                 SendFragment(fullFragment, (byte) fragmentIndex, (byte) fragmentCount);
                 fullFragment.Return();
             }
             
-            var lastFragment = Packet.Get(channelId).WriteArray(bytes, offset, length: packet.Size - lastIndex * Packet.MaxSize, writeLength: false);
+            var lastFragment = Packet.Get(channelId, packetId).WriteArray(bytes, offset, length: packet.Size - lastIndex * Packet.MaxSize, writeLength: false);
             SendFragment(lastFragment, (byte) lastIndex, (byte) fragmentCount);
             lastFragment.Return();
         }
@@ -146,7 +147,7 @@ namespace Link.Channels
             {
                 if (_isClosed) return;
                 
-                var sequenceNumber = packet.Read<ushort>();
+                var sequenceNumber = packet.Buffer.Read<ushort>(offset: Packet.DataHeaderSize);
                 UpdateRemoteSequenceNumber(sequenceNumber);
                 SendAcknowledgement(packet.ChannelId, sequenceNumber);
 
@@ -241,9 +242,14 @@ namespace Link.Channels
             // If we reached this point, all of the fragments have been received, so we can reassemble it.
             var lastFragmentByteCount = _receivedPackets[(ushort) endSeq]!.Size;
             var reassembled = Buffer.OfSize(Packet.HeaderSize + (fragmentCount - 1) * Packet.MaxSize + lastFragmentByteCount);
+            
+            // Copy all data from the first fragment (in order to preserve the header).
+            var firstFragment = _receivedPackets[(ushort) startSeq]!;
+            Array.Copy(firstFragment.Bytes, reassembled.Bytes, Packet.BufferSize);
+            firstFragment.Return();
 
             // Copy data from all of the full fragments.
-            for (var seq = startSeq; seq < endSeq; seq++)
+            for (var seq = startSeq + 1; seq < endSeq; seq++)
             {
                 var fullFragment = _receivedPackets[(ushort) seq]!;
                 Array.Copy(fullFragment.Bytes, Packet.HeaderSize, reassembled.Bytes, Packet.HeaderSize + (seq - startSeq) * Packet.MaxSize, Packet.MaxSize);

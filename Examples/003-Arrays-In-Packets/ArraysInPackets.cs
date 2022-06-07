@@ -13,7 +13,7 @@ public static class ArraysInPackets
     public static void Main()
     {
         using var server = new Server();
-        server.PacketReceived += (packet, _) => HandlePacket(packet);
+        server.AddHandler((_, packet, _) => HandlePacket(packet));
         server.Start(Port);
 
         using var client = new Client();

@@ -27,14 +27,14 @@ namespace Link
         internal const int BufferSize = 1472;
         
         /// <summary>
-        /// Consists of header type (1 byte), channel ID (1 byte) and channel header (4 bytes).
+        /// Equals to <see cref="DataHeaderSize"/> + channel header size (4 bytes).
         /// </summary>
         internal const int HeaderSize = DataHeaderSize + 4;
         
         /// <summary>
-        /// Consists of header type (1 byte) and channel ID (1 byte).
+        /// Consists of header type (1 byte), channel ID (1 byte) and packet ID (2 bytes).
         /// </summary>
-        internal const int DataHeaderSize = 2;
+        internal const int DataHeaderSize = 4;
         
         /// <summary>
         /// Dummy value that is written to data-packet in order to fill channel header.
@@ -91,12 +91,14 @@ namespace Link
         /// <summary>
         /// Returns a packet that will be sent using specified delivery method.
         /// </summary>
-        public static Packet Get(Delivery delivery) => Get((byte) delivery);
+        public static Packet Get(Delivery delivery, ushort packetId = ushort.MaxValue) =>
+            Get((byte) delivery, packetId);
 
         /// <summary>
         /// Returns a packet that will be sent on the specified channel.
         /// </summary>
-        public static Packet Get(byte channelId) => Get(HeaderType.Data).Write(channelId).Write(ChannelHeaderFill);
+        public static Packet Get(byte channelId, ushort packetId = ushort.MaxValue) =>
+            Get(HeaderType.Data).Write(channelId).Write(packetId).Write(ChannelHeaderFill);
 
         /// <summary>
         /// Returns a packet with specific <see cref="HeaderType"/>.

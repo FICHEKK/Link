@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -10,6 +11,13 @@ namespace Link.Nodes
     /// </summary>
     public class Client : Node
     {
+        /// <summary>
+        /// Defines a method that handles incoming data-packet from the server.
+        /// </summary>
+        /// <param name="client">Client that has received the packet.</param>
+        /// <param name="packet">Packet that was received.</param>
+        public delegate void PacketHandler(Client client, ReadOnlyPacket packet);
+        
         /// <summary>
         /// Represents a method that creates connect packet by filling it with required data.
         /// </summary>
@@ -52,6 +60,11 @@ namespace Link.Nodes
         /// Connection to the server.
         /// </summary>
         public Connection? Connection { get; private set; }
+        
+        /// <summary>
+        /// Maps packet IDs to their handlers.
+        /// </summary>
+        private readonly Dictionary<ushort, PacketHandler> _packetIdToHandler = new();
 
         /// <summary>
         /// Attempts to establish a connection with the server.
@@ -162,6 +175,45 @@ namespace Link.Nodes
             Connection!.SendData(packet);
             packet.Return();
         }
+
+        internal override void Receive(Buffer packet, EndPoint senderEndPoint)
+        {
+            var packetId = packet.Read<ushort>(offset: 2);
+
+            if (!_packetIdToHandler.TryGetValue(packetId, out var packetHandler))
+            {
+                Log.Warning($"{nameof(Client)} could not handle packet (ID = {packetId}) as there is no handler for it.");
+                return;
+            }
+
+            packetHandler(this, new ReadOnlyPacket(packet, start: Packet.HeaderSize));
+        }
+
+        /// <summary>
+        /// Adds a packet handler for a specific packet ID.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">If given packet ID already has a handler.</exception>
+        public void AddHandler(PacketHandler packetHandler, ushort packetId = ushort.MaxValue)
+        {
+            if (_packetIdToHandler.ContainsKey(packetId))
+                throw new InvalidOperationException($"{nameof(Client)} already has a handler for packet ID {packetId}.");
+            
+            _packetIdToHandler.Add(packetId, packetHandler);
+        }
+        
+        /// <summary>
+        /// Removes a packet handler that is associated with a specific packet ID.
+        /// </summary>
+        /// <returns><c>true</c> if handler was successfully found and removed, <c>false</c> otherwise.</returns>
+        public bool RemoveHandler(ushort packetId = ushort.MaxValue) =>
+            _packetIdToHandler.Remove(packetId);
+        
+        /// <summary>
+        /// Gets <see cref="PacketHandler"/> associated with given packet ID.
+        /// </summary>
+        /// <returns><c>true</c> if handler exists for given ID, <c>false</c> otherwise.</returns>
+        public bool TryGetHandler(ushort packetId, out PacketHandler packetHandler) =>
+            _packetIdToHandler.TryGetValue(packetId, out packetHandler);
 
         /// <summary>
         /// Disconnects from the server and stops listening for incoming packets.

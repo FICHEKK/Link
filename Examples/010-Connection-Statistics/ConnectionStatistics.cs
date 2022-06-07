@@ -16,7 +16,7 @@ public static class ConnectionStatistics
     public static void Main()
     {
         using var server = new Server();
-        server.PacketReceived += (packet, endPoint) => Echo(server, packet, endPoint);
+        server.AddHandler(Echo);
         server.Start(Port);
 
         using var client = new Client();

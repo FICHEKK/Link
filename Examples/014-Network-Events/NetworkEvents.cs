@@ -26,9 +26,6 @@ public static class NetworkEvents
         // Invoked each time a new client connects to the server.
         server.ClientConnected += (_, args) => Console.WriteLine($"Client from {args.Connection.RemoteEndPoint} has connected.");
         
-        // Invoked each time a packet is received from a client.
-        server.PacketReceived += (packet, clientEndPoint) => Console.WriteLine($"Client from {clientEndPoint} sent packet of size {packet.Size}.");
-        
         // Invoked each time an already connected client disconnects from the server.
         server.ClientDisconnected += (_, args) => Console.WriteLine($"Client from {args.Connection.RemoteEndPoint} has disconnected (cause: {args.Cause}).");
 
@@ -45,9 +42,6 @@ public static class NetworkEvents
         
         // Invoked each time client successfully connects to the server.
         client.Connected += (_, _) => Console.WriteLine("Client has connected to the server.");
-        
-        // Invoked each time a packet is received from the server.
-        client.PacketReceived += (packet, serverEndPoint) => Console.WriteLine($"Server from {serverEndPoint} sent packet of size {packet.Size}.");
         
         // Invoked each time client fails to establish a connection with the server.
         client.ConnectFailed += (_, _) => Console.WriteLine("Client failed to connect to the server.");
