@@ -78,7 +78,7 @@ namespace Link.Nodes
         /// Starts this server and listens for incoming client connections.
         /// </summary>
         /// <param name="port">Port to listen on.</param>
-        public void Start(int port)
+        public void Start(ushort port)
         {
             Listen(port);
             Started?.Invoke(this, new StartedEventArgs());

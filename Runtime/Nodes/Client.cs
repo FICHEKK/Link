@@ -74,7 +74,7 @@ namespace Link.Nodes
         /// <param name="maxAttempts">Maximum number of connect attempts before considering server as unreachable.</param>
         /// <param name="delayBetweenAttempts">Delay between consecutive connect attempts, in milliseconds.</param>
         /// <param name="connectPacketFactory">Allows additional data to be written to the connect packet.</param>
-        public void Connect(string ipAddress, int port, int maxAttempts = 5, int delayBetweenAttempts = 1000, ConnectPacketFactory? connectPacketFactory = null)
+        public void Connect(string ipAddress, ushort port, int maxAttempts = 5, int delayBetweenAttempts = 1000, ConnectPacketFactory? connectPacketFactory = null)
         {
             Listen(port: 0);
             Connection = new Connection(node: this, remoteEndPoint: new IPEndPoint(IPAddress.Parse(ipAddress), port), initialState: Connection.State.Connecting);

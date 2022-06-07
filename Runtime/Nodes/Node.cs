@@ -30,6 +30,11 @@ namespace Link.Nodes
         /// Random instance used for network simulation purposes.
         /// </summary>
         private static readonly Random Random = new();
+
+        /// <summary>
+        /// Returns the local end-point on which this node is listening on, or <c>null</c> if not listening.
+        /// </summary>
+        public IPEndPoint? LocalEndPoint => _socket?.LocalEndPoint as IPEndPoint;
         
         /// <summary>
         /// If <c>true</c>, packets will be automatically and immediately processed as they are received. 
@@ -42,11 +47,6 @@ namespace Link.Nodes
         /// This option defaults to <c>true</c>.
         /// </summary>
         public bool IsAutomatic { get; set; } = true;
-
-        /// <summary>
-        /// Returns port on which this node is listening on, or <c>-1</c> if not currently listening.
-        /// </summary>
-        public int Port => IsListening ? ((IPEndPoint) _socket!.LocalEndPoint).Port : -1;
 
         /// <summary>
         /// Returns <c>true</c> if this node is currently listening for incoming packets.
@@ -131,7 +131,7 @@ namespace Link.Nodes
         /// <summary>
         /// Starts listening for incoming packets on the given port.
         /// </summary>
-        protected void Listen(int port)
+        protected void Listen(ushort port)
         {
             if (IsListening) throw new InvalidOperationException("Could not start listening as node is already listening.");
 

@@ -9,7 +9,7 @@ namespace Link.Examples._006_Default_Channels;
 public static class DefaultChannels
 {
     private const string IpAddress = "127.0.0.1";
-    private const int Port = 7777;
+    private const ushort Port = 7777;
 
     public static void Main()
     {

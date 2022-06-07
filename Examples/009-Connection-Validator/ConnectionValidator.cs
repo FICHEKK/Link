@@ -22,7 +22,7 @@ namespace Link.Examples._009_Connection_Validator;
 public static class ConnectionValidator
 {
     private const string IpAddress = "127.0.0.1";
-    private const int Port = 7777;
+    private const ushort Port = 7777;
     private const string RequiredServerPassword = "ServerPassword123";
 
     public static void Main()

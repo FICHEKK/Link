@@ -33,8 +33,8 @@ public class NodeTests
         Assert.That(node.ConnectionInitializer, Is.Null);
     
     [Test]
-    public void New_node_should_have_port_set_to_minus_1([ValueSource(nameof(Nodes))] Node node) =>
-        Assert.That(node.Port, Is.EqualTo(-1));
+    public void New_node_should_have_local_end_point_set_to_null([ValueSource(nameof(Nodes))] Node node) =>
+        Assert.That(node.LocalEndPoint, Is.Null);
     
     [Test]
     public void New_node_should_have_min_latency_set_to_0([ValueSource(nameof(Nodes))] Node node) =>

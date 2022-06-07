@@ -21,7 +21,7 @@ public static class NetworkEvents
         var server = new Server();
 
         // Invoked each time server starts and begins listening for client connections.
-        server.Started += (s, _) => Console.WriteLine($"Server started on port {s.Port}.");
+        server.Started += (s, _) => Console.WriteLine($"Server started on port {s.LocalEndPoint!.Port}.");
 
         // Invoked each time a new client connects to the server.
         server.ClientConnected += (_, args) => Console.WriteLine($"Client from {args.Connection.RemoteEndPoint} has connected.");

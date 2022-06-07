@@ -8,7 +8,7 @@ namespace Link.Examples._002_Complex_Packet;
 public static class ComplexPacket
 {
     private const string IpAddress = "127.0.0.1";
-    private const int Port = 7777;
+    private const ushort Port = 7777;
 
     public static void Main()
     {

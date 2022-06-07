@@ -22,7 +22,7 @@ namespace Link.Examples._015_Automatic_Vs_Manual;
 public static class AutomaticVsManual
 {
     private const string IpAddress = "127.0.0.1";
-    private const int Port = 7777;
+    private const ushort Port = 7777;
     private const int DelayBetweenTicks = 3000;
     private const string ExitKeyword = "exit";
 

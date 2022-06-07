@@ -10,7 +10,7 @@ namespace Link.Examples._005_Enums_In_Packets;
 public static class EnumsInPackets
 {
     private const string IpAddress = "127.0.0.1";
-    private const int Port = 7777;
+    private const ushort Port = 7777;
 
     public static void Main()
     {

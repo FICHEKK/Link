@@ -18,7 +18,7 @@ namespace Link.Examples._013_Network_Simulation;
 public static class NetworkSimulation
 {
     private const string IpAddress = "127.0.0.1";
-    private const int Port = 7777;
+    private const ushort Port = 7777;
 
     public static void Main()
     {

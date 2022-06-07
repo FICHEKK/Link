@@ -19,8 +19,7 @@ namespace Link.Examples._001_Hello_World;
 public static class HelloWorld
 {
     private const string IpAddress = "127.0.0.1";
-    private const int Port = 7777;
-    private const string Message = "Hello world!";
+    private const ushort Port = 7777;
     
     public static void Main()
     {
@@ -29,7 +28,7 @@ public static class HelloWorld
         server.Start(Port);
 
         using var client = new Client();
-        client.Connected += (c, _) => c.Send(Packet.Get(Delivery.Reliable).Write(Message));
+        client.Connected += (c, _) => c.Send(Packet.Get(Delivery.Reliable).Write("Hello world!"));
         client.Connect(IpAddress, Port);
 
         Console.ReadKey();

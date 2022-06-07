@@ -20,7 +20,7 @@ namespace Link.Examples._007_Custom_Channels;
 public static class CustomChannels
 {
     private const string IpAddress = "127.0.0.1";
-    private const int Port = 7777;
+    private const ushort Port = 7777;
 
     // Identifier of our custom channel.
     // We can use first 240 byte values (from 0 to 239).

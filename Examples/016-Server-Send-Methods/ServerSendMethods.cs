@@ -14,7 +14,7 @@ namespace Link.Examples._016_Server_Send_Methods;
 public static class ServerSendMethods
 {
     private const string IpAddress = "127.0.0.1";
-    private const int Port = 7777;
+    private const ushort Port = 7777;
 
     public static void Main()
     {
@@ -26,9 +26,9 @@ public static class ServerSendMethods
         using var client2 = new Client();
         using var client3 = new Client();
         
-        client1.AddHandler((c, packet) => Console.WriteLine($"Client 1 (port {c.Port}) received: {packet.ReadString()}"));
-        client2.AddHandler((c, packet) => Console.WriteLine($"Client 2 (port {c.Port}) received: {packet.ReadString()}"));
-        client3.AddHandler((c, packet) => Console.WriteLine($"Client 3 (port {c.Port}) received: {packet.ReadString()}"));
+        client1.AddHandler((c, packet) => Console.WriteLine($"Client 1 (port {c.LocalEndPoint!.Port}) received: {packet.ReadString()}"));
+        client2.AddHandler((c, packet) => Console.WriteLine($"Client 2 (port {c.LocalEndPoint!.Port}) received: {packet.ReadString()}"));
+        client3.AddHandler((c, packet) => Console.WriteLine($"Client 3 (port {c.LocalEndPoint!.Port}) received: {packet.ReadString()}"));
         
         client1.Connect(IpAddress, Port);
         client2.Connect(IpAddress, Port);
