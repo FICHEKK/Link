@@ -107,7 +107,9 @@ namespace Link.Nodes
             {
                 var connectPacket = Packet.Get(HeaderType.Connect);
                 connectPacketFactory?.Invoke(connectPacket);
-                Send(connectPacket, Connection!.RemoteEndPoint);
+                
+                // Write padding to the packet before sending. This is a measure to prevent amplification attacks. 
+                Send(connectPacket.WriteArray(new byte[connectPacket.UnwrittenBytes], writeLength: false), Connection!.RemoteEndPoint);
                 connectPacket.Return();
             }
         }
