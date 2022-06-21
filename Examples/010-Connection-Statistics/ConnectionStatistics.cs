@@ -20,7 +20,7 @@ public static class ConnectionStatistics
         server.Start(Port);
 
         using var client = new Client();
-        client.Connected += (c, _) => SendMessages(c);
+        client.Connected += SendMessages;
         client.Connect(IpAddress, Port);
 
         Console.ReadKey();
@@ -39,11 +39,11 @@ public static class ConnectionStatistics
         server.SendToOne(Packet.Get(packet.ChannelId).Write(message), clientEndPoint);
     }
 
-    private static async void SendMessages(Client client)
+    private static async void SendMessages(Client.ConnectedEventArgs args)
     {
-        await SendMessageAndPrintStatistics(client, Delivery.Unreliable, "Hello server!");
-        await SendMessageAndPrintStatistics(client, Delivery.Sequenced, "Sending data...");
-        await SendMessageAndPrintStatistics(client, Delivery.Reliable, "Final message!");
+        await SendMessageAndPrintStatistics(args.Client, Delivery.Unreliable, "Hello server!");
+        await SendMessageAndPrintStatistics(args.Client, Delivery.Sequenced, "Sending data...");
+        await SendMessageAndPrintStatistics(args.Client, Delivery.Reliable, "Final message!");
     }
 
     /// <summary>

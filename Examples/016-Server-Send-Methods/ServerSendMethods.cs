@@ -37,8 +37,11 @@ public static class ServerSendMethods
         Console.ReadKey();
     }
 
-    private static void OnClientConnected(Server server, Server.ClientConnectedEventArgs args)
+    private static void OnClientConnected(Server.ClientConnectedEventArgs args)
     {
+        // Extract server into a local variable for easy reuse.
+        var server = args.Server;
+        
         // Wait once all 3 clients are connected.
         if (server.ConnectionCount < 3) return;
         

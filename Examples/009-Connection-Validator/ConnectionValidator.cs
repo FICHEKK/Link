@@ -35,14 +35,14 @@ public static class ConnectionValidator
         using var client2 = new Client();
         using var client3 = new Client();
         
-        client1.Connected += (_, _) => Console.WriteLine("Client 1 successfully connected!");
-        client1.ConnectFailed += (_, _) => Console.WriteLine("Client 1 failed to connect...");
+        client1.Connected += _ => Console.WriteLine("Client 1 successfully connected!");
+        client1.ConnectFailed += _ => Console.WriteLine("Client 1 failed to connect...");
         
-        client2.Connected += (_, _) => Console.WriteLine("Client 2 successfully connected!");
-        client2.ConnectFailed += (_, _) => Console.WriteLine("Client 2 failed to connect...");
+        client2.Connected += _ => Console.WriteLine("Client 2 successfully connected!");
+        client2.ConnectFailed += _ => Console.WriteLine("Client 2 failed to connect...");
         
-        client3.Connected += (_, _) => Console.WriteLine("Client 3 successfully connected!");
-        client3.ConnectFailed += (_, _) => Console.WriteLine("Client 3 failed to connect...");
+        client3.Connected += _ => Console.WriteLine("Client 3 successfully connected!");
+        client3.ConnectFailed += _ => Console.WriteLine("Client 3 failed to connect...");
 
         // We can very easily write data in the connect packet by supplying implementation of connect
         // packet factory. This example's implementation simply writes password, which the server will

@@ -15,11 +15,8 @@ namespace Link.Nodes
         /// <summary>
         /// Defines a method that handles an event that was raised by an instance of <see cref="Node"/>.
         /// </summary>
-        /// <typeparam name="TNode">Type of node that is raising the event.</typeparam>
         /// <typeparam name="TEventArgs">Type of data associated with the event.</typeparam>
-        public delegate void EventHandler<in TNode, in TEventArgs>(TNode node, TEventArgs eventArgs)
-            where TNode : Node
-            where TEventArgs : struct;
+        public delegate void EventHandler<in TEventArgs>(TEventArgs eventArgs) where TEventArgs : class;
         
         /// <summary>
         /// Default socket send and receive buffer size.

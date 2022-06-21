@@ -18,7 +18,7 @@ public static class DefaultChannels
         server.Start(Port);
 
         using var client = new Client();
-        client.Connected += (c, _) => SendPacketOnEachDefaultChannel(c);
+        client.Connected += SendPacketOnEachDefaultChannel;
         client.Connect(IpAddress, Port);
 
         Console.ReadKey();
@@ -33,10 +33,10 @@ public static class DefaultChannels
     // Different channels offer different functionality and features.
     // This library by default has multiple built-in channel types,
     // and those built-in channels are accessed using delivery enum.
-    private static void SendPacketOnEachDefaultChannel(Client client)
+    private static void SendPacketOnEachDefaultChannel(Client.ConnectedEventArgs args)
     {
-        client.Send(Packet.Get(Delivery.Unreliable));
-        client.Send(Packet.Get(Delivery.Sequenced));
-        client.Send(Packet.Get(Delivery.Reliable));
+        args.Client.Send(Packet.Get(Delivery.Unreliable));
+        args.Client.Send(Packet.Get(Delivery.Sequenced));
+        args.Client.Send(Packet.Get(Delivery.Reliable));
     }
 }

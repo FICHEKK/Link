@@ -28,7 +28,7 @@ public static class HelloWorld
         server.Start(Port);
 
         using var client = new Client();
-        client.Connected += (c, _) => c.Send(Packet.Get(Delivery.Reliable).Write("Hello world!"));
+        client.Connected += args => args.Client.Send(Packet.Get(Delivery.Reliable).Write("Hello world!"));
         client.Connect(IpAddress, Port);
 
         Console.ReadKey();

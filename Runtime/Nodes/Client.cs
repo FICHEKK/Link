@@ -26,12 +26,12 @@ namespace Link.Nodes
         /// <summary>
         /// Invoked each time client starts the process of establishing connection with the server.
         /// </summary>
-        public event EventHandler<Client, ConnectingEventArgs>? Connecting;
+        public event EventHandler<ConnectingEventArgs>? Connecting;
         
         /// <summary>
         /// Invoked each time client successfully connects to the server.
         /// </summary>
-        public event EventHandler<Client, ConnectedEventArgs>? Connected;
+        public event EventHandler<ConnectedEventArgs>? Connected;
 
         /// <summary>
         /// Invoked each time client fails to establish a connection with the server as maximum number
@@ -39,12 +39,12 @@ namespace Link.Nodes
         /// server is offline or all of the packets were lost in transit (due to firewall, congestion or
         /// any other possible packet loss reason).
         /// </summary>
-        public event EventHandler<Client, ConnectFailedEventArgs>? ConnectFailed;
+        public event EventHandler<ConnectFailedEventArgs>? ConnectFailed;
 
         /// <summary>
         /// Invoked each time client disconnects from the server.
         /// </summary>
-        public event EventHandler<Client, DisconnectedEventArgs>? Disconnected;
+        public event EventHandler<DisconnectedEventArgs>? Disconnected;
 
         /// <summary>
         /// Returns <c>true</c> if this client is currently attempting to connect to the server.
@@ -81,7 +81,7 @@ namespace Link.Nodes
             ConnectionInitializer?.Invoke(Connection);
             
             Establish(maxAttempts, delayBetweenAttempts, connectPacketFactory);
-            Connecting?.Invoke(this, new ConnectingEventArgs());
+            Connecting?.Invoke(new ConnectingEventArgs(this));
         }
         
         private async void Establish(int maxAttempts, int delayBetweenAttempts, ConnectPacketFactory? connectPacketFactory = null)
@@ -101,7 +101,7 @@ namespace Link.Nodes
             }
 
             Dispose();
-            ConnectFailed?.Invoke(this, new ConnectFailedEventArgs());
+            ConnectFailed?.Invoke(new ConnectFailedEventArgs(this));
 
             void SendConnectPacket()
             {
@@ -146,7 +146,7 @@ namespace Link.Nodes
 
                 case HeaderType.ConnectApproved:
                     Connection.ReceiveConnectApproved();
-                    Connected?.Invoke(this, new ConnectedEventArgs());
+                    Connected?.Invoke(new ConnectedEventArgs(this));
                     return;
 
                 case HeaderType.Disconnect:
@@ -223,7 +223,7 @@ namespace Link.Nodes
         private void Disconnect(DisconnectCause cause)
         {
             Dispose();
-            Disconnected?.Invoke(this, new DisconnectedEventArgs(cause));
+            Disconnected?.Invoke(new DisconnectedEventArgs(this, cause));
         }
 
         protected override void Dispose(bool isDisposing)
@@ -233,18 +233,38 @@ namespace Link.Nodes
             base.Dispose(isDisposing);
         }
 
-        public readonly struct ConnectingEventArgs { }
-        public readonly struct ConnectedEventArgs { }
-        public readonly struct ConnectFailedEventArgs { }
-
-        public readonly struct DisconnectedEventArgs
+        public abstract class EventArgs
         {
-            /// <summary>
-            /// Reason that the client has disconnected.
-            /// </summary>
+            /// <summary>Client that raised the event.</summary>
+            public Client Client { get; }
+            
+            protected EventArgs(Client client) => Client = client;
+        }
+
+        public class ConnectingEventArgs : EventArgs
+        {
+            // Empty class that is reserved for potential future extending.
+            internal ConnectingEventArgs(Client client) : base(client) { }
+        }
+
+        public class ConnectedEventArgs : EventArgs
+        {
+            // Empty class that is reserved for potential future extending.
+            internal ConnectedEventArgs(Client client) : base(client) { }
+        }
+
+        public class ConnectFailedEventArgs : EventArgs
+        {
+            // Empty class that is reserved for potential future extending.
+            internal ConnectFailedEventArgs(Client client) : base(client) { }
+        }
+
+        public class DisconnectedEventArgs : EventArgs
+        {
+            /// <summary>Reason that the client has disconnected.</summary>
             public DisconnectCause Cause { get; }
             
-            internal DisconnectedEventArgs(DisconnectCause cause) => Cause = cause;
+            internal DisconnectedEventArgs(Client client, DisconnectCause cause) : base(client) => Cause = cause;
         }
     }
 }

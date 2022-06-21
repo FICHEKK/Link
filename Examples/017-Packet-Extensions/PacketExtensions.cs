@@ -25,14 +25,14 @@ public static class PacketExtensions
         Console.ReadKey();
     }
     
-    private static void SendPeople(Client client, Client.ConnectedEventArgs args)
+    private static void SendPeople(Client.ConnectedEventArgs args)
     {
         var peoplePacket = Packet.Get(Delivery.Reliable)
             .WritePerson(new Person("Bob", "Ross", age: 52))
             .WritePerson(new Person("John", "Smith", age: 69))
             .WritePerson(new Person("Steve", "Irwin", age: 44));
 
-        client.Send(peoplePacket);
+        args.Client.Send(peoplePacket);
     }
 
     private static void ReceivePeople(Server server, ReadOnlyPacket packet, EndPoint endPoint)

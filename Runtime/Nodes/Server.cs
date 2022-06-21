@@ -32,22 +32,22 @@ namespace Link.Nodes
         /// <summary>
         /// Invoked each time server starts and begins listening for client connections.
         /// </summary>
-        public event EventHandler<Server, StartedEventArgs>? Started;
+        public event EventHandler<StartedEventArgs>? Started;
 
         /// <summary>
         /// Invoked each time a new client connects to the server.
         /// </summary>
-        public event EventHandler<Server, ClientConnectedEventArgs>? ClientConnected;
+        public event EventHandler<ClientConnectedEventArgs>? ClientConnected;
 
         /// <summary>
         /// Invoked each time an already connected client disconnects from the server.
         /// </summary>
-        public event EventHandler<Server, ClientDisconnectedEventArgs>? ClientDisconnected;
+        public event EventHandler<ClientDisconnectedEventArgs>? ClientDisconnected;
 
         /// <summary>
         /// Invoked each time server stops and no longer listens for client connections.
         /// </summary>
-        public event EventHandler<Server, StoppedEventArgs>? Stopped;
+        public event EventHandler<StoppedEventArgs>? Stopped;
 
         /// <summary>
         /// Returns current number of client connections.
@@ -81,7 +81,7 @@ namespace Link.Nodes
         public void Start(ushort port)
         {
             Listen(port);
-            Started?.Invoke(this, new StartedEventArgs());
+            Started?.Invoke(new StartedEventArgs(this));
         }
 
         protected override void Consume(ReadOnlyPacket packet, EndPoint senderEndPoint)
@@ -144,7 +144,7 @@ namespace Link.Nodes
             SendConnectApproved();
 
             _connections.TryAdd(senderEndPoint, connection);
-            ClientConnected?.Invoke(this, new ClientConnectedEventArgs(connection));
+            ClientConnected?.Invoke(new ClientConnectedEventArgs(this, connection));
 
             void SendConnectApproved()
             {
@@ -168,7 +168,7 @@ namespace Link.Nodes
 
             Log.Info($"Client from {clientEndPoint} disconnected (cause: {cause}).");
             connection.Close();
-            ClientDisconnected?.Invoke(this, new ClientDisconnectedEventArgs(connection, cause));
+            ClientDisconnected?.Invoke(new ClientDisconnectedEventArgs(this, connection, cause));
         }
 
         /// <summary>
@@ -263,7 +263,7 @@ namespace Link.Nodes
         public void Stop()
         {
             Dispose();
-            Stopped?.Invoke(this, new StoppedEventArgs());
+            Stopped?.Invoke(new StoppedEventArgs(this));
         }
 
         protected override void Dispose(bool isDisposing)
@@ -275,36 +275,47 @@ namespace Link.Nodes
             base.Dispose(isDisposing);
         }
         
-        public readonly struct StartedEventArgs { }
-        public readonly struct StoppedEventArgs { }
-
-        public readonly struct ClientConnectedEventArgs
+        public abstract class EventArgs
         {
-            /// <summary>
-            /// Connection of the client that has connected.
-            /// </summary>
-            public Connection Connection { get; }
-            
-            internal ClientConnectedEventArgs(Connection connection) => Connection = connection;
+            /// <summary>Server that raised the event.</summary>
+            public Server Server { get; }
+
+            protected EventArgs(Server server) => Server = server;
         }
 
-        public readonly struct ClientDisconnectedEventArgs
+        public class StartedEventArgs : EventArgs
         {
-            /// <summary>
-            /// Connection of the client that has disconnected.
-            /// </summary>
+            // Empty class that is reserved for potential future extending.
+            internal StartedEventArgs(Server server) : base(server) { }
+        }
+
+        public class ClientConnectedEventArgs : EventArgs
+        {
+            /// <summary>Connection of the client that has connected.</summary>
             public Connection Connection { get; }
             
-            /// <summary>
-            /// Reason that the client has disconnected.
-            /// </summary>
+            internal ClientConnectedEventArgs(Server server, Connection connection) : base(server) => Connection = connection;
+        }
+
+        public class ClientDisconnectedEventArgs : EventArgs
+        {
+            /// <summary>Connection of the client that has disconnected.</summary>
+            public Connection Connection { get; }
+            
+            /// <summary>Reason that the client has disconnected.</summary>
             public DisconnectCause Cause { get; }
             
-            internal ClientDisconnectedEventArgs(Connection connection, DisconnectCause cause)
+            internal ClientDisconnectedEventArgs(Server server, Connection connection, DisconnectCause cause) : base(server)
             {
                 Connection = connection;
                 Cause = cause;
             }
+        }
+        
+        public class StoppedEventArgs : EventArgs
+        {
+            // Empty class that is reserved for potential future extending.
+            internal StoppedEventArgs(Server server) : base(server) { }
         }
     }
 }

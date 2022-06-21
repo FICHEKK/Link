@@ -97,7 +97,7 @@ public class ConnectTests
         using var client = new Client();
         var connectFailedWasRaised = false;
 
-        client.ConnectFailed += (_, _) => connectFailedWasRaised = true;
+        client.ConnectFailed += _ => connectFailedWasRaised = true;
         client.Connect(Config.IpAddress, Config.Port, delayBetweenAttempts: 10);
 
         await Task.Delay(millisecondsDelay: 100);

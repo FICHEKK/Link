@@ -46,13 +46,13 @@ public static class PacketTypes
         Console.ReadKey();
     }
 
-    private static void SendPacketsOfAllTypes(Client client, Client.ConnectedEventArgs args)
+    private static void SendPacketsOfAllTypes(Client.ConnectedEventArgs args)
     {
         // First we send a text-message packet.
-        client.Send(PacketType.TextMessage.Get(Delivery.Reliable).Write("Some text message."));
+        args.Client.Send(PacketType.TextMessage.Get(Delivery.Reliable).Write("Some text message."));
         
         // Then we send a player-position packet.
-        client.Send(PacketType.PlayerPosition.Get(Delivery.Reliable).Write(new Vector3(1, 2, 3)));
+        args.Client.Send(PacketType.PlayerPosition.Get(Delivery.Reliable).Write(new Vector3(1, 2, 3)));
     }
 
     private static void HandleTextMessagePacket(Server server, ReadOnlyPacket packet, EndPoint clientEndPoint)

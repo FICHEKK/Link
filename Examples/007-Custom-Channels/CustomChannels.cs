@@ -35,7 +35,7 @@ public static class CustomChannels
         server.Start(Port);
 
         using var client = new Client();
-        client.Connected += (c, _) => SendPacketOnCustomChannel(c);
+        client.Connected += SendPacketOnCustomChannel;
         client.ConnectionInitializer = AddCustomChannel;
         client.Connect(IpAddress, Port);
 
@@ -55,12 +55,12 @@ public static class CustomChannels
         };
     }
     
-    private static void SendPacketOnCustomChannel(Client client)
+    private static void SendPacketOnCustomChannel(Client.ConnectedEventArgs args)
     {
         // This is another overload which takes in channel ID.
         var packet = Packet.Get(channelId: TextMessageChannelId);
         
         // Send packet on our custom channel.
-        client.Send(packet);
+        args.Client.Send(packet);
     }
 }

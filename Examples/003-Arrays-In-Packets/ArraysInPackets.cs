@@ -17,7 +17,7 @@ public static class ArraysInPackets
         server.Start(Port);
 
         using var client = new Client();
-        client.Connected += (c, _) => c.Send(CreatePacket());
+        client.Connected += args => args.Client.Send(CreatePacket());
         client.Connect(IpAddress, Port);
 
         Console.ReadKey();
