@@ -96,7 +96,7 @@ namespace Link.Nodes
 
         protected override void Consume(ReadOnlyPacket packet, EndPoint senderEndPoint)
         {
-            switch ((HeaderType) packet.Read<byte>())
+            switch (packet.Read<HeaderType>())
             {
                 case HeaderType.Data:
                     TryGetConnection(senderEndPoint)?.ReceiveData(packet);

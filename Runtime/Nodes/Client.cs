@@ -128,7 +128,7 @@ namespace Link.Nodes
                 return;
             }
 
-            switch ((HeaderType) packet.Read<byte>())
+            switch (packet.Read<HeaderType>())
             {
                 case HeaderType.Data:
                     Connection.ReceiveData(packet);
