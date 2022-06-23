@@ -19,18 +19,15 @@ namespace Link.Channels
         private readonly Timer _resendTimer;
         private readonly object _lock = new();
 
-        private Buffer? _packet;
+        private Buffer? _buffer;
         private ReliableChannel? _reliableChannel;
         private int _resendAttempts;
         private double _backoff;
 
         public static PendingPacket Get(Packet packet, ReliableChannel reliableChannel)
         {
-            // It is crucial to make a copy of provided packet for multiple reasons:
-            // 1. If same packet is sent to multiple end-points, it would get returned multiple times.
-            // 2. We can immediately return original packet to pool as usual, making logic consistent.
             var pendingPacket = Get();
-            pendingPacket._packet = Buffer.Copy(packet.Buffer);
+            pendingPacket._buffer = Buffer.Copy(packet.Buffer);
             pendingPacket._reliableChannel = reliableChannel;
             pendingPacket._resendAttempts = 0;
             pendingPacket._backoff = 1;
@@ -65,16 +62,16 @@ namespace Link.Channels
             lock (_lock)
             {
                 // Other thread has already acknowledged this packet.
-                if (_packet is null) return;
+                if (_buffer is null) return;
 
                 if (_resendAttempts >= _reliableChannel.MaxResendAttempts)
                 {
-                    _reliableChannel.HandleLostPacket(new Packet(_packet));
+                    _reliableChannel.HandleLostPacket(new Packet(_buffer));
                     Acknowledge();
                     return;
                 }
 
-                if (!_reliableChannel.ResendPacket(new Packet(_packet)))
+                if (!_reliableChannel.ResendPacket(new Packet(_buffer)))
                 {
                     // Channel has been closed, this packet's job is done.
                     Acknowledge();
@@ -101,13 +98,13 @@ namespace Link.Channels
             lock (_lock)
             {
                 // Other thread has already acknowledged this packet.
-                if (_packet is null) return;
+                if (_buffer is null) return;
 
                 _resendTimer.Change(dueTime: Timeout.Infinite, period: Timeout.Infinite);
-                _packet.Return();
+                _buffer.Return();
 
                 // Lose references so they can be garbage collected.
-                _packet = null;
+                _buffer = null;
                 _reliableChannel = null;
 
                 lock (PendingPacketPool) PendingPacketPool.Enqueue(this);
