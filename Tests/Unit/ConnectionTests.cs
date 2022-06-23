@@ -11,7 +11,19 @@ public class ConnectionTests
     
     [SetUp]
     public void Create_new_connection() =>
-        _connection = new Connection(null, null, Connection.State.Disconnected);
+        _connection = new Connection(node: null, remoteEndPoint: null, Connection.State.Disconnected);
+
+    [Test]
+    public void New_connection_should_have_rtt_set_to_minus_1() =>
+        Assert.That(_connection.RoundTripTime, Is.EqualTo(-1));
+    
+    [Test]
+    public void New_connection_should_have_smooth_rtt_set_to_minus_1() =>
+        Assert.That(_connection.SmoothRoundTripTime, Is.EqualTo(-1));
+    
+    [Test]
+    public void New_connection_should_have_rtt_deviation_set_to_minus_1() =>
+        Assert.That(_connection.RoundTripTimeDeviation, Is.EqualTo(-1));
     
     [Test]
     public void Setting_null_channel_throws() =>
@@ -29,6 +41,15 @@ public class ConnectionTests
     {
         Assert.That(() => _connection[(byte) Delivery.Unreliable] = new UnreliableChannel(_connection), Throws.Exception);
         Assert.That(() => _connection[byte.MaxValue] = new UnreliableChannel(_connection), Throws.Exception);
+    }
+    
+    [Test]
+    public void Getting_channel_in_one_of_the_reserved_slots_always_returns_non_null()
+    {
+        foreach (var delivery in (Delivery[]) Enum.GetValues(typeof(Delivery)))
+        {
+            Assert.That(_connection[(byte) delivery], Is.Not.Null);
+        }
     }
 
     [Test]
