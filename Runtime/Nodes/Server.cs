@@ -96,7 +96,9 @@ namespace Link.Nodes
 
         protected override void Consume(ReadOnlyPacket packet, EndPoint senderEndPoint)
         {
-            switch (packet.Read<HeaderType>())
+            var packetHeader = packet.Read<HeaderType>();
+            
+            switch (packetHeader)
             {
                 case HeaderType.Data:
                     TryGetConnection(senderEndPoint)?.ReceiveData(packet);
@@ -127,7 +129,7 @@ namespace Link.Nodes
                     return;
 
                 default:
-                    Log.Warning($"Server received invalid packet header from {senderEndPoint}.");
+                    Log.Warning($"Server received invalid header byte of value {packetHeader} from {senderEndPoint}.");
                     return;
             }
         }

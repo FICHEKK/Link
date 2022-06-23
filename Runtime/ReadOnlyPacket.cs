@@ -43,6 +43,23 @@ namespace Link
         }
         
         /// <summary>
+        /// Gets a byte at the specified index. Index must be in range from 0 (inclusive) to <see cref="Size"/> (exclusive).
+        /// </summary>
+        public byte this[int index]
+        {
+            get
+            {
+                if (index < 0)
+                    throw new InvalidOperationException($"Cannot get byte at index {index}.");
+                
+                if (index >= Size)
+                    throw new InvalidOperationException($"Cannot get byte at index {index} as it is equal to or exceeds packet size of {Size}.");
+                
+                return Buffer.Bytes[Packet.HeaderSize + index];
+            }
+        }
+        
+        /// <summary>
         /// Reads a <see cref="string"/> using encoding defined by <see cref="Link.Packet.Encoding"/>.
         /// </summary>
         public string ReadString()

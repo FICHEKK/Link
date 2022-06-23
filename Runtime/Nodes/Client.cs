@@ -128,7 +128,9 @@ namespace Link.Nodes
                 return;
             }
 
-            switch (packet.Read<HeaderType>())
+            var packetHeader = packet.Read<HeaderType>();
+
+            switch (packetHeader)
             {
                 case HeaderType.Data:
                     Connection.ReceiveData(packet);
@@ -160,7 +162,7 @@ namespace Link.Nodes
                     return;
 
                 default:
-                    Log.Warning("Client received invalid packet header from server.");
+                    Log.Warning($"Client received invalid header byte of value {packetHeader} from server.");
                     return;
             }
         }

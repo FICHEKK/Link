@@ -168,4 +168,33 @@ public class ReadOnlyPacketTests
         var readString = new ReadOnlyPacket(packet.Buffer).ReadString();
         Assert.That(readString, Is.EqualTo(stringToWrite));
     }
+    
+    [Test]
+    public void Getting_byte_at_negative_index_throws() => Assert.That(() =>
+    {
+        var packet = new ReadOnlyPacket(Buffer.Get());
+        var value = packet[-1];
+    }, Throws.Exception);
+    
+    [Test]
+    public void Getting_byte_at_index_equal_to_or_greater_than_packet_size_throws() => Assert.That(() =>
+    {
+        var packet = new ReadOnlyPacket(Packet.Get(Delivery.Unreliable).Buffer);
+        var value = packet[0];
+    }, Throws.Exception);
+    
+    [Test]
+    public void Getting_byte_at_valid_index_does_not_throw() => Assert.That(() =>
+    {
+        var packet = new ReadOnlyPacket(Packet.Get(Delivery.Unreliable).Write<byte>(0).Buffer);
+        var value = packet[0];
+    }, Throws.Nothing);
+    
+    [Test]
+    public void Getting_byte_at_valid_index_returns_proper_value()
+    {
+        const byte randomByteValue = 17;
+        var packet = new ReadOnlyPacket(Packet.Get(Delivery.Unreliable).Write(randomByteValue).Buffer);
+        Assert.That(packet[0], Is.EqualTo(randomByteValue));
+    }
 }
