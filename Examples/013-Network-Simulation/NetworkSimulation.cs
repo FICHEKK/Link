@@ -23,7 +23,7 @@ public static class NetworkSimulation
     public static void Main()
     {
         using var server = new Server();
-        server.AddHandler((_, packet, _) => HandlePacket(packet));
+        server.AddHandler(args => HandlePacket(args.Packet));
         server.Start(Port);
 
         // Each packet is going to be held randomly for 200 to 500 ms to simulate latency. 

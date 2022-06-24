@@ -14,9 +14,7 @@ namespace Link.Nodes
         /// <summary>
         /// Defines a method that handles incoming data-packet from the server.
         /// </summary>
-        /// <param name="client">Client that has received the packet.</param>
-        /// <param name="packet">Packet that was received.</param>
-        public delegate void PacketHandler(Client client, ReadOnlyPacket packet);
+        public delegate void PacketHandler(ReceiveArgs args);
         
         /// <summary>
         /// Represents a method that creates connect packet by filling it with required data.
@@ -190,7 +188,7 @@ namespace Link.Nodes
                 return;
             }
 
-            packetHandler(this, new ReadOnlyPacket(packet, start: Packet.HeaderSize));
+            packetHandler(new ReceiveArgs(this, new ReadOnlyPacket(packet, start: Packet.HeaderSize)));
         }
 
         /// <summary>
@@ -235,6 +233,24 @@ namespace Link.Nodes
             Connection?.Close();
             Connection = null;
             base.Dispose(isDisposing);
+        }
+        
+        /// <summary>
+        /// Data associated with the packet received from the server. 
+        /// </summary>
+        public readonly ref struct ReceiveArgs
+        {
+            /// <summary>Client that has received the packet.</summary>
+            public Client Client { get; }
+            
+            /// <summary>Packet that was received.</summary>
+            public ReadOnlyPacket Packet { get; }
+
+            internal ReceiveArgs(Client client, ReadOnlyPacket packet)
+            {
+                Client = client;
+                Packet = packet;
+            }
         }
 
         public abstract class EventArgs

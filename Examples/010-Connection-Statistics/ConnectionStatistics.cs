@@ -30,13 +30,13 @@ public static class ConnectionStatistics
     /// Simple method that reads client's message and sends the same message back on the
     /// same channel on which it was received.
     /// </summary>
-    private static void Echo(Server server, ReadOnlyPacket packet, EndPoint clientEndPoint)
+    private static void Echo(Server.ReceiveArgs args)
     {
         // Read the message client sent us.
-        var message = packet.ReadString();
+        var message = args.Packet.ReadString();
 
         // Echo it back to the client.
-        server.SendToOne(Packet.Get(packet.ChannelId).Write(message), clientEndPoint);
+        args.Server.SendToOne(Packet.Get(args.Packet.ChannelId).Write(message), args.ClientEndPoint);
     }
 
     private static async void SendMessages(Client.ConnectedEventArgs args)

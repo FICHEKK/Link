@@ -14,10 +14,7 @@ namespace Link.Nodes
         /// <summary>
         /// Defines a method that handles incoming data-packet from a client.
         /// </summary>
-        /// <param name="server">Server that has received the packet.</param>
-        /// <param name="packet">Packet that was received.</param>
-        /// <param name="clientEndPoint">End-point of a client that has sent the packet.</param>
-        public delegate void PacketHandler(Server server, ReadOnlyPacket packet, EndPoint clientEndPoint);
+        public delegate void PacketHandler(ReceiveArgs args);
         
         /// <summary>
         /// Represents a method that is responsible for handling incoming connect packet.
@@ -244,7 +241,7 @@ namespace Link.Nodes
                 return;
             }
 
-            packetHandler(this, new ReadOnlyPacket(packet, start: Packet.HeaderSize), senderEndPoint);
+            packetHandler(new ReceiveArgs(this, new ReadOnlyPacket(packet, start: Packet.HeaderSize), senderEndPoint));
         }
         
         /// <summary>
@@ -297,6 +294,28 @@ namespace Link.Nodes
 
             _connections.Clear();
             base.Dispose(isDisposing);
+        }
+        
+        /// <summary>
+        /// Data associated with the packet received from a client. 
+        /// </summary>
+        public readonly ref struct ReceiveArgs
+        {
+            /// <summary>Server that has received the packet.</summary>
+            public Server Server { get; }
+            
+            /// <summary>Packet that was received.</summary>
+            public ReadOnlyPacket Packet { get; }
+            
+            /// <summary>End-point of the client that sent the packet.</summary>
+            public EndPoint ClientEndPoint { get; }
+
+            internal ReceiveArgs(Server server, ReadOnlyPacket packet, EndPoint clientEndPoint)
+            {
+                Server = server;
+                Packet = packet;
+                ClientEndPoint = clientEndPoint;
+            }
         }
         
         public abstract class EventArgs

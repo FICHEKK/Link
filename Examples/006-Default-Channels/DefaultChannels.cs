@@ -14,7 +14,7 @@ public static class DefaultChannels
     public static void Main()
     {
         using var server = new Server();
-        server.AddHandler((_, packet, _) => Console.WriteLine($"Packet received on channel {packet.ChannelId}."));
+        server.AddHandler(args => Console.WriteLine($"Packet received on channel {args.Packet.ChannelId}."));
         server.Start(Port);
 
         using var client = new Client();

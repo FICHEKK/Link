@@ -32,7 +32,7 @@ public class SendingDataTests
     public async Task Sending_string_works_as_intended()
     {
         string stringReceivedOnServer = null;
-        _server.AddHandler((_, packet, _) => stringReceivedOnServer = packet.ReadString());
+        _server.AddHandler(args => stringReceivedOnServer = args.Packet.ReadString());
 
         _client.Send(Packet.Get(Delivery.Reliable).Write(ExampleString));
         await Task.Delay(Config.NetworkDelay);

@@ -26,9 +26,9 @@ public static class ServerSendMethods
         using var client2 = new Client();
         using var client3 = new Client();
         
-        client1.AddHandler((c, packet) => Console.WriteLine($"Client 1 (port {c.LocalEndPoint!.Port}) received: {packet.ReadString()}"));
-        client2.AddHandler((c, packet) => Console.WriteLine($"Client 2 (port {c.LocalEndPoint!.Port}) received: {packet.ReadString()}"));
-        client3.AddHandler((c, packet) => Console.WriteLine($"Client 3 (port {c.LocalEndPoint!.Port}) received: {packet.ReadString()}"));
+        client1.AddHandler(args => Console.WriteLine($"Client 1 (port {args.Client.LocalEndPoint!.Port}) received: {args.Packet.ReadString()}"));
+        client2.AddHandler(args => Console.WriteLine($"Client 2 (port {args.Client.LocalEndPoint!.Port}) received: {args.Packet.ReadString()}"));
+        client3.AddHandler(args => Console.WriteLine($"Client 3 (port {args.Client.LocalEndPoint!.Port}) received: {args.Packet.ReadString()}"));
         
         client1.Connect(IpAddress, Port);
         client2.Connect(IpAddress, Port);

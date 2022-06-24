@@ -55,15 +55,15 @@ public static class PacketTypes
         args.Client.Send(PacketType.PlayerPosition.Get(Delivery.Reliable).Write(new Vector3(1, 2, 3)));
     }
 
-    private static void HandleTextMessagePacket(Server server, ReadOnlyPacket packet, EndPoint clientEndPoint)
+    private static void HandleTextMessagePacket(Server.ReceiveArgs args)
     {
-        var message = packet.ReadString();
+        var message = args.Packet.ReadString();
         Console.WriteLine($"Server received a text-message packet: {message}");
     }
 
-    private static void HandlePlayerPositionPacket(Server server, ReadOnlyPacket packet, EndPoint clientEndPoint)
+    private static void HandlePlayerPositionPacket(Server.ReceiveArgs args)
     {
-        var position = packet.Read<Vector3>();
+        var position = args.Packet.Read<Vector3>();
         Console.WriteLine($"Server received a player-position packet: {position}");
     }
 

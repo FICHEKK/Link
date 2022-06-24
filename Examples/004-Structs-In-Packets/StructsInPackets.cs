@@ -13,7 +13,7 @@ public static class StructsInPackets
     public static void Main()
     {
         using var server = new Server();
-        server.AddHandler((_, packet, _) => HandlePacket(packet));
+        server.AddHandler(args => HandlePacket(args.Packet));
         server.Start(Port);
 
         using var client = new Client();

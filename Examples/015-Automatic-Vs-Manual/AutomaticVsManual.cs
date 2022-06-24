@@ -32,7 +32,7 @@ public static class AutomaticVsManual
     {
         // Create server that operates in manual mode.
         using var server = new Server { IsAutomatic = false };
-        server.AddHandler((_, packet, _) => ProcessClientMessage(packet));
+        server.AddHandler(args => ProcessClientMessage(args.Packet));
         server.Start(Port);
 
         // Create client that operates in automatic mode (which is the default).

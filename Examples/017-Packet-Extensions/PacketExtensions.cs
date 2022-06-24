@@ -35,12 +35,12 @@ public static class PacketExtensions
         args.Client.Send(peoplePacket);
     }
 
-    private static void ReceivePeople(Server server, ReadOnlyPacket packet, EndPoint endPoint)
+    private static void ReceivePeople(Server.ReceiveArgs args)
     {
         Console.WriteLine("Server received the following people:");
-        Console.WriteLine(packet.ReadPerson());
-        Console.WriteLine(packet.ReadPerson());
-        Console.WriteLine(packet.ReadPerson());
+        Console.WriteLine(args.Packet.ReadPerson());
+        Console.WriteLine(args.Packet.ReadPerson());
+        Console.WriteLine(args.Packet.ReadPerson());
     }
 
     /// <summary>
