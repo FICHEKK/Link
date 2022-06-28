@@ -16,7 +16,7 @@ public class PacketTests
     [Test]
     public void Writing_null_to_packet_throws()
     {
-        Assert.That(() => Packet.Get().Write(null), Throws.Exception);
+        Assert.That(() => Packet.Get().Write<string>(null), Throws.Exception);
         Assert.That(() => Packet.Get().WriteArray<int>(null), Throws.Exception);
         Assert.That(() => Packet.Get().WriteArray<int>(null, start: 0, length: 0), Throws.Exception);
     }
@@ -24,8 +24,8 @@ public class PacketTests
     [Test]
     public void Reading_string_that_was_written_produces_same_string([ValueSource(typeof(TestData), nameof(TestData.Strings))] string stringToWrite)
     {
-        var packet = Packet.Get().Write(stringToWrite);
-        var @string = new ReadOnlyPacket(packet.Buffer).ReadString();
+        var packet = Packet.Get().Write<string>(stringToWrite);
+        var @string = new ReadOnlyPacket(packet.Buffer).Read<string>();
         Assert.That(@string, Is.EqualTo(stringToWrite));
     }
 

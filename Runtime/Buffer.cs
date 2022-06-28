@@ -103,47 +103,63 @@ namespace Link
         /// </summary>
         private Buffer(int size) => _bytes = new byte[size];
 
-        public unsafe void Write<T>(T value) where T : unmanaged
+        public void Write(byte value)
         {
-            EnsureSize(Size + sizeof(T));
+            EnsureSize(Size + sizeof(byte));
             Write(value, Size);
-            Size += sizeof(T);
-        }
-
-        public unsafe void Write<T>(T value, int offset) where T : unmanaged
-        {
-            fixed (byte* pointer = &Bytes[offset])
-            {
-                *(T*) pointer = value;
-            }
-        }
-
-        public void WriteArray<T>(T[] array) where T : unmanaged =>
-            WriteArray(array, start: 0, array.Length);
-        
-        public unsafe void WriteArray<T>(T[] array, int start, int length) where T : unmanaged
-        {
-            var bytesToWrite = length * sizeof(T);
-            EnsureSize(Size + bytesToWrite);
-            WriteArray(array, start, length, Size);
-            Size += bytesToWrite;
+            Size += sizeof(byte);
         }
         
-        public void WriteArray<T>(T[] array, int offset) where T : unmanaged =>
-            WriteArray(array, start: 0, array.Length, offset);
-
-        public unsafe void WriteArray<T>(T[] array, int start, int length, int offset) where T : unmanaged
+        public void Write(short value)
         {
-            fixed (byte* pointer = &Bytes[offset])
-            {
-                var typedPointer = (T*) pointer;
+            EnsureSize(Size + sizeof(short));
+            Write(value, Size);
+            Size += sizeof(short);
+        }
 
-                for (int i = start, end = start + length; i < end; i++)
-                {
-                    *typedPointer = array[i];
-                    typedPointer++;
-                }
-            }
+        public void Write(int value)
+        {
+            EnsureSize(Size + sizeof(int));
+            Write(value, Size);
+            Size += sizeof(int);
+        }
+
+        public void Write(long value)
+        {
+            EnsureSize(Size + sizeof(long));
+            Write(value, Size);
+            Size += sizeof(long);
+        }
+
+        public void Write(byte value, int offset)
+        {
+            _bytes[offset] = value;
+        }
+        
+        public void Write(short value, int offset)
+        {
+            _bytes[offset + 0] = (byte) (value >> 0);
+            _bytes[offset + 1] = (byte) (value >> 8);
+        }
+        
+        public void Write(int value, int offset)
+        {
+            _bytes[offset + 0] = (byte) (value >> 0);
+            _bytes[offset + 1] = (byte) (value >> 8);
+            _bytes[offset + 2] = (byte) (value >> 16);
+            _bytes[offset + 3] = (byte) (value >> 24);
+        }
+
+        public void Write(long value, int offset)
+        {
+            _bytes[offset + 0] = (byte) (value >> 0);
+            _bytes[offset + 1] = (byte) (value >> 8);
+            _bytes[offset + 2] = (byte) (value >> 16);
+            _bytes[offset + 3] = (byte) (value >> 24);
+            _bytes[offset + 4] = (byte) (value >> 32);
+            _bytes[offset + 5] = (byte) (value >> 40);
+            _bytes[offset + 6] = (byte) (value >> 48);
+            _bytes[offset + 7] = (byte) (value >> 56);
         }
         
         public void WriteVarInt(int value)
@@ -192,30 +208,88 @@ namespace Link
             _bytes = biggerBuffer;
         }
 
-        public unsafe T Read<T>(int offset) where T : unmanaged
+        public byte ReadByte()
         {
-            fixed (byte* pointer = &Bytes[offset])
-            {
-                return *(T*) pointer;
-            }
+            if (Size - ReadPosition < sizeof(byte))
+                throw new InvalidOperationException($"Could not read value of type '{typeof(byte)}' (out-of-bounds bytes).");
+
+            var value = ReadByte(offset: ReadPosition);
+            ReadPosition += sizeof(byte);
+            return value;
+        }
+        
+        public short ReadShort()
+        {
+            if (Size - ReadPosition < sizeof(short))
+                throw new InvalidOperationException($"Could not read value of type '{typeof(short)}' (out-of-bounds bytes).");
+            
+            var value = ReadShort(offset: ReadPosition);
+            ReadPosition += sizeof(short);
+            return value;
+        }
+        
+        public int ReadInt()
+        {
+            if (Size - ReadPosition < sizeof(int))
+                throw new InvalidOperationException($"Could not read value of type '{typeof(int)}' (out-of-bounds bytes).");
+
+            var value = ReadInt(offset: ReadPosition);
+            ReadPosition += sizeof(int);
+            return value;
         }
 
-        public unsafe T[] ReadArray<T>(int length, int offset) where T : unmanaged
+        public long ReadLong()
         {
-            var array = new T[length];
+            if (Size - ReadPosition < sizeof(long))
+                throw new InvalidOperationException($"Could not read value of type '{typeof(long)}' (out-of-bounds bytes).");
             
-            fixed (byte* pointer = &Bytes[offset])
-            {
-                var typedPointer = (T*) pointer;
+            var value = ReadLong(offset: ReadPosition);
+            ReadPosition += sizeof(long);
+            return value;
+        }
+        
+        public byte ReadByte(int offset)
+        {
+            return _bytes[offset];
+        }
 
-                for (var i = 0; i < length; i++)
-                {
-                    array[i] = *typedPointer;
-                    typedPointer++;
-                }
-            }
+        public short ReadShort(int offset)
+        {
+            var b0 = (int) _bytes[offset + 0];
+            var b1 = (int) _bytes[offset + 1];
+            
+            return (short) (b0 | b1 << 8);
+        }
+        
+        public int ReadInt(int offset)
+        {
+            var b0 = (int) _bytes[offset + 0];
+            var b1 = (int) _bytes[offset + 1];
+            var b2 = (int) _bytes[offset + 2];
+            var b3 = (int) _bytes[offset + 3];
+            
+            return b0 | b1 << 8 | b2 << 16 | b3 << 24;
+        }
 
-            return array;
+        public long ReadLong(int offset)
+        {
+            var b0 = (long) _bytes[offset + 0];
+            var b1 = (long) _bytes[offset + 1];
+            var b2 = (long) _bytes[offset + 2];
+            var b3 = (long) _bytes[offset + 3];
+            var b4 = (long) _bytes[offset + 4];
+            var b5 = (long) _bytes[offset + 5];
+            var b6 = (long) _bytes[offset + 6];
+            var b7 = (long) _bytes[offset + 7];
+            
+            return b0 | b1 << 8 | b2 << 16 | b3 << 24 | b4 << 32 | b5 << 40 | b6 << 48 | b7 << 56;
+        }
+
+        public int ReadVarInt(out int bytesRead)
+        {
+            var varInt = ReadVarInt(ReadPosition, out bytesRead);
+            ReadPosition += bytesRead;
+            return varInt;
         }
 
         public int ReadVarInt(int offset, out int bytesRead)

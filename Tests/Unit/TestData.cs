@@ -4,6 +4,40 @@ namespace Link.Tests.Unit;
 
 public static class TestData
 {
+    public static readonly IEnumerable<byte> ByteValues = new[]
+    {
+        byte.MinValue,
+        byte.MaxValue,
+        (byte) 1,
+    };
+    
+    public static readonly IEnumerable<short> ShortValues = new[]
+    {
+        short.MinValue,
+        short.MaxValue,
+        (short) -1,
+        (short) 0,
+        (short) 1,
+    };
+    
+    public static readonly IEnumerable<int> IntValues = new[]
+    {
+        int.MinValue,
+        int.MaxValue,
+        -1,
+        0,
+        1,
+    };
+    
+    public static readonly IEnumerable<long> LongValues = new[]
+    {
+        long.MinValue,
+        long.MaxValue,
+        -1,
+        0,
+        1,
+    };
+    
     public static readonly IEnumerable<object> Values = new object[]
     {
         sbyte.MaxValue,

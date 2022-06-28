@@ -1,4 +1,3 @@
-using System.Net;
 using Link.Nodes;
 
 namespace Link.Examples._010_Connection_Statistics;
@@ -33,7 +32,7 @@ public static class ConnectionStatistics
     private static void Echo(Server.ReceiveArgs args)
     {
         // Read the message client sent us.
-        var message = args.Packet.ReadString();
+        var message = args.Packet.Read<string>();
 
         // Echo it back to the client.
         args.Server.SendToOne(Packet.Get(args.Packet.ChannelId).Write(message), args.ClientEndPoint);

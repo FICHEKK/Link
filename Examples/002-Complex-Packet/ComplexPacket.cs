@@ -61,7 +61,7 @@ public static class ComplexPacket
         // When we created the packet, first thing we wrote was a string. Now that we are 
         // reading the packet, we need to respect the order in which data was written,
         // so the first thing we must read is a string.
-        Console.WriteLine(packet.ReadString());
+        Console.WriteLine(packet.Read<string>());
 
         // Next thing on the list is an integer.
         Console.WriteLine(packet.Read<int>());

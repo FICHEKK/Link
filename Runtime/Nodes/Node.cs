@@ -258,9 +258,9 @@ namespace Link.Nodes
         protected abstract void Consume(ReadOnlyPacket packet, EndPoint senderEndPoint);
 
         /// <summary>
-        /// Performs the logic of receiving a data-packet.
+        /// Performs the logic of receiving data-packet buffer.
         /// </summary>
-        internal abstract void Receive(Buffer packet, EndPoint senderEndPoint);
+        internal abstract void Receive(Buffer buffer, EndPoint senderEndPoint);
 
         /// <summary>
         /// Stop listening for incoming packets.

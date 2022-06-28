@@ -85,7 +85,7 @@ public static class AutomaticVsManual
 
     private static void ProcessClientMessage(ReadOnlyPacket packet)
     {
-        var clientMessage = packet.ReadString();
+        var clientMessage = packet.Read<string>();
         Console.WriteLine($"Server received: '{clientMessage}'");
     }
 }

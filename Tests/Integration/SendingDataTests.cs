@@ -32,9 +32,9 @@ public class SendingDataTests
     public async Task Sending_string_works_as_intended()
     {
         string stringReceivedOnServer = null;
-        _server.AddHandler(args => stringReceivedOnServer = args.Packet.ReadString());
+        _server.AddHandler(args => stringReceivedOnServer = args.Packet.Read<string>());
 
-        _client.Send(Packet.Get(Delivery.Reliable).Write(ExampleString));
+        _client.Send(Packet.Get(Delivery.Reliable).Write<string>(ExampleString));
         await Task.Delay(Config.NetworkDelay);
         
         Assert.That(stringReceivedOnServer, Is.EqualTo(ExampleString));

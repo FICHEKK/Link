@@ -66,7 +66,7 @@ public static class ConnectionValidator
     {
         try
         {
-            var passwordSentByClient = connectPacket.ReadString();
+            var passwordSentByClient = connectPacket.Read<string>();
             var isAccepted = passwordSentByClient == RequiredServerPassword;
 
             Console.WriteLine($"Client from {clientEndPoint} has been {(isAccepted ? "accepted!" : "declined.")}");

@@ -24,7 +24,7 @@ public static class HelloWorld
     public static void Main()
     {
         using var server = new Server();
-        server.AddHandler(args => Console.WriteLine(args.Packet.ReadString()));
+        server.AddHandler(args => Console.WriteLine(args.Packet.Read<string>()));
         server.Start(Port);
 
         using var client = new Client();

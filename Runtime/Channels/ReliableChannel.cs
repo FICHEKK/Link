@@ -114,8 +114,8 @@ namespace Link.Channels
         private void SendMultiFragmentPacket(Packet packet, int fragmentCount)
         {
             var bytes = packet.Buffer.Bytes;
-            var channelId = packet.Buffer.Read<byte>(offset: 1);
-            var packetId = packet.Buffer.Read<ushort>(offset: 2);
+            var channelId = packet.Buffer.ReadByte(offset: 1);
+            var packetId = (ushort) packet.Buffer.ReadShort(offset: 2);
             var offset = Packet.HeaderSize;
             var lastIndex = fragmentCount - 1;
 
@@ -133,7 +133,7 @@ namespace Link.Channels
 
         private void SendFragment(Packet fragment, byte fragmentIndex, byte fragmentCount)
         {
-            fragment.Buffer.Write(_localSequenceNumber, offset: Packet.DataHeaderSize);
+            fragment.Buffer.Write((short) _localSequenceNumber, offset: Packet.DataHeaderSize);
             fragment.Buffer.Write(fragmentIndex, offset: Packet.DataHeaderSize + 2);
             fragment.Buffer.Write(fragmentCount, offset: Packet.DataHeaderSize + 3);
                     
@@ -147,7 +147,7 @@ namespace Link.Channels
             {
                 if (_isClosed) return;
                 
-                var sequenceNumber = packet.Buffer.Read<ushort>(offset: Packet.DataHeaderSize);
+                var sequenceNumber = (ushort) packet.Buffer.ReadShort(offset: Packet.DataHeaderSize);
                 UpdateRemoteSequenceNumber(sequenceNumber);
                 SendAcknowledgement(packet.ChannelId, sequenceNumber);
 
@@ -212,8 +212,8 @@ namespace Link.Channels
             var fragment = _receivedPackets[sequenceNumber];
             if (fragment is null) return 0;
             
-            var fragmentIndex = fragment.Read<byte>(offset: Packet.DataHeaderSize + 2);
-            var fragmentCount = fragment.Read<byte>(offset: Packet.DataHeaderSize + 3);
+            var fragmentIndex = fragment.ReadByte(offset: Packet.DataHeaderSize + 2);
+            var fragmentCount = fragment.ReadByte(offset: Packet.DataHeaderSize + 3);
             
             var reassembled = ReassembleIfPossible(sequenceNumber, fragmentIndex, fragmentCount);
             if (reassembled is null) return 0;
@@ -301,7 +301,7 @@ namespace Link.Channels
                 PacketsResent++;
                 BytesResent += packet.Size;
             
-                var sequenceNumber = packet.Buffer.Read<ushort>(offset: Packet.DataHeaderSize);
+                var sequenceNumber = (ushort) packet.Buffer.ReadShort(offset: Packet.DataHeaderSize);
                 Log.Info($"Packet [sequence: {sequenceNumber}] re-sent.");
                 return true;
             }
@@ -317,7 +317,7 @@ namespace Link.Channels
             {
                 if (_isClosed) return;
 
-                var sequenceNumber = packet.Buffer.Read<ushort>(offset: Packet.DataHeaderSize);
+                var sequenceNumber = (ushort) packet.Buffer.ReadShort(offset: Packet.DataHeaderSize);
                 _connection.Timeout($"Packet [sequence: {sequenceNumber}] exceeded maximum resend attempts of {MaxResendAttempts}.");
             }
         }

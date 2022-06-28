@@ -15,7 +15,7 @@ namespace Link
         /// <summary>
         /// Returns identifier of the packet.
         /// </summary>
-        public ushort Id => Buffer.Read<ushort>(offset: 2);
+        public ushort Id => (ushort) Buffer.ReadShort(offset: 2);
         
         /// <summary>
         /// Returns the number of bytes contained in this packet.
@@ -62,9 +62,9 @@ namespace Link
         /// <summary>
         /// Reads a <see cref="string"/> using encoding defined by <see cref="Link.Packet.Encoding"/>.
         /// </summary>
-        public string ReadString()
+        internal string ReadString()
         {
-            var stringByteCount = ReadVarInt();
+            var stringByteCount = Buffer.ReadVarInt(out _);
 
             if (stringByteCount == 0)
                 return string.Empty;
@@ -72,22 +72,20 @@ namespace Link
             if (UnreadBytes < stringByteCount)
                 throw new InvalidOperationException("Could not read string (out-of-bounds bytes).");
             
-            var stringValue = Packet.Encoding.GetString(Buffer.Bytes, Buffer.ReadPosition, stringByteCount);
+            var @string = Packet.Encoding.GetString(Buffer.Bytes, Buffer.ReadPosition, stringByteCount);
             Buffer.ReadPosition += stringByteCount;
-            return stringValue;
+            return @string;
         }
 
         /// <summary>
         /// Reads a value of specified type from the packet.
         /// </summary>
-        public unsafe T Read<T>() where T : unmanaged
+        public T Read<T>()
         {
-            if (UnreadBytes < sizeof(T))
-                throw new InvalidOperationException($"Could not read value of type '{typeof(T)}' (out-of-bounds bytes).");
+            if (typeof(T).IsArray)
+                throw new InvalidOperationException($"Use '{nameof(ReadArray)}' for reading arrays from a packet.");
             
-            var value = Buffer.Read<T>(Buffer.ReadPosition);
-            Buffer.ReadPosition += sizeof(T);
-            return value;
+            return Serialization.GetReader<T>()(this);
         }
 
         /// <summary>
@@ -97,33 +95,27 @@ namespace Link
         /// If set to 0 or greater, exactly that many elements will be read from the packet.
         /// If set to a negative value, length of the array will be read from the packet.
         /// </param>
-        public unsafe T[] ReadArray<T>(int length = -1) where T : unmanaged
+        public T[] ReadArray<T>(int length = -1)
         {
+            if (typeof(T).IsArray)
+                throw new InvalidOperationException("Cannot read jagged or multidimensional arrays from a packet.");
+            
             if (length == 0)
                 return Array.Empty<T>();
             
             if (length < 0)
-                length = ReadVarInt();
+                length = Buffer.ReadVarInt(out _);
 
             if (length < 0)
                 throw new InvalidOperationException($"Cannot read array of length {length} as it is negative.");
 
-            if (length * sizeof(T) < 0)
-                throw new InvalidOperationException($"Cannot read array of length {length} as it is too big.");
+            var array = new T[length];
+            var reader = Serialization.GetReader<T>();
             
-            if (UnreadBytes < length * sizeof(T))
-                throw new InvalidOperationException($"Could not read array of type '{typeof(T)}' (out-of-bounds bytes).");
+            for (var i = 0; i < length; i++)
+                array[i] = reader(this);
 
-            var array = Buffer.ReadArray<T>(length, Buffer.ReadPosition);
-            Buffer.ReadPosition += length * sizeof(T);
             return array;
-        }
-
-        private int ReadVarInt()
-        {
-            var varInt = Buffer.ReadVarInt(Buffer.ReadPosition, out var bytesRead);
-            Buffer.ReadPosition += bytesRead;
-            return varInt;
         }
     }
 }

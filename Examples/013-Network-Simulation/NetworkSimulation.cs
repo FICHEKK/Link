@@ -58,7 +58,7 @@ public static class NetworkSimulation
     private static void HandlePacket(ReadOnlyPacket packet)
     {
         var indentation = new string('\t', count: packet.ChannelId - (byte) Delivery.Unreliable);
-        var message = packet.ReadString();
+        var message = packet.Read<string>();
         Console.WriteLine(indentation + message);
     }
 }

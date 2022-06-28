@@ -1,5 +1,3 @@
-using System.Net;
-using System.Numerics;
 using Link.Nodes;
 
 namespace Link.Examples._018_Packet_Types;
@@ -49,22 +47,28 @@ public static class PacketTypes
     private static void SendPacketsOfAllTypes(Client.ConnectedEventArgs args)
     {
         // First we send a text-message packet.
-        args.Client.Send(PacketType.TextMessage.Get(Delivery.Reliable).Write("Some text message."));
+        const string textMessage = "Some text message.";
+        args.Client.Send(PacketType.TextMessage.Get(Delivery.Reliable).Write(textMessage));
         
         // Then we send a player-position packet.
-        args.Client.Send(PacketType.PlayerPosition.Get(Delivery.Reliable).Write(new Vector3(1, 2, 3)));
+        const float x = 1;
+        const float y = 2;
+        const float z = 3;
+        args.Client.Send(PacketType.PlayerPosition.Get(Delivery.Reliable).Write(x).Write(y).Write(z));
     }
 
     private static void HandleTextMessagePacket(Server.ReceiveArgs args)
     {
-        var message = args.Packet.ReadString();
-        Console.WriteLine($"Server received a text-message packet: {message}");
+        var textMessage = args.Packet.Read<string>();
+        Console.WriteLine($"Server received a text-message packet: {textMessage}");
     }
 
     private static void HandlePlayerPositionPacket(Server.ReceiveArgs args)
     {
-        var position = args.Packet.Read<Vector3>();
-        Console.WriteLine($"Server received a player-position packet: {position}");
+        var x = args.Packet.Read<float>();
+        var y = args.Packet.Read<float>();
+        var z = args.Packet.Read<float>();
+        Console.WriteLine($"Server received a player-position packet: {x}, {y}, {z}");
     }
 
     /// <summary>

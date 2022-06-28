@@ -4,7 +4,6 @@
         <TargetFramework>netstandard2.0</TargetFramework>
         <RootNamespace>Link</RootNamespace>
         <LangVersion>9</LangVersion>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <AssemblyName>Link</AssemblyName>
         <Nullable>enable</Nullable>
         <WarningsAsErrors>Nullable</WarningsAsErrors>

@@ -18,23 +18,65 @@ public class BufferTests
         Assert.That(_buffer.Size, Is.EqualTo(0));
 
     [Test]
-    public void Reading_value_that_was_written_produces_same_value<T>([ValueSource(typeof(TestData), nameof(TestData.Values))] T valueToWrite, [Values(0, 1)] int offset)
-        where T : unmanaged
+    public void Written_and_read_byte_values_match([ValueSource(typeof(TestData), nameof(TestData.ByteValues))] byte value, [Values(0, 1)] int offset)
     {
-        _buffer.Write(valueToWrite, offset);
-        var value = _buffer.Read<T>(offset);
-        Assert.That(value, Is.EqualTo(valueToWrite));
-    }
-
-    [Test]
-    public void Reading_array_that_was_written_produces_same_array<T>([ValueSource(typeof(TestData), nameof(TestData.Arrays))] T[] arrayToWrite, [Values(0, 1)] int offset)
-        where T : unmanaged
-    {
-        _buffer.WriteArray(arrayToWrite, offset);
-        var array = _buffer.ReadArray<T>(arrayToWrite.Length, offset);
-        Assert.That(array, Is.EqualTo(arrayToWrite));
+        _buffer.Write(value, offset);
+        Assert.That(_buffer.ReadByte(offset), Is.EqualTo(value));
     }
     
+    [Test]
+    public void Written_and_read_short_values_match([ValueSource(typeof(TestData), nameof(TestData.ShortValues))] short value, [Values(0, 1)] int offset)
+    {
+        _buffer.Write(value, offset);
+        Assert.That(_buffer.ReadShort(offset), Is.EqualTo(value));
+    }
+    
+    [Test]
+    public void Written_and_read_int_values_match([ValueSource(typeof(TestData), nameof(TestData.IntValues))] int value, [Values(0, 1)] int offset)
+    {
+        _buffer.Write(value, offset);
+        Assert.That(_buffer.ReadInt(offset), Is.EqualTo(value));
+    }
+    
+    [Test]
+    public void Written_and_read_long_values_match([ValueSource(typeof(TestData), nameof(TestData.LongValues))] long value, [Values(0, 1)] int offset)
+    {
+        _buffer.Write(value, offset);
+        Assert.That(_buffer.ReadLong(offset), Is.EqualTo(value));
+    }
+    
+    [Test]
+    public void Writing_byte_increases_buffer_size_by_1()
+    {
+        var oldSize = _buffer.Size;
+        _buffer.Write((byte) 0);
+        Assert.That(_buffer.Size - oldSize, Is.EqualTo(1));
+    }
+    
+    [Test]
+    public void Writing_short_increases_buffer_size_by_2()
+    {
+        var oldSize = _buffer.Size;
+        _buffer.Write((short) 0);
+        Assert.That(_buffer.Size - oldSize, Is.EqualTo(2));
+    }
+    
+    [Test]
+    public void Writing_int_increases_buffer_size_by_4()
+    {
+        var oldSize = _buffer.Size;
+        _buffer.Write(0);
+        Assert.That(_buffer.Size - oldSize, Is.EqualTo(4));
+    }
+    
+    [Test]
+    public void Writing_long_increases_buffer_size_by_8()
+    {
+        var oldSize = _buffer.Size;
+        _buffer.Write((long) 0);
+        Assert.That(_buffer.Size - oldSize, Is.EqualTo(8));
+    }
+
     [Test]
     public void Returning_buffer_out_of_pool_successfully_returns()
     {
@@ -54,7 +96,10 @@ public class BufferTests
     public void Returning_buffer_should_return_big_buffer_to_array_pool()
     {
         var buffer = Buffer.Get();
-        buffer.WriteArray(new byte[Packet.BufferSize + 1]);
+        
+        for (var i = 0; i < Packet.BufferSize + 1; i++)
+            buffer.Write((byte) 0);
+        
         buffer.Return();
         
         Assert.That(buffer.Capacity, Is.Not.GreaterThan(Packet.BufferSize));
@@ -73,45 +118,20 @@ public class BufferTests
     {
         var buffer = Buffer.Get();
         buffer.Return();
-        
         Assert.That(() => buffer.Write(0), Throws.Exception);
-        Assert.That(() => buffer.WriteArray(new[] { 1, 2, 3 }), Throws.Exception);
     }
     
     [Test]
     public void Writing_out_of_bounds_should_increase_buffer_size()
     {
         var buffer = Buffer.Get();
-        buffer.WriteArray(new byte[Packet.BufferSize + 1]);
+        
+        for (var i = 0; i < Packet.BufferSize + 1; i++)
+            buffer.Write((byte) 0);
+        
         Assert.That(buffer.Capacity, Is.GreaterThan(Packet.BufferSize));
     }
 
-    [Test]
-    public void Reading_from_buffer_in_pool_throws()
-    {
-        var buffer = Buffer.Get();
-        buffer.Return();
-        
-        Assert.That(() => buffer.Read<int>(offset: 0), Throws.Exception);
-        Assert.That(() => buffer.ReadArray<int>(length: 0, offset: 0), Throws.Exception);
-    }
-
-    [Test]
-    public void Reading_value_that_was_written_produces_same_value<T>([ValueSource(typeof(TestData), nameof(TestData.Values))] T valueToWrite) where T : unmanaged
-    {
-        _buffer.Write(valueToWrite);
-        var value = _buffer.Read<T>(offset: 0);
-        Assert.That(value, Is.EqualTo(valueToWrite));
-    }
-
-    [Test]
-    public void Reading_array_that_was_written_produces_same_array<T>([ValueSource(typeof(TestData), nameof(TestData.Arrays))] T[] arrayToWrite) where T : unmanaged
-    {
-        _buffer.WriteArray(arrayToWrite);
-        var array = _buffer.ReadArray<T>(arrayToWrite.Length, offset: 0);
-        Assert.That(array, Is.EqualTo(arrayToWrite));
-    }
-    
     [Test]
     public void Reading_var_int_that_was_written_produces_same_var_int([ValueSource(typeof(TestData), nameof(TestData.VarInts))] int varIntToWrite, [Values(0, 1)] int offset)
     {
@@ -175,7 +195,10 @@ public class BufferTests
     [Test]
     public void Buffer_copy_returns_functionally_equal_buffer()
     {
-        _buffer.WriteArray(new byte[] { 0x00, 0x01, 0x02 });
+        _buffer.Write((byte) 0);
+        _buffer.Write((byte) 1);
+        _buffer.Write((byte) 2);
+        
         var buffer = Buffer.Copy(_buffer);
         
         Assert.That(buffer.Size, Is.EqualTo(_buffer.Size));

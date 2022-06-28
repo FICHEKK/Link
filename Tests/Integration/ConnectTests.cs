@@ -78,12 +78,12 @@ public class ConnectTests
         _server.ConnectionValidator = (connectPacket, _) =>
         {
             sameDataWasReceived = sameDataWasReceived && connectPacket.Read<int>() == integerToWrite;
-            sameDataWasReceived = sameDataWasReceived && connectPacket.ReadString() == stringToWrite;
+            sameDataWasReceived = sameDataWasReceived && connectPacket.Read<string>() == stringToWrite;
             return sameDataWasReceived;
         };
 
         using var client = new Client();
-        client.Connect(Config.IpAddress, Config.Port, connectPacketFactory: writer => writer.Write(integerToWrite).Write(stringToWrite));
+        client.Connect(Config.IpAddress, Config.Port, connectPacketFactory: writer => writer.Write(integerToWrite).Write<string>(stringToWrite));
 
         await Task.Delay(Config.NetworkDelay);
         Assert.That(sameDataWasReceived);

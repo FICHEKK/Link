@@ -1,4 +1,3 @@
-using System.Net;
 using Link.Nodes;
 
 namespace Link.Examples._017_Packet_Extensions;
@@ -60,8 +59,8 @@ public static class PacketExtensions
     /// </summary>
     private static Person ReadPerson(this ReadOnlyPacket packet)
     {
-        var firstName = packet.ReadString();
-        var lastName = packet.ReadString();
+        var firstName = packet.Read<string>();
+        var lastName = packet.Read<string>();
         var age = packet.Read<int>();
         return new Person(firstName, lastName, age);
     }

@@ -178,9 +178,9 @@ namespace Link.Nodes
             packet.Return();
         }
 
-        internal override void Receive(Buffer packet, EndPoint senderEndPoint)
+        internal override void Receive(Buffer buffer, EndPoint senderEndPoint)
         {
-            var packetId = packet.Read<ushort>(offset: 2);
+            var packetId = (ushort) buffer.ReadShort(offset: 2);
 
             if (!_packetIdToHandler.TryGetValue(packetId, out var packetHandler))
             {
@@ -188,7 +188,7 @@ namespace Link.Nodes
                 return;
             }
 
-            packetHandler(new ReceiveArgs(this, new ReadOnlyPacket(packet, start: Packet.HeaderSize)));
+            packetHandler(new ReceiveArgs(this, new ReadOnlyPacket(buffer, start: Packet.HeaderSize)));
         }
 
         /// <summary>
