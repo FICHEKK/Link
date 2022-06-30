@@ -133,12 +133,6 @@ namespace Link.Nodes
 
         private void HandleConnectPacket(ReadOnlyPacket connectPacket, EndPoint senderEndPoint)
         {
-            if (connectPacket.Size != Packet.MaxSize)
-            {
-                Log.Warning($"Received connect packet that contains no padding (size: {connectPacket.Size} bytes).");
-                return;
-            }
-            
             if (_connections.TryGetValue(senderEndPoint, out var connection))
             {
                 SendConnectApproved();
