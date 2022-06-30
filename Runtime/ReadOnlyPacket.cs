@@ -58,64 +58,10 @@ namespace Link
                 return Buffer.Bytes[Packet.HeaderSize + index];
             }
         }
-        
-        /// <summary>
-        /// Reads a <see cref="string"/> using encoding defined by <see cref="Link.Packet.Encoding"/>.
-        /// </summary>
-        internal string ReadString()
-        {
-            var stringByteCount = Buffer.ReadVarInt(out _);
-
-            if (stringByteCount == 0)
-                return string.Empty;
-            
-            if (UnreadBytes < stringByteCount)
-                throw new InvalidOperationException("Could not read string (out-of-bounds bytes).");
-            
-            var @string = Packet.Encoding.GetString(Buffer.Bytes, Buffer.ReadPosition, stringByteCount);
-            Buffer.ReadPosition += stringByteCount;
-            return @string;
-        }
 
         /// <summary>
         /// Reads a value of specified type from the packet.
         /// </summary>
-        public T Read<T>()
-        {
-            if (typeof(T).IsArray)
-                throw new InvalidOperationException($"Use '{nameof(ReadArray)}' for reading arrays from a packet.");
-            
-            return Serialization.GetReader<T>()(this);
-        }
-
-        /// <summary>
-        /// Reads an array of values of specified type from the packet.
-        /// </summary>
-        /// <param name="length">
-        /// If set to 0 or greater, exactly that many elements will be read from the packet.
-        /// If set to a negative value, length of the array will be read from the packet.
-        /// </param>
-        public T[] ReadArray<T>(int length = -1)
-        {
-            if (typeof(T).IsArray)
-                throw new InvalidOperationException("Cannot read jagged or multidimensional arrays from a packet.");
-            
-            if (length == 0)
-                return Array.Empty<T>();
-            
-            if (length < 0)
-                length = Buffer.ReadVarInt(out _);
-
-            if (length < 0)
-                throw new InvalidOperationException($"Cannot read array of length {length} as it is negative.");
-
-            var array = new T[length];
-            var reader = Serialization.GetReader<T>();
-            
-            for (var i = 0; i < length; i++)
-                array[i] = reader(this);
-
-            return array;
-        }
+        public T Read<T>() => Serialization.GetReader<T>()(this);
     }
 }

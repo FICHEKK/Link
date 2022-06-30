@@ -31,10 +31,10 @@ public class FragmentationTests
     public async Task Fragmented_packet_should_be_delivered_fully()
     {
         var receivedArray = (int[]) null;
-        _server.AddHandler(args => receivedArray = args.Packet.ReadArray<int>());
+        _server.AddHandler(args => receivedArray = args.Packet.Read<int[]>());
 
         var sentArray = CreateIntArray(size: 1024);
-        _client.Send(Packet.Get(Delivery.Reliable).WriteArray(sentArray));
+        _client.Send(Packet.Get(Delivery.Reliable).Write(sentArray));
         
         await Task.Delay(Config.NetworkDelay);
         Assert.That(receivedArray, Is.EqualTo(sentArray));
@@ -44,15 +44,15 @@ public class FragmentationTests
     public async Task Multiple_fragmented_packets_should_be_delivered_fully()
     {
         var receivedArrays = new List<int[]>();
-        _server.AddHandler(args => receivedArrays.Add(args.Packet.ReadArray<int>()));
+        _server.AddHandler(args => receivedArrays.Add(args.Packet.Read<int[]>()));
 
         var sentArray0 = CreateIntArray(size: 256);
         var sentArray1 = CreateIntArray(size: 512);
         var sentArray2 = CreateIntArray(size: 1024);
         
-        _client.Send(Packet.Get(Delivery.Reliable).WriteArray(sentArray0));
-        _client.Send(Packet.Get(Delivery.Reliable).WriteArray(sentArray1));
-        _client.Send(Packet.Get(Delivery.Reliable).WriteArray(sentArray2));
+        _client.Send(Packet.Get(Delivery.Reliable).Write(sentArray0));
+        _client.Send(Packet.Get(Delivery.Reliable).Write(sentArray1));
+        _client.Send(Packet.Get(Delivery.Reliable).Write(sentArray2));
         
         await Task.Delay(Config.NetworkDelay);
         

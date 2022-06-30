@@ -43,10 +43,7 @@ public class SendingDataTests
     [Test]
     public void Sending_packet_with_size_greater_than_max_size_throws()
     {
-        var biggestPossibleArray = new byte[Packet.MaxSize];
-        Assert.That(() => _client.Send(Packet.Get(channelId: 0).WriteArray(biggestPossibleArray, writeLength: false), _client.Connection.RemoteEndPoint), Throws.Nothing);
-        
         var shouldThrowArray = new byte[Packet.MaxSize + 1];
-        Assert.That(() => _client.Send(Packet.Get(channelId: 0).WriteArray(shouldThrowArray, writeLength: false), _client.Connection.RemoteEndPoint), Throws.Exception);
+        Assert.That(() => _client.Send(Packet.Get(channelId: 0).Write(shouldThrowArray), _client.Connection!.RemoteEndPoint), Throws.Exception);
     }
 }

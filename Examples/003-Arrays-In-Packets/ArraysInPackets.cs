@@ -35,20 +35,19 @@ public static class ArraysInPackets
         // This is the standard usage which will be used most of the time.
         // Array length is needed for the receiver of the packet to know
         // how many bytes of data "belongs" to the array.
-        packet.WriteArray(array);
+        packet.Write(array);
 
-        // Writes entire array, but does not prefix it with array length.
-        // This should be used only when the receiver knows beforehand
-        // exactly how many elements to expect in the packet.
-        packet.WriteArray(array, writeLength: false);
+        // Writes a segment of the array, prefixed by portion length.
+        // This example will write exactly 3 elements, starting from index 1.
+        packet.Write(new ArraySegment<int>(array, offset: 1, count: 3));
 
-        // Writes a portion of the array, prefixed by portion length.
-        // This example will write exactly 3 elements, starting from index 0.
-        packet.WriteArray(array, start: 0, length: 3);
-        
-        // Writes a portion of the array, but does not prefix it with length.
-        // This example will write exactly 3 elements, starting from index 0.
-        packet.WriteArray(array, start: 0, length: 3, writeLength: false);
+        // You can also easily write jagged arrays of any dimension!
+        packet.Write(new[]
+        {
+            new[] { 1 },
+            new[] { 2, 3 },
+            new[] { 4, 5, 6 }
+        });
 
         // All the data was written and packet is ready for shipping.
         return packet;
@@ -58,21 +57,18 @@ public static class ArraysInPackets
     {
         // Basic array read - first reads number of elements from the packet,
         // then reads that many elements and returns the array.
-        var basicArray = packet.ReadArray<int>();
-        Console.WriteLine(string.Join(", ", basicArray));
+        var basicArray = packet.Read<int[]>();
+        Console.WriteLine("Basic array:");
+        Console.WriteLine(string.Join(", ", basicArray) + Environment.NewLine);
 
-        // Reads exactly 5 elements from the packet (since that many were
-        // written in the packet).
-        var fixedArray = packet.ReadArray<int>(length: 5);
-        Console.WriteLine(string.Join(", ", fixedArray));
+        // Segment of an array is read exactly as you would a normal array.
+        var arraySegment = packet.Read<int[]>();
+        Console.WriteLine("Array segment:");
+        Console.WriteLine(string.Join(", ", arraySegment) + Environment.NewLine);
 
-        // Portion of the array is read exactly as you would a normal array.
-        var portionArray = packet.ReadArray<int>();
-        Console.WriteLine(string.Join(", ", portionArray));
-
-        // We wrote a portion of exactly 3 elements and no length prefix,
-        // so we explicitly read that many elements.
-        var fixedPortionArray = packet.ReadArray<int>(length: 3);
-        Console.WriteLine(string.Join(", ", fixedPortionArray));
+        // Reading jagged arrays is just as simple!
+        var jaggedArray = packet.Read<int[][]>();
+        Console.WriteLine("Jagged array:");
+        foreach (var arr in jaggedArray) Console.WriteLine(string.Join(", ", arr));
     }
 }

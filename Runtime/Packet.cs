@@ -143,62 +143,11 @@ namespace Link
         }
 
         /// <summary>
-        /// Writes a <see cref="string"/> to this packet (using encoding defined by <see cref="Encoding"/>).
-        /// </summary>
-        internal Packet Write(string @string)
-        {
-            if (@string is null)
-                throw new InvalidOperationException("Cannot write null string to a packet.");
-            
-            return @string.Length == 0 ? Write<byte>(0) : WriteArray(Encoding.GetBytes(@string));
-        }
-
-        /// <summary>
         /// Writes a value of specified type to this packet.
         /// </summary>
         public Packet Write<T>(T value)
         {
-            if (typeof(T).IsArray)
-                throw new InvalidOperationException($"Use '{nameof(WriteArray)}' for writing arrays to a packet.");
-            
             Serialization.GetWriter<T>()(this, value);
-            return this;
-        }
-
-        /// <summary>
-        /// Writes an entire array to this packet.
-        /// </summary>
-        /// <param name="array">Array to write.</param>
-        /// <param name="writeLength">
-        /// If <c>true</c>, length of the given array will be written before writing
-        /// array elements, otherwise only array elements will be written.
-        /// </param>
-        public Packet WriteArray<T>(T[] array, bool writeLength = true) =>
-            WriteArray(array, start: 0, length: array.Length, writeLength);
-
-        /// <summary>
-        /// Writes the portion of an array to this packet. 
-        /// </summary>
-        /// <param name="array">Array to write.</param>
-        /// <param name="start">Index in the array from which to start writing elements.</param>
-        /// <param name="length">Number of elements to write.</param>
-        /// <param name="writeLength">If <c>true</c>, length will be written before elements, otherwise only elements will be written.</param>
-        public Packet WriteArray<T>(T[] array, int start, int length, bool writeLength = true)
-        {
-            if (typeof(T).IsArray)
-                throw new InvalidOperationException("Cannot write jagged or multidimensional arrays to a packet.");
-            
-            if (array is null)
-                throw new InvalidOperationException("Cannot write null array to a packet.");
-            
-            if (writeLength)
-                Buffer.WriteVarInt(length);
-            
-            var writer = Serialization.GetWriter<T>();
-            
-            for (var i = 0; i < length; i++)
-                writer(this, array[start + i]);
-
             return this;
         }
 

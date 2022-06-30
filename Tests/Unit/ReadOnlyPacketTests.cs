@@ -18,7 +18,7 @@ public class ReadOnlyPacketTests
     {
         Assert.That(() => new ReadOnlyPacket(_buffer).Read<int>(), Throws.Exception);
         Assert.That(() => new ReadOnlyPacket(_buffer).Read<string>(), Throws.Exception);
-        Assert.That(() => new ReadOnlyPacket(_buffer).ReadArray<int>(), Throws.Exception);
+        Assert.That(() => new ReadOnlyPacket(_buffer).Read<int[]>(), Throws.Exception);
     }
 
     [Test]
@@ -42,13 +42,6 @@ public class ReadOnlyPacketTests
     }
 
     [Test]
-    public void Reading_array_in_range_does_not_throw<T>([ValueSource(typeof(TestData), nameof(TestData.Arrays))] T[] array)
-    {
-        var buffer = Packet.Get().WriteArray(array).Buffer;
-        Assert.That(() => new ReadOnlyPacket(buffer).ReadArray<T>(array.Length), Throws.Nothing);
-    }
-
-    [Test]
     public void Reading_value_out_of_bounds_throws<T>([ValueSource(typeof(TestData), nameof(TestData.Values))] T value)
     {
         var buffer = Packet.Get().Write(value).Buffer;
@@ -62,32 +55,11 @@ public class ReadOnlyPacketTests
     }
     
     [Test]
-    public void Reading_array_out_of_bounds_throws<T>([ValueSource(typeof(TestData), nameof(TestData.Arrays))] T[] array) where T : unmanaged
-    {
-        var buffer = Packet.Get().WriteArray(array, writeLength: false).Buffer;
-        
-        Assert.That(() =>
-        {
-            var packet = new ReadOnlyPacket(buffer);
-            packet.ReadArray<T>(array.Length + 1);
-        }, Throws.Exception);
-    }
-    
-    [Test]
-    public void Reading_array_of_length_0_returns_same_instance()
-    {
-        var readOnlyPacket = new ReadOnlyPacket(_buffer);
-        var emptyArray0 = readOnlyPacket.ReadArray<byte>(length: 0);
-        var emptyArray1 = readOnlyPacket.ReadArray<byte>(length: 0);
-        Assert.That(emptyArray0 == emptyArray1);
-    }
-    
-    [Test]
     public void Reading_array_whose_length_read_from_buffer_is_negative_throws()
     {
         const int arrayLength = -1;
         _buffer.WriteVarInt(arrayLength);
-        Assert.That(() => new ReadOnlyPacket(_buffer).ReadArray<byte>(), Throws.Exception);
+        Assert.That(() => new ReadOnlyPacket(_buffer).Read<byte[]>(), Throws.Exception);
     }
     
     [Test]
@@ -95,7 +67,7 @@ public class ReadOnlyPacketTests
     {
         const int arrayLength = int.MaxValue;
         _buffer.WriteVarInt(arrayLength);
-        Assert.That(() => new ReadOnlyPacket(_buffer).ReadArray<int>(), Throws.Exception);
+        Assert.That(() => new ReadOnlyPacket(_buffer).Read<int[]>(), Throws.Exception);
     }
     
     [Test]
@@ -103,13 +75,6 @@ public class ReadOnlyPacketTests
     {
         var buffer = Packet.Get(Delivery.Unreliable).Buffer;
         Assert.That(new ReadOnlyPacket(buffer).Size, Is.EqualTo(0));
-    }
-    
-    [Test]
-    public void Wrapping_full_buffer_should_return_size_equal_to_packet_max_size()
-    {
-        var buffer = Packet.Get(Delivery.Unreliable).WriteArray(new byte[Packet.MaxSize], writeLength: false).Buffer;
-        Assert.That(new ReadOnlyPacket(buffer).Size, Is.EqualTo(Packet.MaxSize));
     }
     
     [Test]

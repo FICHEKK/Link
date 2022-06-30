@@ -131,6 +131,16 @@ namespace Link
             Size += sizeof(long);
         }
 
+        public void WriteBytes(byte[] bytes) =>
+            WriteBytes(bytes, offset: 0, count: bytes.Length);
+
+        public void WriteBytes(byte[] bytes, int offset, int count)
+        {
+            EnsureSize(Size + count);
+            Array.Copy(bytes, offset, _bytes, Size, count);
+            Size += count;
+        }
+
         public void Write(byte value, int offset)
         {
             _bytes[offset] = value;
@@ -312,6 +322,23 @@ namespace Link
             } while ((_bytes[offset++] & 0x80) != 0);
 
             return value;
+        }
+        
+        public byte[] ReadBytes(int length)
+        {
+            if (length == 0)
+                return Array.Empty<byte>();
+                
+            if (length < 0)
+                throw new InvalidOperationException($"Cannot read a byte-array of length {length} as it is negative.");
+
+            if (Size - ReadPosition < length)
+                throw new InvalidOperationException($"Could not read an array of bytes of length {length} (out-of-bounds bytes).");
+
+            var bytes = new byte[length];
+            Array.Copy(_bytes, ReadPosition, bytes, 0, length);
+            ReadPosition += length;
+            return bytes;
         }
 
         /// <summary>

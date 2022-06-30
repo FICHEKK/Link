@@ -17,14 +17,13 @@ public class PacketTests
     public void Writing_null_to_packet_throws()
     {
         Assert.That(() => Packet.Get().Write<string>(null), Throws.Exception);
-        Assert.That(() => Packet.Get().WriteArray<int>(null), Throws.Exception);
-        Assert.That(() => Packet.Get().WriteArray<int>(null, start: 0, length: 0), Throws.Exception);
+        Assert.That(() => Packet.Get().Write<int[]>(null), Throws.Exception);
     }
     
     [Test]
     public void Reading_string_that_was_written_produces_same_string([ValueSource(typeof(TestData), nameof(TestData.Strings))] string stringToWrite)
     {
-        var packet = Packet.Get().Write<string>(stringToWrite);
+        var packet = Packet.Get().Write(stringToWrite);
         var @string = new ReadOnlyPacket(packet.Buffer).Read<string>();
         Assert.That(@string, Is.EqualTo(stringToWrite));
     }
@@ -98,17 +97,9 @@ public class PacketTests
     }
     
     [Test]
-    public void Unwritten_bytes_should_return_0_if_packet_is_full()
-    {
-        var packet = Packet.Get(Delivery.Unreliable).WriteArray(new byte[Packet.MaxSize], writeLength: false);
-        Assert.That(packet.UnwrittenBytes, Is.EqualTo(0));
-        packet.Return();
-    }
-    
-    [Test]
     public void Unwritten_bytes_should_return_negative_if_packet_should_be_fragmented()
     {
-        var packet = Packet.Get(Delivery.Unreliable).WriteArray(new byte[Packet.MaxSize + 1]);
+        var packet = Packet.Get(Delivery.Unreliable).Write(new byte[Packet.MaxSize + 1]);
         Assert.That(packet.UnwrittenBytes, Is.Negative);
         packet.Return();
     }

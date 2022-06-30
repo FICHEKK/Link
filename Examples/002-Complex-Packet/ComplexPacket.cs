@@ -43,7 +43,7 @@ public static class ComplexPacket
         packet.Write(12345);
 
         // Writes an array of double values to the packet.
-        packet.WriteArray(new[] { 4.0, 5.0, 6.0 });
+        packet.Write(new[] { 4.0, 5.0, 6.0 });
 
         // Write methods can also be chained.
         packet.Write('A').Write('B').Write('C');
@@ -67,7 +67,7 @@ public static class ComplexPacket
         Console.WriteLine(packet.Read<int>());
 
         // Then an array of doubles...
-        var array = packet.ReadArray<double>();
+        var array = packet.Read<double[]>();
         Console.WriteLine(string.Join(", ", array));
 
         // Finally, the 3 characters.

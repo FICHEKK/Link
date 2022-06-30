@@ -121,12 +121,14 @@ namespace Link.Channels
 
             for (var fragmentIndex = 0; fragmentIndex < lastIndex; fragmentIndex++, offset += Packet.MaxSize)
             {
-                var fullFragment = Packet.Get(channelId, packetId).WriteArray(bytes, offset, length: Packet.MaxSize, writeLength: false);
+                var fullFragment = Packet.Get(channelId, packetId);
+                fullFragment.Buffer.WriteBytes(bytes, offset, count: Packet.MaxSize);
                 SendFragment(fullFragment, (byte) fragmentIndex, (byte) fragmentCount);
                 fullFragment.Return();
             }
             
-            var lastFragment = Packet.Get(channelId, packetId).WriteArray(bytes, offset, length: packet.Size - lastIndex * Packet.MaxSize, writeLength: false);
+            var lastFragment = Packet.Get(channelId, packetId);
+            lastFragment.Buffer.WriteBytes(bytes, offset, count: packet.Size - lastIndex * Packet.MaxSize);
             SendFragment(lastFragment, (byte) lastIndex, (byte) fragmentCount);
             lastFragment.Return();
         }

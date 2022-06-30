@@ -38,8 +38,8 @@ public static class StructsInPackets
         packet.Write(line);
 
         // Even arrays of structs work!
-        packet.WriteArray(new Point[] { new(0, 0, 0), new(1, 1, 1), new(2, 2, 2) });
-        packet.WriteArray(new[] { line, line, line });
+        packet.Write(new Point[] { new(0, 0, 0), new(1, 1, 1), new(2, 2, 2) });
+        packet.Write(new[] { line, line, line });
         
         // Packet is done, ship it!
         return packet;
@@ -50,8 +50,8 @@ public static class StructsInPackets
         // Read custom structs the same way you should any other primitive.
         var point = packet.Read<Point>();
         var line = packet.Read<Line>();
-        var points = packet.ReadArray<Point>();
-        var lines = packet.ReadArray<Line>();
+        var points = packet.Read<Point[]>();
+        var lines = packet.Read<Line[]>();
         
         Console.WriteLine($"Point: {point}");
         Console.WriteLine($"Line: {line}");
