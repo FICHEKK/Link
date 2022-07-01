@@ -18,6 +18,7 @@
 * [Components](#components)
   * [Packet](#packet)
   * [ReadOnlyPacket](#readonlypacket)
+  * [Channel](#channel)
 
 ## Introduction
 Link is a networking library that fills the gap between UDP and TCP, allowing you to easily create complex, high-performance, low-latency applications.
@@ -53,6 +54,8 @@ And this is just the beginning! Link offers many more amazing features, which ar
 ## Components
 This section documents in detail the usage of all the library components - if you ever get stuck, this is the place to look for answers.
 * [Packet](#packet) allows you to easily create outgoing messages containing complex data, which is then sent over the network.
+* [ReadOnlyPacket](#readonlypacket) allows you to easily read data from the received packet.
+* [Channel](#channel) controls the way packets are sent and received. Also keeps track of network statistics.
 
 ### [Packet](https://github.com/FICHEKK/Link/blob/main/Examples/002-Complex-Packet/ComplexPacket.cs)
 `Packet` represents a single **outgoing** message of arbitrary data that can be sent over the network. A lifecycle of `Packet` instance consists of three phases:
@@ -74,9 +77,9 @@ var packet = Packet.Get(Delivery.Unreliable, packetId: 7);
 
 #### 2. Writing phase
 In this phase, we are writing data to the previously created `Packet` instance. Link supports many different types out of the box:
-1. Primitive types: `string`, `byte`, `sbyte`, `bool`, `short`, `ushort`, `char`, `int`, `uint`, `float`, `long`, `ulong`, `double`.
-2. Any `enum` of any underlying integral numeric type.
-3. Arrays and jagged arrays of any of the types above. For example, `string[]`, `int[][]`, `double[][][]` and so on.
+1. [Primitive types: `string`, `byte`, `sbyte`, `bool`, `short`, `ushort`, `char`, `int`, `uint`, `float`, `long`, `ulong`, `double`.](https://github.com/FICHEKK/Link/blob/main/Examples/002-Complex-Packet/ComplexPacket.cs)
+2. [Any `enum` of any underlying integral numeric type.](https://github.com/FICHEKK/Link/blob/main/Examples/004-Enums-In-Packets/EnumsInPackets.cs)
+3. [Arrays, jagged arrays and array segments of any of the types above. For example, `string[]`, `int[][]`, `ArraySegment<double>` and so on.](https://github.com/FICHEKK/Link/blob/main/Examples/003-Arrays-In-Packets/ArraysInPackets.cs)
 
 ```cs
 // Writes a string to the packet.
@@ -128,3 +131,24 @@ var char1 = packet.Read<char>();
 var char2 = packet.Read<char>();
 var char3 = packet.Read<char>();
 ```
+
+### [Channel](https://github.com/FICHEKK/Link/blob/main/Examples/006-Default-Channels/DefaultChannels.cs)
+Channel represents a component that controls the way packets are sent and received. This is the core of what makes Link a reliable UDP library. There are four fundamental problems that a channel can, but does not have to solve:
+1. **Order** - ability for the receiver to receive packets in order in which they were originally sent.
+2. **Duplication** - ability for receiver to detect and discard duplicate packets.
+3. **Reliability** - ability for sender to ensure that receiver received a packet.
+4. **Fragmentation** - ability for sender to divide a big packet into smaller packets called fragments and for receiver to reassemble those into original big packet.
+
+Based on that, Link contains multiple channel implementations, each solving a subset of problems:
+
+1. **Unreliable** solves none of the problems and acts as a pure UDP channel. This means packets can arrive out of order, be duplicated in the network, be lost and do not support fragmentation.
+2. **Sequenced** solves two problems: order and duplication. Order is ensured by attaching a sequence number to each outgoing packet. If an older or duplicate packet arrives, it will be discarded.
+3. **Reliable** solves all of the problems and acts as a TCP stream. It ensures packets arrive using acknowledgement and retransmission system.
+
+|  **Name**  | **Order** | **Duplication** | **Reliability** | **Fragmentation** |
+|:----------:|:---------:|:---------------:|:---------------:|:-----------------:|
+| Unreliable |     -     |        -        |        -        |         -         |
+|  Sequenced |     ✔️    |        ✔️      |        -        |         -         |
+|  Reliable  |     ✔️    |        ✔️      |        ✔️      |         ✔️        |
+
+Each channel also has a name associated with it and keeps track of bandwidth statistics, which is useful for diagnosing network usage. Another powerful feature of Link is the [ability to easily define your own custom channels](https://github.com/FICHEKK/Link/blob/main/Examples/007-Custom-Channels/CustomChannels.cs). This way you can easily split your streams of data and keep track of how much bandwidth each stream consumes.
