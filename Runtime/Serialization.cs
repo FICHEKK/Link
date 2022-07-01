@@ -121,6 +121,9 @@ namespace Link
         /// <typeparam name="T">Type of data to write/read.</typeparam>
         public static void Register<T>(Writer<T> writer, Reader<T> reader)
         {
+            if (Cache<T>.Writer is not null) Log.Info($"Overwriting write strategy of type '{typeof(T)}'.");
+            if (Cache<T>.Reader is not null) Log.Info($"Overwriting read strategy of type '{typeof(T)}'.");
+            
             Cache<T>.Writer = writer ?? throw new NullReferenceException("Write strategy cannot be set to null.");
             Cache<T>.Reader = reader ?? throw new NullReferenceException("Read strategy cannot be set to null.");
         }

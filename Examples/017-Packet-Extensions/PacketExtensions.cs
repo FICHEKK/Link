@@ -3,8 +3,10 @@ using Link.Nodes;
 namespace Link.Examples._017_Packet_Extensions;
 
 /// <summary>
-/// This example demonstrates how to extend the functionality of <see cref="Packet"/> and
-/// <see cref="ReadOnlyPacket"/> in order to be able to read and write custom data-types.
+/// This example demonstrates another way to extend the functionality of <see cref="Packet"/> and
+/// <see cref="ReadOnlyPacket"/> in order to be able to read and write custom data-types. This way
+/// works perfectly well, but is <b>NOT</b> recommended as standard way of registering serialization
+/// methods will result in cleaner and more consistent codebase.
 /// </summary>
 public static class PacketExtensions
 {

@@ -1,6 +1,6 @@
 using Link.Nodes;
 
-namespace Link.Examples._005_Enums_In_Packets;
+namespace Link.Examples._004_Enums_In_Packets;
 
 /// <summary>
 /// This example demonstrates how to read and write custom enums.
