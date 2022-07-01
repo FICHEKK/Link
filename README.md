@@ -17,6 +17,7 @@
 * [Motivation](#motivation)
 * [Components](#components)
   * [Packet](#packet)
+  * [ReadOnlyPacket](#readonlypacket)
 
 ## Introduction
 Link is a networking library that fills the gap between UDP and TCP, allowing you to easily create complex, high-performance, low-latency applications.
@@ -53,7 +54,7 @@ And this is just the beginning! Link offers many more amazing features, which ar
 This section documents in detail the usage of all the library components - if you ever get stuck, this is the place to look for answers.
 * [Packet](#packet) allows you to easily create outgoing messages containing complex data, which is then sent over the network.
 
-### Packet
+### [Packet](https://github.com/FICHEKK/Link/blob/main/Examples/002-Complex-Packet/ComplexPacket.cs)
 `Packet` represents a single **outgoing** message of arbitrary data that can be sent over the network. A lifecycle of `Packet` instance consists of three phases:
 
 #### 1. Initialization phase
@@ -105,4 +106,25 @@ If some condition is preventing a packet from being sent, `Return` should be cal
 
 ```cs
 packet.Return();
+```
+
+### [ReadOnlyPacket](https://github.com/FICHEKK/Link/blob/main/Examples/002-Complex-Packet/ComplexPacket.cs)
+`ReadOnlyPacket` represents a single **incoming** message of arbitrary data that can be received over the network. It exposes a read-only view into received data and cannot in any way modify underlying data. If a packet was received that had data written as demonstrated in the [writing phase](#2-writing-phase), this is how it could be read:
+
+**Note:** Order matters! Data must be read in the same order it was originally written to the packet.
+
+```cs
+// Read string first as it was written first.
+var @string = packet.Read<string>();
+
+// Next thing on the list is an integer.
+var @int = packet.Read<int>();
+
+// Then an array of doubles...
+var array = packet.Read<double[]>();
+
+// Finally, the 3 characters.
+var char1 = packet.Read<char>();
+var char2 = packet.Read<char>();
+var char3 = packet.Read<char>();
 ```
