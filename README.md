@@ -13,14 +13,15 @@
 </div>
 
 ## Table of contents
-* [Introduction](#introduction)
-* [Motivation](#motivation)
-* [Components](#components)
-  * [Packet](#packet)
-  * [ReadOnlyPacket](#readonlypacket)
-  * [Channel](#channel)
-  * [Client](#client)
-  * [Server](#server)
+* [Introduction](#introduction) gives brief explanation of what Link is.
+* [Motivation](#motivation) describes why Link was created.
+* [Components](#components) documents in detail the usage of all the Link components.
+  * [Packet](#packet) allows you to easily create outgoing messages containing complex data, which is then sent over the network.
+  * [ReadOnlyPacket](#readonlypacket) allows you to easily read data from the received packet.
+  * [Channel](#channel) controls the way packets are sent and received. Also keeps track of network statistics.
+  * [Client](#client) allows you to connect, communicate and disconnect from the server.
+  * [Server](#server) allows you to start listening for, communicate with, and manage multiple client connections.
+  * [Log](#log) allows you to easily log information, warning or error messages however you like.
 
 ## Introduction
 Link is a networking library that fills the gap between UDP and TCP, allowing you to easily create complex, high-performance, low-latency applications.
@@ -54,12 +55,6 @@ In less than 10 lines of code, Link manages to:
 And this is just the beginning! Link offers many more amazing features, which are just as simple and easy-to-use.
 
 ## Components
-This section documents in detail the usage of all the library components - if you ever get stuck, this is the place to look for answers.
-* [Packet](#packet) allows you to easily create outgoing messages containing complex data, which is then sent over the network.
-* [ReadOnlyPacket](#readonlypacket) allows you to easily read data from the received packet.
-* [Channel](#channel) controls the way packets are sent and received. Also keeps track of network statistics.
-* [Client](#client) allows you to connect, communicate and disconnect from the server.
-* [Server](#server) allows you to start listening for, communicate with, and manage multiple client connections.
 
 ### [Packet](https://github.com/FICHEKK/Link/blob/main/Examples/002-Complex-Packet/ComplexPacket.cs)
 `Packet` represents a single **outgoing** message of arbitrary data that can be sent over the network. A lifecycle of `Packet` instance consists of three phases:
@@ -283,4 +278,40 @@ server.ClientDisconnected += args => Console.WriteLine($"Client from {args.Conne
 
 // Invoked each time server stops and no longer listens for client connections.
 server.Stopped += _ => Console.WriteLine("Server stopped.");
+```
+
+---
+
+### [Log](https://github.com/FICHEKK/Link/blob/main/Examples/011-Logger-Initialization/LoggerInitialization.cs)
+Logging is extremely important in all types of applications, but especially in networked ones due to their intrinsic complexity. That is why Link defines a simple, but fully customizable logging component. By default, its implementation is empty and it is up to you to define where and how logs should be written. Fortunately, this process could not be simpler:
+
+```cs
+// Log useful information to the standard output stream.
+Log.Info = Console.Out.WriteLine;
+
+// Same with warnings...
+Log.Warning = Console.Out.WriteLine;
+
+// Errors get logged to the standard error output stream.
+Log.Error = Console.Error.WriteLine;
+```
+
+You can go as complex as you want:
+
+```cs
+// Since loggers are simple delegates, we can execute any custom
+// logging logic that we need. For example, we can easily write
+// current time to each message, just like in this example. Or
+// we could write logging information to an external destination,
+// such as a text file or database.
+Log.Info = message => Console.WriteLine($"[{DateTime.Now}] {message}");
+```
+
+Link uses these loggers internally and it is recommended that you do also:
+
+```cs
+// We also can (and should!) use loggers ourselves:
+Log.Info("Useful information that helps during development.");
+Log.Warning("Warning, something might be wrong!");
+Log.Error("Something went definitely wrong!");
 ```
