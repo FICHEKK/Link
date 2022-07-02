@@ -20,6 +20,7 @@
   * [ReadOnlyPacket](#readonlypacket)
   * [Channel](#channel)
   * [Client](#client)
+  * [Server](#server)
 
 ## Introduction
 Link is a networking library that fills the gap between UDP and TCP, allowing you to easily create complex, high-performance, low-latency applications.
@@ -58,6 +59,7 @@ This section documents in detail the usage of all the library components - if yo
 * [ReadOnlyPacket](#readonlypacket) allows you to easily read data from the received packet.
 * [Channel](#channel) controls the way packets are sent and received. Also keeps track of network statistics.
 * [Client](#client) allows you to connect, communicate and disconnect from the server.
+* [Server](#server) allows you to start listening for, communicate with, and manage multiple client connections.
 
 ### [Packet](https://github.com/FICHEKK/Link/blob/main/Examples/002-Complex-Packet/ComplexPacket.cs)
 `Packet` represents a single **outgoing** message of arbitrary data that can be sent over the network. A lifecycle of `Packet` instance consists of three phases:
@@ -113,6 +115,8 @@ If some condition is preventing a packet from being sent, `Return` should be cal
 packet.Return();
 ```
 
+---
+
 ### [ReadOnlyPacket](https://github.com/FICHEKK/Link/blob/main/Examples/002-Complex-Packet/ComplexPacket.cs)
 `ReadOnlyPacket` represents a single **incoming** message of arbitrary data that can be received over the network. It exposes a read-only view into received data and cannot in any way modify underlying data. If a packet was received that had data written as demonstrated in the [writing phase](#2-writing-phase), this is how it could be read:
 
@@ -134,6 +138,8 @@ var char2 = packet.Read<char>();
 var char3 = packet.Read<char>();
 ```
 
+---
+
 ### [Channel](https://github.com/FICHEKK/Link/blob/main/Examples/006-Default-Channels/DefaultChannels.cs)
 Channel represents a component that controls the way packets are sent and received. This is the core of what makes Link a reliable UDP library. There are four fundamental problems that a channel can, but does not have to solve:
 1. **Order** - ability for the receiver to receive packets in order in which they were originally sent.
@@ -154,6 +160,8 @@ Based on that, Link contains multiple channel implementations, each solving a su
 |  Reliable  |     ✔️    |        ✔️      |        ✔️      |         ✔️        |
 
 Each channel also has a name associated with it and keeps track of bandwidth statistics, which is useful for diagnosing network usage. Another powerful feature of Link is the [ability to easily define your own custom channels](https://github.com/FICHEKK/Link/blob/main/Examples/007-Custom-Channels/CustomChannels.cs). This way you can easily split your streams of data and keep track of how much bandwidth each stream consumes.
+
+---
 
 ### Client
 Represents a network node that has one to one relationship with the server.
@@ -200,7 +208,7 @@ client.Disconnect();
 **Note:** You can only start sending packets once client successfully connects. To know when that happens, [subscibe to `Client.Connected` event](#events).
 
 #### Events
-[`Client` also exposes important events that can be easily subscribed to. Each event provides event arguments, containing useful information about the event.](https://github.com/FICHEKK/Link/blob/main/Examples/014-Network-Events/NetworkEvents.cs)
+[`Client` exposes important events that can be easily subscribed to. Each event provides event arguments, containing useful information about the event.](https://github.com/FICHEKK/Link/blob/main/Examples/014-Network-Events/NetworkEvents.cs)
 
 ```cs
 // Invoked each time client starts the process of establishing connection with the server.
@@ -214,4 +222,65 @@ client.ConnectFailed += _ => Console.WriteLine("Client failed to connect to the 
 
 // Invoked each time client disconnects from the server.
 client.Disconnected += args => Console.WriteLine($"Client has disconnected from the server (cause: {args.Cause}).");
+```
+
+---
+
+### Server
+Represents a network node that has one to many relationship with clients.
+
+#### Starting a server
+```cs
+public void Start(ushort port, int maxConnectionCount = -1);
+```
+
+`port` - Port on which server should listen on.
+
+`maxConnectionCount` - Maximum allowed number of simultaneous client connections. If set to a negative value, there is no connection limit.
+
+```cs
+var server = new Server();
+
+// Basic usage, no client connection limit.
+server.Start(port: 7777);
+
+// Start listening on port 7777, and allow up to 3 client connections.
+server.Start(port: 7777, maxConnectionCount: 3);
+```
+
+#### Sending packets to clients
+[Since `Server` can contain multiple client connections, it exposes multiple send methods:](https://github.com/FICHEKK/Link/blob/main/Examples/016-Server-Send-Methods/ServerSendMethods.cs)
+
+```cs
+public void SendToOne(Packet packet, EndPoint clientEndPoint);
+public void SendToMany(Packet packet, IEnumerable<EndPoint> clientEndPoints);
+public void SendToAll(Packet packet);
+```
+
+`SendToOne` sends a packet to one particular client. `SendToMany` sends a packet to many clients. `SendToAll` sends a packet to all clients.
+
+#### Kicking clients and stopping a server
+```cs
+public void Kick(EndPoint clientEndPoint);
+public void Stop();
+```
+
+`Kick` is used to deliberately disconnect a particular client (for example, if you detected malicious behavior). `Stop` will cleanly stop listening and disconnect all the clients.
+
+
+#### Events
+[`Server` exposes important events that can be easily subscribed to. Each event provides event arguments, containing useful information about the event.](https://github.com/FICHEKK/Link/blob/main/Examples/014-Network-Events/NetworkEvents.cs)
+
+```cs
+// Invoked each time server starts and begins listening for client connections.
+server.Started += args => Console.WriteLine($"Server started on port {args.Server.LocalEndPoint!.Port}.");
+
+// Invoked each time a new client connects to the server.
+server.ClientConnected += args => Console.WriteLine($"Client from {args.Connection.RemoteEndPoint} has connected.");
+
+// Invoked each time an already connected client disconnects from the server.
+server.ClientDisconnected += args => Console.WriteLine($"Client from {args.Connection.RemoteEndPoint} has disconnected (cause: {args.Cause}).");
+
+// Invoked each time server stops and no longer listens for client connections.
+server.Stopped += _ => Console.WriteLine("Server stopped.");
 ```
