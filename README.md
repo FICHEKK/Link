@@ -19,6 +19,7 @@
   * [Packet](#packet)
   * [ReadOnlyPacket](#readonlypacket)
   * [Channel](#channel)
+  * [Client](#client)
 
 ## Introduction
 Link is a networking library that fills the gap between UDP and TCP, allowing you to easily create complex, high-performance, low-latency applications.
@@ -56,6 +57,7 @@ This section documents in detail the usage of all the library components - if yo
 * [Packet](#packet) allows you to easily create outgoing messages containing complex data, which is then sent over the network.
 * [ReadOnlyPacket](#readonlypacket) allows you to easily read data from the received packet.
 * [Channel](#channel) controls the way packets are sent and received. Also keeps track of network statistics.
+* [Client](#client) allows you to connect, communicate and disconnect from the server.
 
 ### [Packet](https://github.com/FICHEKK/Link/blob/main/Examples/002-Complex-Packet/ComplexPacket.cs)
 `Packet` represents a single **outgoing** message of arbitrary data that can be sent over the network. A lifecycle of `Packet` instance consists of three phases:
@@ -152,3 +154,64 @@ Based on that, Link contains multiple channel implementations, each solving a su
 |  Reliable  |     ✔️    |        ✔️      |        ✔️      |         ✔️        |
 
 Each channel also has a name associated with it and keeps track of bandwidth statistics, which is useful for diagnosing network usage. Another powerful feature of Link is the [ability to easily define your own custom channels](https://github.com/FICHEKK/Link/blob/main/Examples/007-Custom-Channels/CustomChannels.cs). This way you can easily split your streams of data and keep track of how much bandwidth each stream consumes.
+
+### Client
+Represents a network node that has one to one relationship with the server.
+
+#### Connecting to the server
+```cs
+public void Connect(string ipAddress, ushort port, int maxAttempts = 5, int delayBetweenAttempts = 1000, ConnectPacketFactory? connectPacketFactory = null);
+```
+
+`ipAddress` - IPv4 address of the server to which client should attempt to connect, such as `127.0.0.1`.
+
+`port` - Port on which server is listening, such as `7777`.
+
+`maxAttempts` - Since library is sending UDP connect packets, they might be lost on the way. This parameter defines the maximum number of connect attempts before considering server as unreachable.
+
+`delayBetweenAttempts` - Delay between consecutive connect attempts, in milliseconds.
+
+`connectPacketFactory` -  [Allows additional data to be written to the connect packet.](https://github.com/FICHEKK/Link/blob/main/Examples/009-Connection-Validator/ConnectionValidator.cs)
+
+```cs
+var client = new Client();
+
+// Basic usage.
+client.Connect("127.0.0.1", 7777);
+
+// Write additional data to the connect packet.
+client.Connect("127.0.0.1", 7777, connectPacketFactory: packet => packet.Write(ServerKey));
+```
+
+#### Sending and disconnecting from the server
+```cs
+public void Send(Packet packet);
+public void Disconnect();
+```
+
+```cs
+// One-liner that sends "Hello server!" in a reliable manner.
+client.Send(Packet.Get(Delivery.Reliable).Write("Hello server!"));
+
+// Cleanly disconnect from the server.
+client.Disconnect();
+```
+
+**Note:** You can only start sending packets once client successfully connects. To know when that happens, [subscibe to `Client.Connected` event](#events).
+
+#### Events
+[`Client` also exposes important events that can be easily subscribed to. Each event provides event arguments, containing useful information about the event.](https://github.com/FICHEKK/Link/blob/main/Examples/014-Network-Events/NetworkEvents.cs)
+
+```cs
+// Invoked each time client starts the process of establishing connection with the server.
+client.Connecting += _ => Console.WriteLine("Client is connecting to the server.");
+
+// Invoked each time client successfully connects to the server.
+client.Connected += _ => Console.WriteLine("Client has connected to the server.");
+
+// Invoked each time client fails to establish a connection with the server.
+client.ConnectFailed += _ => Console.WriteLine("Client failed to connect to the server.");
+
+// Invoked each time client disconnects from the server.
+client.Disconnected += args => Console.WriteLine($"Client has disconnected from the server (cause: {args.Cause}).");
+```
