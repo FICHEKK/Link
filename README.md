@@ -17,10 +17,22 @@
 * [Motivation](#motivation) describes why Link was created.
 * [Components](#components) documents in detail the usage of all the Link components.
   * [Packet](#packet) allows you to easily create outgoing messages containing complex data, which is then sent over the network.
+    * [Initialization phase](#1-initialization-phase)
+    * [Writing phase](#2-writing-phase)
+    * [Sending phase](#3-sending-phase)
   * [ReadOnlyPacket](#readonlypacket) allows you to easily read data from the received packet.
   * [Channel](#channel) controls the way packets are sent and received. Also keeps track of network statistics.
   * [Client](#client) allows you to connect, communicate and disconnect from the server.
+    * [Connecting to the server](#connecting-to-the-server)
+    * [Sending packets to the server](#sending-packets-to-the-server)
+    * [Disconnecting from the server](#disconnecting-from-the-server)
+    * [Events](#events)
   * [Server](#server) allows you to start listening for, communicate with, and manage multiple client connections.
+    * [Starting a server](#starting-a-server)
+    * [Sending packets to clients](#sending-packets-to-clients)
+    * [Kicking clients](#kicking-clients)
+    * [Stopping a server](#stopping-a-server)
+    * [Events](#events-1)
   * [Log](#log) allows you to easily log information, warning or error messages however you like.
 
 ## Introduction
@@ -100,7 +112,7 @@ In the last phase, packet should be sent by using any of the send methods define
 ```cs
 client.Send(packet);
 server.SendToOne(packet, clientEndPoint);
-server.SendToOne(packet, clientEndPoints);
+server.SendToMany(packet, clientEndPoints);
 server.SendToAll(packet);
 ```
 
@@ -186,21 +198,22 @@ client.Connect("127.0.0.1", 7777);
 client.Connect("127.0.0.1", 7777, connectPacketFactory: packet => packet.Write(ServerKey));
 ```
 
-#### Sending and disconnecting from the server
-```cs
-public void Send(Packet packet);
-public void Disconnect();
-```
+#### Sending packets to the server
+Sending packets to the server is performed by calling the `Send` method and providing `Packet` containing payload.
+
+**Note:** You can only start sending packets once client successfully connects. To know when that happens, [subscibe to `Client.Connected` event](#events).
 
 ```cs
 // One-liner that sends "Hello server!" in a reliable manner.
 client.Send(Packet.Get(Delivery.Reliable).Write("Hello server!"));
-
-// Cleanly disconnect from the server.
-client.Disconnect();
 ```
 
-**Note:** You can only start sending packets once client successfully connects. To know when that happens, [subscibe to `Client.Connected` event](#events).
+#### Disconnecting from the server
+To properly disconnect and dispose the underlying socket, call `Disconnect` method.
+
+```cs
+client.Disconnect();
+```
 
 #### Events
 [`Client` exposes important events that can be easily subscribed to. Each event provides event arguments, containing useful information about the event.](https://github.com/FICHEKK/Link/blob/main/Examples/014-Network-Events/NetworkEvents.cs)
@@ -254,14 +267,19 @@ public void SendToAll(Packet packet);
 
 `SendToOne` sends a packet to one particular client. `SendToMany` sends a packet to many clients. `SendToAll` sends a packet to all clients.
 
-#### Kicking clients and stopping a server
+#### Kicking clients
+If a malicious or unruly client is detected, that client can be deliberately disconnected from the server by calling the `Kick` method.
+
 ```cs
-public void Kick(EndPoint clientEndPoint);
-public void Stop();
+server.Kick(clientEndPoint);
 ```
 
-`Kick` is used to deliberately disconnect a particular client (for example, if you detected malicious behavior). `Stop` will cleanly stop listening and disconnect all the clients.
+#### Stopping a server
+To properly stop a server by disposing of the underlying socket and disconnecting all of the connected clients, call the `Stop` method.
 
+```cs
+server.Stop();
+```
 
 #### Events
 [`Server` exposes important events that can be easily subscribed to. Each event provides event arguments, containing useful information about the event.](https://github.com/FICHEKK/Link/blob/main/Examples/014-Network-Events/NetworkEvents.cs)
