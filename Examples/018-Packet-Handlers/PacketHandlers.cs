@@ -1,6 +1,6 @@
 using Link.Nodes;
 
-namespace Link.Examples._018_Packet_Types;
+namespace Link.Examples._018_Packet_Handlers;
 
 /// <summary>
 /// So far, we have been sending only a single type of packet to keep things simple.
@@ -19,7 +19,7 @@ namespace Link.Examples._018_Packet_Types;
 /// different packets in their own specific ways. This example demonstrates just how
 /// easy it is to create and handle any number of different types of packets. 
 /// </summary>
-public static class PacketTypes
+public static class PacketHandlers
 {
     private const string IpAddress = "127.0.0.1";
     private const ushort Port = 7777;

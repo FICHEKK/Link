@@ -143,25 +143,31 @@ namespace Link
         /// </summary>
         private static (Writer<T> writer, Reader<T> reader) RegisterOrThrow<T>()
         {
-            var type = typeof(T);
+            lock (Cache<T>.Lock)
+            {
+                if (Cache<T>.Writer is not null && Cache<T>.Reader is not null)
+                    return (Cache<T>.Writer, Cache<T>.Reader);
+                    
+                var type = typeof(T);
 
-            if (type.IsArray && type.GetArrayRank() == 1)
-            {
-                ArrayFactory.MakeGenericMethod(type.GetElementType()).Invoke(null, Array.Empty<object>());
-            }
-            else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ArraySegment<>))
-            {
-                ArraySegmentFactory.MakeGenericMethod(type.GetGenericArguments()[0]).Invoke(null, Array.Empty<object>());
-            }
-            else if (type.IsEnum)
-            {
-                EnumFactory.MakeGenericMethod(type, Enum.GetUnderlyingType(type)).Invoke(null, Array.Empty<object>());
-            }
+                if (type.IsArray && type.GetArrayRank() == 1)
+                {
+                    ArrayFactory.MakeGenericMethod(type.GetElementType()).Invoke(null, Array.Empty<object>());
+                }
+                else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ArraySegment<>))
+                {
+                    ArraySegmentFactory.MakeGenericMethod(type.GetGenericArguments()[0]).Invoke(null, Array.Empty<object>());
+                }
+                else if (type.IsEnum)
+                {
+                    EnumFactory.MakeGenericMethod(type, Enum.GetUnderlyingType(type)).Invoke(null, Array.Empty<object>());
+                }
 
-            if (Cache<T>.Writer is null || Cache<T>.Reader is null)
-                throw new InvalidOperationException($"Serialization strategy could not be registered for type '{type}'.");
-            
-            return (Cache<T>.Writer, Cache<T>.Reader);
+                if (Cache<T>.Writer is null || Cache<T>.Reader is null)
+                    throw new InvalidOperationException($"Serialization strategy could not be registered for type '{type}'.");
+                
+                return (Cache<T>.Writer, Cache<T>.Reader);
+            }
         }
 
         private static void RegisterArray<TElement>()
@@ -245,6 +251,10 @@ namespace Link
         /// </summary>
         private static class Cache<T>
         {
+            // Lock to ensure only 1 thread can register a type.
+            // ReSharper disable once StaticMemberInGenericType
+            public static readonly object Lock = new();
+            
             public static Writer<T>? Writer;
             public static Reader<T>? Reader;
         }
