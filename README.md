@@ -33,6 +33,11 @@
     * [Kicking clients](#kicking-clients)
     * [Stopping a server](#stopping-a-server)
     * [Events](#events-1)
+  * [Serializers](#serializers) allows you to easily extend serialization system to support custom data types.
+    * [Built-in serializers](#built-in-serializers)
+    * [Serializing types out of your control](#serializing-types-out-of-your-control)
+    * [Serializing types under your control](#serializing-types-under-your-control)
+    * [Using third-party libraries](#using-third-party-libraries)
   * [Log](#log) allows you to easily log information, warning or error messages however you like.
 
 ## Introduction
@@ -87,10 +92,7 @@ var packet = Packet.Get(Delivery.Unreliable, packetId: 7);
 ```
 
 #### 2. Writing phase
-In this phase, we are writing data to the previously created `Packet` instance. Link supports many different types out of the box:
-1. [Primitive types: `string`, `byte`, `sbyte`, `bool`, `short`, `ushort`, `char`, `int`, `uint`, `float`, `long`, `ulong`, `double`.](https://github.com/FICHEKK/Link/blob/main/Examples/002-Complex-Packet/ComplexPacket.cs)
-2. [Any `enum` of any underlying integral numeric type.](https://github.com/FICHEKK/Link/blob/main/Examples/004-Enums-In-Packets/EnumsInPackets.cs)
-3. [Arrays, jagged arrays and array segments of any of the types above. For example, `string[]`, `int[][]`, `ArraySegment<double>` and so on.](https://github.com/FICHEKK/Link/blob/main/Examples/003-Arrays-In-Packets/ArraysInPackets.cs)
+In this phase, we are writing data to the previously created `Packet` instance. Link supports many different types out of the box, as explained in ["Serializers" section](#serializers).
 
 ```cs
 // Writes a string to the packet.
@@ -296,6 +298,109 @@ server.ClientDisconnected += args => Console.WriteLine($"Client from {args.Conne
 
 // Invoked each time server stops and no longer listens for client connections.
 server.Stopped += _ => Console.WriteLine("Server stopped.");
+```
+
+---
+
+### Serializers
+While Link is **not** a serialization library, it still attempts to make your experience much more pleasant by allowing you to easily serialize any data type. At the core of the serialization system is a simple generic `ISerializer` interface.
+
+```cs
+public interface ISerializer<T>
+{
+    public void Write(Packet packet, T value);
+    public T Read(ReadOnlyPacket packet);
+}
+
+```
+
+#### Built-in serializers
+By default, Link provides `ISerializer` implementations for the following types:
+1. [Primitive types: `string`, `byte`, `sbyte`, `bool`, `short`, `ushort`, `char`, `int`, `uint`, `float`, `long`, `ulong`, `double`.](https://github.com/FICHEKK/Link/blob/main/Examples/002-Complex-Packet/ComplexPacket.cs)
+2. [Any `enum` of any underlying integral numeric type.](https://github.com/FICHEKK/Link/blob/main/Examples/004-Enums-In-Packets/EnumsInPackets.cs)
+3. [Arrays, jagged arrays and array segments of any of the types above. For example, `string[]`, `int[][]`, `ArraySegment<double>` and so on.](https://github.com/FICHEKK/Link/blob/main/Examples/003-Arrays-In-Packets/ArraysInPackets.cs)
+
+These types can be written to `Packet` and read from `ReadOnlyPacket` without any work required by the user.
+
+---
+
+#### Serializing types out of your control
+Supporting serialization of types that you cannot modify (such as .NET types or third-party library types) is extremely simple: 
+
+#### 1. Create a custom `ISerializer` implementation
+```cs
+public class DateTimeSerializer : ISerializer<DateTime>
+{
+    public void Write(Packet packet, DateTime dateTime) => packet.Write(dateTime.Ticks);
+
+    public DateTime Read(ReadOnlyPacket packet) => new(ticks: packet.Read<long>());
+}
+```
+
+#### 2. Register serializer implementation
+```cs
+Serializers.Add(new DateTimeSerializer());
+```
+
+And that's it! You can now read and write `DateTime` the same way you would any of the built-in types. But not only `DateTime`; arrays, jagged arrays and any serializable collections of `DateTime` will work also!
+
+---
+
+#### Serializing types under your control
+Supporting serialization of types under your control (types that you can modify) can be done in two ways:
+1. Custom `ISerializer` implementation - explained in section ["Serializing types out of your control"](#serializing-types-out-of-your-control).
+2. Self-serializable implementation - explained in this section.
+
+Self-serializable implementation is an implementation in which a type `T` implements `ISerializer<T>` interface, providing serialization methods for itself. Here is one such example:
+
+```cs
+public readonly struct Point : ISerializer<Point>
+{
+    public float X { get; }
+    public float Y { get; }
+
+    public Point(float x, float y)
+    {
+        X = x;
+        Y = y;
+    }
+
+    public void Write(Packet packet, Point point)
+    {
+        packet.Write(point.X);
+        packet.Write(point.Y);
+    }
+
+    public Point Read(ReadOnlyPacket packet)
+    {
+        var x = packet.Read<float>();
+        var y = packet.Read<float>();
+        return new Point(x, y);
+    }
+}
+```
+
+**Self-serializable implementations do not require explicit `Serializers.Add` method call.** Simply implementing this pattern will automatically allow serialization of the type, as long as the following condition is fulfilled: type must have public default parameterless constructor - needs to fulfill `new()` generic constraint. This is fulfilled by all `struct` types by default, but classes need to have it defined (implicitly or explicitly).
+
+---
+
+#### Using third-party libraries
+If none of the solutions above are enough for your use-case, it is suggested that you utilize a well-tested third-party serialization library for converting your types to `byte[]` (binary format) or `string` (textual format), which can then be easily written to `Packet` and read from `ReadOnlyPacket`. Read and write operations of `byte[]` were especially optimized and are extremely fast - and so is `string` as it uses aforementioned `byte[]` operations.
+
+```cs
+// Fictional example to demonstrate how it could look like.
+var bytes = ThirdPartyLibrary.Serialize(myComplexObject);
+
+// Fill packet with serialized object bytes.
+var packet = Packet.Get(Delivery.Reliable).Write(bytes);
+
+...
+
+// On the receiver side, read bytes.
+var bytes = readOnlyPacket.Read<byte[]>();
+
+// Reconstruct the original object.
+var myComplexObject = ThirdPartyLibrary.Deserialize<MyComplexObject>(bytes);
 ```
 
 ---
