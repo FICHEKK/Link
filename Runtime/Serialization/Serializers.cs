@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace Link.Serialization
@@ -30,6 +31,20 @@ namespace Link.Serialization
 
             type => !type.IsGenericType || type.GetGenericTypeDefinition() != typeof(ArraySegment<>) ? null
                 : typeof(ArraySegmentSerializer<>).MakeGenericType(type.GetGenericArguments()),
+            
+            type =>
+            {
+                var serializerType = typeof(ISerializer<>).MakeGenericType(type);
+                if (type.GetInterfaces().All(i => i != serializerType)) return null;
+
+                if (type.IsClass && type.GetConstructor(Type.EmptyTypes) == null)
+                {
+                    Log.Warning($"Type '{type}' could not be automatically serialized as it does not have a default constructor.");
+                    return null;
+                }
+
+                return typeof(SelfSerializer<>).MakeGenericType(type);
+            }
         };
         
         /// <summary>

@@ -1,4 +1,5 @@
 using Link.Nodes;
+using Link.Serialization;
 
 namespace Link.Examples._005_Custom_Types_In_Packets;
 
@@ -29,48 +30,6 @@ public static class CustomTypesInPackets
 
         Console.ReadKey();
     }
-    
-    /// <summary>
-    /// Defines how an instance of <see cref="Point"/> should be written to a packet.
-    /// </summary>
-    private static void WritePoint(Packet packet, Point point)
-    {
-        packet.Write(point.X);
-        packet.Write(point.Y);
-        packet.Write(point.Z);
-    }
-
-    /// <summary>
-    /// Defines how an instance of <see cref="Point"/> should be read from a packet.
-    /// </summary>
-    private static Point ReadPoint(ReadOnlyPacket packet)
-    {
-        var x = packet.Read<float>();
-        var y = packet.Read<float>();
-        var z = packet.Read<float>();
-        return new Point(x, y, z);
-    }
-    
-    /// <summary>
-    /// Defines how an instance of <see cref="Line"/> should be written to a packet.
-    /// </summary>
-    private static void WriteLine(Packet packet, Line line)
-    {
-        // Serialization system also knows how to serialize 
-        // points since we also defined that behavior.
-        packet.Write(line.StartPoint);
-        packet.Write(line.EndPoint);
-    }
-
-    /// <summary>
-    /// Defines how an instance of <see cref="Line"/> should be read from a packet.
-    /// </summary>
-    private static Line ReadLine(ReadOnlyPacket packet)
-    {
-        var startPoint = packet.Read<Point>();
-        var endPoint = packet.Read<Point>();
-        return new Line(startPoint, endPoint);
-    }
 
     private static Packet CreatePacket()
     {
@@ -82,7 +41,7 @@ public static class CustomTypesInPackets
         packet.Write(new Point(1, 2, 3));
 
         // We can even write nested data structures just as easily.
-        var line = new Line(startPoint: new Point(4, 5, 6), endPoint: new Point(7, 8, 9));
+        var line = new Line { StartPoint = new Point(4, 5, 6), EndPoint = new Point(7, 8, 9) };
         packet.Write(line);
 
         // Even arrays will automatically work!
@@ -107,11 +66,11 @@ public static class CustomTypesInPackets
         Console.WriteLine($"Lines: {string.Join<Line>(", ", lines)}");
     }
 
-    private readonly struct Point
+    private readonly struct Point : ISerializer<Point>
     {
-        public float X { get; }
-        public float Y { get; }
-        public float Z { get; }
+        public float X { get; init; }
+        public float Y { get; init; }
+        public float Z { get; init; }
         
         public Point(float x, float y, float z)
         {
@@ -120,19 +79,41 @@ public static class CustomTypesInPackets
             Z = z;
         }
 
+        public void Write(Packet packet, Point point)
+        {
+            packet.Write(point.X);
+            packet.Write(point.Y);
+            packet.Write(point.Z);
+        }
+
+        public Point Read(ReadOnlyPacket packet) => new()
+        {
+            X = packet.Read<float>(),
+            Y = packet.Read<float>(),
+            Z = packet.Read<float>(),
+        };
+
         public override string ToString() => $"({X}, {Y}, {Z})";
     }
 
-    private class Line
+    private class Line : ISerializer<Line>
     {
-        public Point StartPoint { get; }
-        public Point EndPoint { get; }
+        public Point StartPoint { get; init; }
+        public Point EndPoint { get; init; }
 
-        public Line(Point startPoint, Point endPoint)
+        public void Write(Packet packet, Line line)
         {
-            StartPoint = startPoint;
-            EndPoint = endPoint;
+            // Serialization system also knows how to serialize 
+            // points since we also defined that behavior.
+            packet.Write(line.StartPoint);
+            packet.Write(line.EndPoint);
         }
+
+        public Line Read(ReadOnlyPacket packet) => new()
+        {
+            StartPoint = packet.Read<Point>(),
+            EndPoint = packet.Read<Point>(),
+        };
 
         public override string ToString() => $"{StartPoint} - {EndPoint}";
     }
