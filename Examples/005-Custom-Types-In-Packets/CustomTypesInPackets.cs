@@ -19,10 +19,6 @@ public static class CustomTypesInPackets
 
     public static void Main()
     {
-        // Here we define how our custom data-types should be serialized.
-        Serialization.Register(WritePoint, ReadPoint);
-        Serialization.Register(WriteLine, ReadLine);
-        
         using var server = new Server();
         server.AddHandler(args => HandlePacket(args.Packet));
         server.Start(Port);

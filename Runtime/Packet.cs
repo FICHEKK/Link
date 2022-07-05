@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using Link.Serialization;
 
 namespace Link
 {
@@ -147,7 +148,7 @@ namespace Link
         /// </summary>
         public Packet Write<T>(T value)
         {
-            Serialization.GetWriter<T>()(this, value);
+            Serializers.Get<T>().Write(this, value);
             return this;
         }
 

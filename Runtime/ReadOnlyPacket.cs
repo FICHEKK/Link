@@ -1,4 +1,5 @@
 using System;
+using Link.Serialization;
 
 namespace Link
 {
@@ -62,6 +63,6 @@ namespace Link
         /// <summary>
         /// Reads a value of specified type from the packet.
         /// </summary>
-        public T Read<T>() => Serialization.GetReader<T>()(this);
+        public T Read<T>() => Serializers.Get<T>().Read(this);
     }
 }
